@@ -2,6 +2,21 @@
 
 날짜별로 무엇을 했는지 기록합니다. 최신이 위로.
 
+## 2026-07-05 (오후) — 웹 상시 배포 완료 🎉
+
+한 일:
+- GitHub 저장소 생성(runnerpyrri-lgtm/runningcall) + `gh` CLI 인증 + code·v0.1.0 태그 push
+- Vercel에 GitHub 저장소 Import → Deploy 성공
+- **고정 주소 확보: https://runningcall.vercel.app** (HTTP 200, manifest·API 정상 검증)
+- 이제 push마다 Vercel 자동 재배포되는 파이프라인 가동 → **컴퓨터 꺼도 24시간 작동 달성**
+
+보안:
+- 사용자가 실수로 노출한 GitHub PAT를 ~/.zshrc에서 제거(백업 .zshrc.bak) → 사용자에게 GitHub에서 revoke 요청
+
+남은 것 (1단계 마무리):
+- 폰에서 PWA 설치 확인
+- 카카오 REST 키 발급 → Vercel 환경변수 등록
+
 ## 2026-07-05 — v0.1.0 baseline + 배포 체계 착수
 
 한 일:

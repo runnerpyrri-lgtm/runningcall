@@ -13,11 +13,12 @@
 - ✅ v0.1.0 첫 커밋 + git 태그 (커밋 143992d, 태그 v0.1.0)
 - ✅ 버전 리듬 정착 (변경 → CHANGELOG → 커밋 → 태그)
 
-## 1단계 — 웹 상시 배포 (핵심) 🔨
-> 목표: **컴퓨터 꺼져도 24시간 작동.** 이 단계에서 달성.
-- ⏳ GitHub 비공개 저장소 생성 + push  ← **지금 여기 (사용자 차례)**
-- ⏳ Vercel 연결 (push마다 자동 재배포)
-- ⏳ 무료 주소 `*.vercel.app` 확보
+## 1단계 — 웹 상시 배포 (핵심) 🔨 거의 완료
+> 목표: **컴퓨터 꺼져도 24시간 작동.** ✅ 달성.
+> 🌐 상시 주소: **https://runningcall.vercel.app**
+- ✅ GitHub 비공개 저장소 생성 + push (runnerpyrri-lgtm/runningcall)
+- ✅ Vercel 연결 (push마다 자동 재배포)
+- ✅ 고정 주소 https://runningcall.vercel.app 확보 (HTTP 200, API·manifest 정상)
 - ⏳ 카카오 REST 키 발급 → Vercel 환경변수 `KAKAO_REST_API_KEY` 등록
 - ⏳ 배포본 폰에서 접속·PWA 설치 확인
 
