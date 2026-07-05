@@ -14,6 +14,12 @@ export type HourlyInput = {
   precipitation: number;
   precipitationProbability: number;
   windSpeed: number;
+  // 등산 안전용 (optional, 점수 계산엔 미사용 — 러닝 골든마스터 불변 보장)
+  weatherCode?: number;
+  windGust?: number;
+  visibility?: number;
+  cloudCover?: number;
+  snowfall?: number;
 };
 
 export type RunningSlot = HourlyInput & {

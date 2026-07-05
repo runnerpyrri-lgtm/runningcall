@@ -18,6 +18,9 @@ export type RawForecast = {
   tomorrow: HourlyInput[];
   sunrise: string | null;
   sunset: string | null;
+  // 내일 산행(등산 하산 마감 등)용 — 내일 탭에서 오늘 일몰로 계산되는 버그 방지
+  sunriseTomorrow: string | null;
+  sunsetTomorrow: string | null;
 };
 
 export type RunningForecast = {
@@ -29,6 +32,8 @@ export type RunningForecast = {
   tomorrow: RunningSlot[];
   sunrise: string | null;
   sunset: string | null;
+  sunriseTomorrow: string | null;
+  sunsetTomorrow: string | null;
 };
 
 type WeatherResponse = {
@@ -42,6 +47,11 @@ type WeatherResponse = {
     precipitation?: Array<number | null>;
     precipitation_probability?: Array<number | null>;
     wind_speed_10m?: Array<number | null>;
+    wind_gusts_10m?: Array<number | null>;
+    weather_code?: Array<number | null>;
+    visibility?: Array<number | null>;
+    cloud_cover?: Array<number | null>;
+    snowfall?: Array<number | null>;
   };
   daily?: {
     time?: string[];
@@ -93,7 +103,7 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     latitude: location.latitude,
     longitude: location.longitude,
     hourly:
-      "temperature_2m,apparent_temperature,relative_humidity_2m,uv_index,precipitation,precipitation_probability,wind_speed_10m",
+      "temperature_2m,apparent_temperature,relative_humidity_2m,uv_index,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,weather_code,visibility,cloud_cover,snowfall",
     daily: "sunrise,sunset",
     wind_speed_unit: "ms",
     past_days: 1,
@@ -134,7 +144,12 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
       precipitationProbability: ensureNumber(weather.hourly?.precipitation_probability?.[index]),
       windSpeed: ensureNumber(weather.hourly?.wind_speed_10m?.[index]),
       pm10: ensureNumber(airQuality.hourly?.pm10?.[airIndex]),
-      pm25: ensureNumber(airQuality.hourly?.pm2_5?.[airIndex])
+      pm25: ensureNumber(airQuality.hourly?.pm2_5?.[airIndex]),
+      windGust: ensureNumber(weather.hourly?.wind_gusts_10m?.[index]),
+      weatherCode: ensureNumber(weather.hourly?.weather_code?.[index]),
+      visibility: ensureNumber(weather.hourly?.visibility?.[index], 20000),
+      cloudCover: ensureNumber(weather.hourly?.cloud_cover?.[index]),
+      snowfall: ensureNumber(weather.hourly?.snowfall?.[index])
     };
 
     return input;
@@ -173,7 +188,9 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     yesterday,
     tomorrow,
     sunrise: weather.daily?.sunrise?.[todayDailyIndex] ?? null,
-    sunset: weather.daily?.sunset?.[todayDailyIndex] ?? null
+    sunset: weather.daily?.sunset?.[todayDailyIndex] ?? null,
+    sunriseTomorrow: weather.daily?.sunrise?.[todayDailyIndex + 1] ?? null,
+    sunsetTomorrow: weather.daily?.sunset?.[todayDailyIndex + 1] ?? null
   };
 }
 
@@ -187,7 +204,9 @@ export function scoreForecast(raw: RawForecast, profile: ActivityProfile): Runni
     yesterday: raw.yesterday.map((input) => calculateSlot(input, profile)),
     tomorrow: raw.tomorrow.map((input) => calculateSlot(input, profile)),
     sunrise: raw.sunrise,
-    sunset: raw.sunset
+    sunset: raw.sunset,
+    sunriseTomorrow: raw.sunriseTomorrow,
+    sunsetTomorrow: raw.sunsetTomorrow
   };
 }
 

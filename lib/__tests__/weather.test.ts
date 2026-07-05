@@ -24,7 +24,9 @@ const raw: RawForecast = {
   yesterday: [],
   tomorrow: [],
   sunrise: null,
-  sunset: null
+  sunset: null,
+  sunriseTomorrow: null,
+  sunsetTomorrow: null
 };
 
 describe("scoreForecast", () => {
