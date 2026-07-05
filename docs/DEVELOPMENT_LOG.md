@@ -2,6 +2,16 @@
 
 날짜별로 무엇을 했는지 기록합니다. 최신이 위로.
 
+## 2026-07-05 (심야 6) — v0.7.0 뱃지 3070개 시리즈 + 컬렉션 화면
+
+사용자: 뱃지 3000개·초반 밀도로 포기 방지. 슈퍼스.
+- **시리즈 생성기**(achievements.ts): 지표별 BadgeSeries + ladder(초반 1단위 촘촘→넓게) → 31시리즈 × 단계 = **3070 뱃지**. 통계 확장(durationByActivity·maxSingleDurationByActivity·totalDistance·totalDuration). evaluateSeries(레벨·다음 목표·완주). 개수·초반밀도 테스트
+- **AchievementsView 재작성**: 진행 링(conic-gradient) + N/3070 + 시리즈 카드(Lv·다음·진행바) + 아코디언 사다리(펼칠 때만 렌더 → 성능). GROUP_ORDER 그룹핑
+- **CelebrationModal**: 다수 달성 시 상위 4 + "외 N개". 브라우저: 393 소급·baseline 무팝업, 러닝 25km→68개 동시 축하, 러닝거리 시리즈 14/114·다음 15km, 360/1440, 콘솔 0
+- 이 화면이 v0.7.1 세련미의 선발대 역할
+
+배포: v0.7.0 태그 + push → Vercel.
+
 ## 2026-07-05 (심야 5) — v0.6.0 도전과제/뱃지 + 캘린더 성과 요약
 
 슈퍼스(브레인스토밍→플랜→실행). 사용자 요청: 날짜 누르면 성과 확인, 기록일 빨간 링, 뱃지 수집 시스템("모으는 맛").
