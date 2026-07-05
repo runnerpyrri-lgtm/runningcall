@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchRunningForecast, type LocationPoint } from "@/lib/weather";
+import { fetchRawForecast, type LocationPoint } from "@/lib/weather";
 
 function readCoordinate(value: string | null) {
   const coordinate = Number(value);
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   };
 
   try {
-    const forecast = await fetchRunningForecast(location);
+    const forecast = await fetchRawForecast(location);
     return NextResponse.json(forecast, {
       headers: {
         "Cache-Control": "s-maxage=600, stale-while-revalidate=1800"

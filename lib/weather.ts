@@ -1,10 +1,23 @@
-import { calculateRunningSlot, type HourlyInput, type RunningSlot } from "@/lib/scoring";
+import { calculateSlot, type HourlyInput, type RunningSlot } from "@/lib/scoring";
+import { ACTIVITIES, type ActivityProfile } from "@/lib/activity";
 
 export type LocationPoint = {
   name: string;
   latitude: number;
   longitude: number;
   source: "city" | "gps" | "search";
+};
+
+// 점수화 전 원본 예보 — API는 이걸 반환하고, 활동별 점수화는 클라이언트에서 한다.
+export type RawForecast = {
+  location: LocationPoint;
+  timezone: string;
+  generatedAt: string;
+  today: HourlyInput[];
+  yesterday: HourlyInput[];
+  tomorrow: HourlyInput[];
+  sunrise: string | null;
+  sunset: string | null;
 };
 
 export type RunningForecast = {
@@ -75,7 +88,7 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function fetchRunningForecast(location: LocationPoint): Promise<RunningForecast> {
+export async function fetchRawForecast(location: LocationPoint): Promise<RawForecast> {
   const forecastUrl = buildUrl("https://api.open-meteo.com/v1/forecast", {
     latitude: location.latitude,
     longitude: location.longitude,
@@ -106,7 +119,7 @@ export async function fetchRunningForecast(location: LocationPoint): Promise<Run
   const airTimes = airQuality.hourly?.time ?? [];
   const airIndexByTime = new Map(airTimes.map((time, index) => [time, index]));
 
-  const allSlots = times.map((time, index) => {
+  const allInputs = times.map((time, index) => {
     const airIndex = airIndexByTime.get(time) ?? index;
     const input: HourlyInput = {
       time,
@@ -124,29 +137,29 @@ export async function fetchRunningForecast(location: LocationPoint): Promise<Run
       pm25: ensureNumber(airQuality.hourly?.pm2_5?.[airIndex])
     };
 
-    return calculateRunningSlot(input);
+    return input;
   });
 
-  if (allSlots.length === 0) {
+  if (allInputs.length === 0) {
     throw new Error("No hourly forecast data returned");
   }
 
   // past_days=1 + forecast_days=2 → [어제, 오늘, 내일] 순서의 날짜 그룹
-  const byDay = new Map<string, RunningSlot[]>();
-  for (const slot of allSlots) {
-    const day = slot.time.slice(0, 10);
+  const byDay = new Map<string, HourlyInput[]>();
+  for (const input of allInputs) {
+    const day = input.time.slice(0, 10);
     const group = byDay.get(day);
     if (group) {
-      group.push(slot);
+      group.push(input);
     } else {
-      byDay.set(day, [slot]);
+      byDay.set(day, [input]);
     }
   }
 
   const dayKeys = [...byDay.keys()].sort();
   const todayKey = dayKeys.length >= 2 ? dayKeys[1] : dayKeys[0];
   const yesterday = dayKeys.length >= 2 ? byDay.get(dayKeys[0]) ?? [] : [];
-  const slots = byDay.get(todayKey) ?? allSlots.slice(0, 24);
+  const today = byDay.get(todayKey) ?? allInputs.slice(0, 24);
   const tomorrow = dayKeys.length >= 3 ? byDay.get(dayKeys[2]) ?? [] : [];
 
   const dailyTimes = weather.daily?.time ?? [];
@@ -156,12 +169,31 @@ export async function fetchRunningForecast(location: LocationPoint): Promise<Run
     location,
     timezone: weather.timezone ?? "auto",
     generatedAt: new Date().toISOString(),
-    slots,
+    today,
     yesterday,
     tomorrow,
     sunrise: weather.daily?.sunrise?.[todayDailyIndex] ?? null,
     sunset: weather.daily?.sunset?.[todayDailyIndex] ?? null
   };
+}
+
+// 원본 예보를 활동 프로필로 점수화한다. 활동 전환 시 재요청 없이 이 함수만 다시 돈다.
+export function scoreForecast(raw: RawForecast, profile: ActivityProfile): RunningForecast {
+  return {
+    location: raw.location,
+    timezone: raw.timezone,
+    generatedAt: raw.generatedAt,
+    slots: raw.today.map((input) => calculateSlot(input, profile)),
+    yesterday: raw.yesterday.map((input) => calculateSlot(input, profile)),
+    tomorrow: raw.tomorrow.map((input) => calculateSlot(input, profile)),
+    sunrise: raw.sunrise,
+    sunset: raw.sunset
+  };
+}
+
+// 기존 호환 별칭 — run 프로필 점수화 결과 (기존 러닝콜과 동일)
+export async function fetchRunningForecast(location: LocationPoint): Promise<RunningForecast> {
+  return scoreForecast(await fetchRawForecast(location), ACTIVITIES.run);
 }
 
 export function findCurrentSlot(slots: RunningSlot[]) {
