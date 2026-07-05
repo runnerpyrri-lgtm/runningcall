@@ -13,9 +13,9 @@
 ## Claude가 할 일
 - [x] v0.1.0 빌드 검증
 - [x] 기록 문서 체계 생성
-- [ ] v0.1.0 첫 커밋 + 태그
-- [ ] .env.example에 KAKAO_REST_API_KEY 문서화
-- [ ] push용 원격 연결 명령 안내
+- [x] v0.1.0 첫 커밋 + 태그
+- [x] .env.example에 KAKAO_REST_API_KEY 문서화
+- [x] push용 원격 연결 명령 안내 (DEPLOY.md 1단계)
 - [ ] 배포 후 각 문서 상태 갱신
 
 ## 나중 (이번 아님)
