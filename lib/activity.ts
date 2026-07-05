@@ -211,6 +211,9 @@ export function getPawRisk(input: { hour: number; temperature: number; uvIndex: 
 export type DogPlan = {
   signal: "go" | "caution" | "avoid";
   signalText: string;
+  reason: string;
+  alternative: string;
+  careTip: string;
   walkLength: string;
   paw: PawRisk;
   checklist: string[];
@@ -234,6 +237,36 @@ export function getDogPlan(input: {
 
   const signalText = signal === "go" ? "산책 가능" : signal === "caution" ? "짧게 주의" : "산책 자제";
 
+  // 판정 근거 — 가장 나쁜 요인을 우선순위로 짚어준다
+  const rainy = input.precipitation >= 0.3 || input.precipitationProbability >= 60;
+  const reason =
+    paw.level === "danger"
+      ? "지면이 너무 뜨거워요(발바닥 화상 위험)"
+      : rainy
+      ? "비 소식이 있어요"
+      : input.apparentTemperature >= 28
+      ? "더위가 심해요"
+      : input.apparentTemperature <= -5
+      ? "한파예요"
+      : signal === "go"
+      ? "날씨 조건이 좋아요"
+      : "컨디션이 애매한 날씨예요";
+
+  const alternative =
+    signal === "avoid"
+      ? "배변만 짧게 다녀오고, 실내 노즈워크·터그 놀이로 에너지를 풀어주세요"
+      : signal === "caution"
+      ? "평소보다 짧은 코스로, 강아지 반응을 보며 다녀오세요"
+      : "";
+
+  const careTip = rainy
+    ? "다녀오면 발과 배를 꼼꼼히 닦아주세요"
+    : paw.level !== "safe"
+    ? "그늘길로 걷고, 자주 발바닥 상태를 확인하세요"
+    : input.apparentTemperature <= 3
+    ? "다녀와서 몸을 따뜻하게 해주세요"
+    : "물을 챙겨 중간중간 마시게 해주세요";
+
   const walkLength =
     signal === "avoid"
       ? "배변만 짧게 (5분 이내)"
@@ -246,10 +279,10 @@ export function getDogPlan(input: {
   const checklist: string[] = ["💧 물", "🛍️ 배변봉투"];
   if (input.apparentTemperature >= 25) checklist.push("🌳 그늘길 코스");
   if (input.apparentTemperature <= 3) checklist.push("🧥 강아지 옷");
-  if (input.precipitation >= 0.3 || input.precipitationProbability >= 60) checklist.push("🧻 발 닦을 수건");
+  if (rainy) checklist.push("🧻 발 닦을 수건");
   if (paw.level !== "safe") checklist.push("🐾 지면 온도 확인");
 
-  return { signal, signalText, walkLength, paw, checklist };
+  return { signal, signalText, reason, alternative, careTip, walkLength, paw, checklist };
 }
 
 /* ------------------------------------------------------------------ *

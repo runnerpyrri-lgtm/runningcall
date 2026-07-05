@@ -1665,11 +1665,16 @@ button {
   }
 
   .status-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     margin-top: 9px;
+    width: 100%;
   }
 
   .status-chip {
+    width: 100%;
+    justify-content: center;
     height: 29px;
     padding: 0 11px;
     font-size: 0.78rem;
@@ -4054,4 +4059,28 @@ button {
   .activity-tagline {
     display: none;
   }
+}
+
+/* 애견 플랜 — 판정 이유·대안·케어팁 (v0.4.2) */
+.dog-reason {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.dog-alt {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.dog-care {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
 }

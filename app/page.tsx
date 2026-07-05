@@ -2105,6 +2105,8 @@ export default function Home() {
                     <strong>{dogPlan.signalText}</strong>
                     <span className="dog-length">{dogPlan.walkLength}</span>
                   </div>
+                  <p className="dog-reason">{dogPlan.reason}</p>
+                  {dogPlan.alternative ? <p className="dog-alt">💡 {dogPlan.alternative}</p> : null}
                   <div className={`dog-paw paw-${dogPlan.paw.level}`}>
                     <span aria-hidden="true">
                       {dogPlan.paw.level === "danger" ? "🚨" : dogPlan.paw.level === "caution" ? "⚠️" : "🐾"}
@@ -2114,6 +2116,7 @@ export default function Home() {
                       <p>{dogPlan.paw.detail}</p>
                     </div>
                   </div>
+                  <p className="dog-care">🧴 {dogPlan.careTip}</p>
                   <ul className="dog-check">
                     {dogPlan.checklist.map((c) => (
                       <li key={c}>{c}</li>
