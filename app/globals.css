@@ -66,12 +66,17 @@ button {
 
 .dashboard-frame {
   display: grid;
-  grid-template-columns: 150px minmax(0, 720px) 150px;
-  gap: 22px;
+  grid-template-columns: minmax(0, 720px);
   justify-content: center;
   align-items: start;
-  max-width: 1180px;
   margin: 0 auto;
+}
+
+/* 데스크탑: 넓은 화면을 2단 대시보드로 채움 */
+@media (min-width: 1081px) {
+  .dashboard-frame {
+    grid-template-columns: minmax(0, 1060px);
+  }
 }
 
 .app-shell {
@@ -1592,14 +1597,8 @@ button {
 }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1080px) {
-  .dashboard-frame {
-    grid-template-columns: minmax(0, 720px);
-  }
-
-  .side-ad {
-    display: none;
-  }
+.side-ad {
+  display: none;
 }
 
 @media (max-width: 620px) {
@@ -3209,8 +3208,7 @@ button {
 /* ---------- 반응형: 태블릿 ---------- */
 @media (min-width: 621px) and (max-width: 1080px) {
   .dashboard-frame {
-    grid-template-columns: minmax(0, 640px);
-    padding: 0 8px;
+    grid-template-columns: minmax(0, 680px);
   }
 
   .reasons {
@@ -3383,31 +3381,62 @@ button {
 
 /* ══════════════ 활동 카테고리 ══════════════ */
 
-/* 상단 가로 탭 — 데스크탑·모바일 통일 (v0.3.0: 좌측 레일 제거) */
+/* 상단 가로 탭 — 4개가 한 줄에 균등하게 딱 (모바일·데스크탑 통일) */
 .activity-tabs {
   display: flex;
-  justify-content: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px 2px 12px;
-  scrollbar-width: none;
-}
-
-.activity-tabs::-webkit-scrollbar {
-  display: none;
+  gap: 7px;
+  padding: 2px 0 12px;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .activity-tabs .act-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 15px;
+  justify-content: center;
+  gap: 5px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 6px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
   background: var(--card);
   white-space: nowrap;
-  flex: 0 0 auto;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+/* 데스크탑 2단 대시보드 — 모바일은 display:contents로 기존 1단 그대로 */
+.content-cols {
+  display: contents;
+}
+
+.col-main,
+.col-side {
+  display: contents;
+}
+
+@media (min-width: 1081px) {
+  .content-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 20px;
+    align-items: start;
+  }
+
+  .col-main,
+  .col-side {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* 탭·날짜토글은 2단 위에서 가운데 폭 제한 */
+  .activity-tabs,
+  .day-toggle {
+    max-width: 620px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .activity-tabs .act-item:hover {

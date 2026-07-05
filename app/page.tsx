@@ -1588,8 +1588,6 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
-        <AdSlot side="left" />
-
         <section className="app-shell">
           {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
           <header className="top-header">
@@ -1905,6 +1903,10 @@ export default function Home() {
                 </button>
               </div>
 
+              {/* 데스크탑 2단 대시보드 — 모바일은 display:contents로 1단 유지 */}
+              <div className="content-cols">
+                <div className="col-main">
+
               {/* HERO — 좌: 점수만 크게 / 우: 문구 + 이유 + 조건 2개 */}
               <section className="hero">
                 <div className="hero-top">
@@ -2061,6 +2063,9 @@ export default function Home() {
                 </section>
               )}
 
+                </div>
+                <div className="col-side">
+
               {/* 일출 · 일몰 — 밝은 시간대 판단용 */}
               {sunrise && sunset ? (
                 <div className="sun-cards" aria-label="일출과 일몰">
@@ -2173,11 +2178,12 @@ export default function Home() {
               </section>
 
               <AdSlot />
+
+                </div>
+              </div>
             </>
           )}
         </section>
-
-        <AdSlot side="right" />
       </div>
 
       {toast ? <div className="toast">{toast}</div> : null}
