@@ -62,6 +62,22 @@ import {
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, getHikePlan, type ActivityKey } from "@/lib/activity";
 import {
+  DEFAULT_GOALS,
+  emptyLog,
+  loadGoals,
+  loadLog,
+  recordButtonLabel,
+  saveGoals,
+  saveLog,
+  toggleDay,
+  type ActivityGoal,
+  type ActivityLog
+} from "@/lib/activity-record";
+import { ACTIVITY_GUIDE } from "@/lib/activity-guide";
+
+// 활동 내부 탭 (판단 / 준비 / 기록 / 가이드)
+type InnerTab = "today" | "prep" | "record" | "guide";
+import {
   gradeHumidity,
   gradePm25,
   gradePrecipitation,
@@ -606,6 +622,104 @@ function MetricSheet({
   );
 }
 
+// 복장 플랜 본문 — OutfitSheet(모달)과 준비 탭(인라인)에서 공유
+function OutfitPlanBody({ plan }: { plan: ReturnType<typeof getOutfitPlan> }) {
+  return (
+    <>
+      <p className="sheet-meaning">{plan.headline}</p>
+
+      {/* 오늘 날씨 변화 (비·자외선·기온) */}
+      {plan.changes.length > 0 ? (
+        <div className="outfit-changes">
+          {plan.changes.map((c, i) => (
+            <div key={i} className={`ofc ofc-${c.tone}`}>
+              <span aria-hidden="true">{c.emoji}</span>
+              <p>{c.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* 카테고리별 복장 */}
+      <p className="outfit-section">기본 복장</p>
+      <ul className="outfit-cats">
+        {plan.categories.map((c, i) => (
+          <li key={`${c.label}-${i}`}>
+            <span className="oc-emoji" aria-hidden="true">
+              {c.emoji}
+            </span>
+            <div className="oc-body">
+              <strong>
+                <span className="oc-label">{c.label}</span>
+                {c.value}
+              </strong>
+              <small>{c.reason}</small>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* 햇빛·자외선 */}
+      {plan.sun ? (
+        <>
+          <p className="outfit-section outfit-sun-head">
+            ☀️ 햇빛·자외선 <em>{plan.sun.level}</em>
+          </p>
+          <ul className="outfit-cats sun-cats">
+            {plan.sun.items.map((item, i) => (
+              <li key={`${item.label}-${i}`}>
+                <span className="oc-emoji" aria-hidden="true">
+                  {item.emoji}
+                </span>
+                <div className="oc-body">
+                  <strong>{item.label}</strong>
+                  <small>{item.reason}</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {/* 시간대별 옷차림 */}
+      {plan.byTime.length > 0 ? (
+        <>
+          <p className="outfit-section">시간대별 옷차림</p>
+          <ul className="outfit-times">
+            {plan.byTime.map((p) => (
+              <li key={p.label}>
+                <span className="ot-when">
+                  <span aria-hidden="true">{p.emoji}</span>
+                  {p.label} · {p.feel}°
+                </span>
+                <span className="ot-wear">
+                  {p.main}
+                  {p.note ? <small> · {p.note}</small> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+// 준비 탭 — 복장 상세 + 활동별 준비/주의 콘텐츠
+function PrepView({ slot, slots, activity }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey }) {
+  const plan = getOutfitPlan(slots, slot, activity);
+  return (
+    <section className="prep-view" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
+      <p className="prep-head">
+        {ACTIVITIES[activity].terms.outfitTitle} · 체감 {plan.feels.toFixed(0)}°C
+      </p>
+      <p className="prep-main">{plan.main}</p>
+      <OutfitPlanBody plan={plan} />
+      <GuideBlocks blocks={ACTIVITY_GUIDE[activity].prep} />
+    </section>
+  );
+}
+
 function OutfitSheet({
   slot,
   slots,
@@ -636,83 +750,18 @@ function OutfitSheet({
           </div>
         </div>
 
-        <p className="sheet-meaning">{plan.headline}</p>
-
-        {/* 오늘 날씨 변화 (비·자외선·기온) */}
-        {plan.changes.length > 0 ? (
-          <div className="outfit-changes">
-            {plan.changes.map((c, i) => (
-              <div key={i} className={`ofc ofc-${c.tone}`}>
-                <span aria-hidden="true">{c.emoji}</span>
-                <p>{c.text}</p>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {/* 카테고리별 복장 */}
-        <p className="outfit-section">기본 복장</p>
-        <ul className="outfit-cats">
-          {plan.categories.map((c, i) => (
-            <li key={`${c.label}-${i}`}>
-              <span className="oc-emoji" aria-hidden="true">
-                {c.emoji}
-              </span>
-              <div className="oc-body">
-                <strong>
-                  <span className="oc-label">{c.label}</span>
-                  {c.value}
-                </strong>
-                <small>{c.reason}</small>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {/* 햇빛·자외선 */}
-        {plan.sun ? (
-          <>
-            <p className="outfit-section outfit-sun-head">
-              ☀️ 햇빛·자외선 <em>{plan.sun.level}</em>
-            </p>
-            <ul className="outfit-cats sun-cats">
-              {plan.sun.items.map((item, i) => (
-                <li key={`${item.label}-${i}`}>
-                  <span className="oc-emoji" aria-hidden="true">
-                    {item.emoji}
-                  </span>
-                  <div className="oc-body">
-                    <strong>{item.label}</strong>
-                    <small>{item.reason}</small>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-
-        {/* 시간대별 옷차림 */}
-        {plan.byTime.length > 0 ? (
-          <>
-            <p className="outfit-section">시간대별 옷차림</p>
-            <ul className="outfit-times">
-              {plan.byTime.map((p) => (
-                <li key={p.label}>
-                  <span className="ot-when">
-                    <span aria-hidden="true">{p.emoji}</span>
-                    {p.label} · {p.feel}°
-                  </span>
-                  <span className="ot-wear">
-                    {p.main}
-                    {p.note ? <small> · {p.note}</small> : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
+        <OutfitPlanBody plan={plan} />
       </div>
     </div>
+  );
+}
+
+// 가이드 탭 — 활동별 실전 팁
+function GuideView({ activity }: { activity: ActivityKey }) {
+  return (
+    <section className="guide-view" aria-label={`${ACTIVITIES[activity].label} 가이드`}>
+      <GuideBlocks blocks={ACTIVITY_GUIDE[activity].guide} />
+    </section>
   );
 }
 
@@ -756,27 +805,32 @@ function GuideSheet({ topic, onClose }: { topic: GuideTopic; onClose: () => void
   );
 }
 
-function RecordSheet({
-  runSet,
-  weeklyGoal,
+// 활동별 기록 (내부 "기록" 탭에 인라인) — 오늘 체크·연속일·목표·달력
+function RecordView({
+  activity,
+  daySet,
+  goal,
   onToggle,
-  onSetGoal,
-  onClose
+  onSetGoal
 }: {
-  runSet: Set<string>;
-  weeklyGoal: number;
+  activity: ActivityKey;
+  daySet: Set<string>;
+  goal: ActivityGoal;
   onToggle: (dateStr: string) => void;
-  onSetGoal: (goal: number) => void;
-  onClose: () => void;
+  onSetGoal: (goal: ActivityGoal) => void;
 }) {
   const today = new Date();
   const todayS = fmtDate(today);
   const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const grid = buildMonthGrid(ym.y, ym.m);
-  const streak = currentStreak(runSet, today);
-  const wk = weekCount(runSet, today);
-  const mo = monthCount(runSet, ym.y, ym.m);
+  const streak = currentStreak(daySet, today);
+  const wk = weekCount(daySet, today);
+  const mo = monthCount(daySet, ym.y, ym.m);
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const doneNow = goal.period === "month" ? monthCount(daySet, today.getFullYear(), today.getMonth()) : wk;
+  const goalOptions = goal.period === "month" ? [1, 2, 3, 4] : [2, 3, 4, 5, 6, 7];
+  const periodLabel = goal.period === "month" ? "이번 달" : "이번 주";
+  const todayDone = daySet.has(todayS);
 
   const shift = (delta: number) => {
     const d = new Date(ym.y, ym.m + delta, 1);
@@ -784,91 +838,104 @@ function RecordSheet({
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="활동 기록" onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-topbar">
-          <div className="sheet-grip" aria-hidden="true" />
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
-            <X size={18} />
-          </button>
-        </div>
+    <section className="record-view" aria-label={`${ACTIVITIES[activity].label} 기록`}>
+      <button
+        type="button"
+        className={`record-toggle ${todayDone ? "done" : ""}`}
+        onClick={() => onToggle(todayS)}
+      >
+        {todayDone ? "오늘 완료! 🎉 (취소하려면 다시)" : recordButtonLabel(activity)}
+      </button>
 
-        <div className="sheet-head">
-          <p className="sheet-title">🏃 나의 활동 기록</p>
+      <div className="rec-stats">
+        <div className="rs-item rs-fire">
+          <strong>{streak}</strong>
+          <small>연속 일 🔥</small>
         </div>
-
-        <div className="rec-stats">
-          <div className="rs-item rs-fire">
-            <strong>{streak}</strong>
-            <small>연속 일 🔥</small>
-          </div>
-          <div className="rs-item">
-            <strong>
-              {wk}
-              <span>/{weeklyGoal}</span>
-            </strong>
-            <small>이번 주</small>
-          </div>
-          <div className="rs-item">
-            <strong>{mo}</strong>
-            <small>이번 달</small>
-          </div>
-        </div>
-
-        <p className="rec-goal-label">주간 목표</p>
-        <div className="rec-goals">
-          {[2, 3, 4, 5].map((g) => (
-            <button
-              key={g}
-              type="button"
-              className={`rec-goal ${weeklyGoal === g ? "on" : ""}`}
-              onClick={() => onSetGoal(g)}
-            >
-              주 {g}회
-            </button>
-          ))}
-        </div>
-
-        <div className="cal-nav">
-          <button type="button" onClick={() => shift(-1)} aria-label="이전 달">
-            <ChevronLeft size={18} />
-          </button>
+        <div className="rs-item">
           <strong>
-            {ym.y}년 {ym.m + 1}월
+            {doneNow}
+            <span>/{goal.count}</span>
           </strong>
-          <button type="button" onClick={() => shift(1)} aria-label="다음 달">
-            <ChevronRight size={18} />
-          </button>
+          <small>{periodLabel} 목표</small>
         </div>
-
-        <div className="cal-grid">
-          {weekdays.map((w) => (
-            <span className={`cal-wd ${w === "일" ? "sun" : w === "토" ? "sat" : ""}`} key={w}>
-              {w}
-            </span>
-          ))}
-          {grid.map((cell, i) => {
-            if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
-            const ds = fmtDate(cell);
-            const isRun = runSet.has(ds);
-            const isToday = ds === todayS;
-            const isFuture = ds > todayS;
-            return (
-              <button
-                type="button"
-                key={ds}
-                disabled={isFuture}
-                onClick={() => onToggle(ds)}
-                className={`cal-cell ${isRun ? "is-run" : ""} ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""}`}
-              >
-                {cell.getDate()}
-              </button>
-            );
-          })}
+        <div className="rs-item">
+          <strong>{mo}</strong>
+          <small>이번 달 누적</small>
         </div>
-
-        <p className="cal-hint">날짜를 눌러 기록을 표시하거나 지울 수 있어요.</p>
       </div>
+
+      <p className="rec-goal-label">{ACTIVITIES[activity].label} 목표 ({goal.period === "month" ? "월간" : "주간"})</p>
+      <div className="rec-goals">
+        {goalOptions.map((g) => (
+          <button
+            key={g}
+            type="button"
+            className={`rec-goal ${goal.count === g ? "on" : ""}`}
+            onClick={() => onSetGoal({ count: g, period: goal.period })}
+          >
+            {goal.period === "month" ? "월" : "주"} {g}회
+          </button>
+        ))}
+      </div>
+
+      <div className="cal-nav">
+        <button type="button" onClick={() => shift(-1)} aria-label="이전 달">
+          <ChevronLeft size={18} />
+        </button>
+        <strong>
+          {ym.y}년 {ym.m + 1}월
+        </strong>
+        <button type="button" onClick={() => shift(1)} aria-label="다음 달">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      <div className="cal-grid">
+        {weekdays.map((w) => (
+          <span className={`cal-wd ${w === "일" ? "sun" : w === "토" ? "sat" : ""}`} key={w}>
+            {w}
+          </span>
+        ))}
+        {grid.map((cell, i) => {
+          if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
+          const ds = fmtDate(cell);
+          const isDone = daySet.has(ds);
+          const isToday = ds === todayS;
+          const isFuture = ds > todayS;
+          return (
+            <button
+              type="button"
+              key={ds}
+              disabled={isFuture}
+              onClick={() => onToggle(ds)}
+              className={`cal-cell ${isDone ? "is-run" : ""} ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""}`}
+            >
+              {cell.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="cal-hint">날짜를 눌러 기록을 표시하거나 지울 수 있어요. 활동별로 따로 저장돼요.</p>
+    </section>
+  );
+}
+
+// 활동별 실전 준비·가이드 블록 렌더
+function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[] }) {
+  return (
+    <div className="guide-blocks">
+      {blocks.map((b) => (
+        <div className="guide-block" key={b.heading}>
+          <p className="gb-head">{b.heading}</p>
+          <ul>
+            {b.items.map((it) => (
+              <li key={it}>{it}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
@@ -990,7 +1057,14 @@ function ActivityRail({
             <span className="act-emoji" aria-hidden="true">
               {item.emoji}
             </span>
-            <span className="act-label">{item.short}</span>
+            {variant === "rail" ? (
+              <span className="act-rail-text">
+                <strong>{item.label}</strong>
+                <small>{item.tagline}</small>
+              </span>
+            ) : (
+              <span className="act-label">{item.short}</span>
+            )}
           </button>
         );
       })}
@@ -1027,9 +1101,10 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchNote, setSearchNote] = useState("");
   const [saved, setSaved] = useState<SavedLocation[]>([]);
-  const [runLog, setRunLog] = useState<string[]>([]);
-  const [weeklyGoal, setWeeklyGoal] = useState(3);
-  const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [activityLog, setActivityLog] = useState<ActivityLog>(emptyLog);
+  const [goals, setGoals] = useState(DEFAULT_GOALS);
+  const [isRecordRestored, setIsRecordRestored] = useState(false);
+  const [innerTab, setInnerTab] = useState<InnerTab>("today");
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
     setIsLoading(true);
@@ -1137,34 +1212,29 @@ export default function Home() {
     }
   }, [saved]);
 
-  // 러닝 기록 복원·저장
+  // 활동별 기록 복원 (신규 키 없으면 기존 runlog에서 1회 마이그레이션) — 마운트 시 1회
   useEffect(() => {
-    try {
-      const log = window.localStorage.getItem("running-alarm:runlog");
-      if (log) {
-        const parsed = JSON.parse(log) as string[];
-        if (Array.isArray(parsed)) setRunLog(parsed);
-      }
-      const goal = Number(window.localStorage.getItem("running-alarm:goal"));
-      if (goal >= 1 && goal <= 7) setWeeklyGoal(goal);
-    } catch {
-      // 무시
-    }
+    setActivityLog(loadLog());
+    setGoals(loadGoals());
+    setIsRecordRestored(true);
   }, []);
 
+  // 복원 완료 후에만 저장 (초기 빈 값이 기존 기록을 덮어쓰지 않게)
   useEffect(() => {
-    try {
-      window.localStorage.setItem("running-alarm:runlog", JSON.stringify(runLog));
-      window.localStorage.setItem("running-alarm:goal", String(weeklyGoal));
-    } catch {
-      // 무시
-    }
-  }, [runLog, weeklyGoal]);
+    if (!isRecordRestored) return;
+    saveLog(activityLog);
+  }, [activityLog, isRecordRestored]);
 
-  const runSet = useMemo(() => new Set(runLog), [runLog]);
+  useEffect(() => {
+    if (!isRecordRestored) return;
+    saveGoals(goals);
+  }, [goals, isRecordRestored]);
+
+  // 현재 선택 활동의 기록 Set
+  const runSet = useMemo(() => new Set(activityLog[activity]), [activityLog, activity]);
 
   function toggleRunDay(dateStr: string) {
-    setRunLog((prev) => (prev.includes(dateStr) ? prev.filter((d) => d !== dateStr) : [...prev, dateStr]));
+    setActivityLog((prev) => toggleDay(prev, activity, dateStr));
   }
 
   // 활동 선택 복원·저장
@@ -1191,6 +1261,7 @@ export default function Home() {
   const changeActivity = useCallback((next: ActivityKey) => {
     setSheetKey(null);
     setIsOutfitOpen(false);
+    setInnerTab("today");
     setActivity(next);
   }, []);
 
@@ -1614,6 +1685,8 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
+        <ActivityRail activity={activity} onChange={changeActivity} variant="rail" />
+
         <section className="app-shell">
           {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
           <header className="top-header">
@@ -1682,13 +1755,13 @@ export default function Home() {
                     className="drawer-item"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      setIsRecordOpen(true);
+                      setInnerTab("record");
                     }}
                   >
                     <span className="di-emoji" aria-hidden="true">
-                      🏃
+                      📅
                     </span>
-                    나의 활동 기록
+                    {ACTIVITIES[activity].label} 기록 보기
                     <ChevronRight size={17} className="di-arrow" />
                   </button>
 
@@ -1912,6 +1985,44 @@ export default function Home() {
               <p className="activity-tagline">
                 {profile.emoji} {profile.tagline}
               </p>
+
+              <nav className="inner-tabs" aria-label="세부 보기">
+                {([
+                  ["today", "오늘 판단"],
+                  ["prep", "준비"],
+                  ["record", "기록"],
+                  ["guide", "가이드"]
+                ] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`inner-tab${innerTab === k ? " on" : ""}`}
+                    aria-pressed={innerTab === k}
+                    onClick={() => setInnerTab(k)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+
+              {innerTab === "prep" && view ? (
+                <PrepView slot={view.reference} slots={view.slots} activity={activity} />
+              ) : null}
+
+              {innerTab === "record" ? (
+                <RecordView
+                  activity={activity}
+                  daySet={runSet}
+                  goal={goals[activity]}
+                  onToggle={toggleRunDay}
+                  onSetGoal={(g) => setGoals((prev) => ({ ...prev, [activity]: g }))}
+                />
+              ) : null}
+
+              {innerTab === "guide" ? <GuideView activity={activity} /> : null}
+
+              {innerTab === "today" ? (
+                <>
 
               <div className="day-toggle" role="tablist" aria-label="날짜 선택">
                 <button
@@ -2246,6 +2357,8 @@ export default function Home() {
 
                 </div>
               </div>
+                </>
+              ) : null}
             </>
           )}
         </section>
@@ -2266,16 +2379,6 @@ export default function Home() {
 
       {isOutfitOpen && view ? (
         <OutfitSheet slot={view.reference} slots={view.slots} activity={activity} onClose={() => setIsOutfitOpen(false)} />
-      ) : null}
-
-      {isRecordOpen ? (
-        <RecordSheet
-          runSet={runSet}
-          weeklyGoal={weeklyGoal}
-          onToggle={toggleRunDay}
-          onSetGoal={setWeeklyGoal}
-          onClose={() => setIsRecordOpen(false)}
-        />
       ) : null}
 
       {guideTopic ? <GuideSheet topic={guideTopic} onClose={() => setGuideTopic(null)} /> : null}

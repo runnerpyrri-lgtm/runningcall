@@ -3841,3 +3841,217 @@ button {
     display: none;
   }
 }
+
+/* ══════════════ v0.4.1 — 활동별 허브 (내부 탭·PC 레일·기록·가이드) ══════════════ */
+
+/* 내부 세그먼트 (판단/준비/기록/가이드) */
+.inner-tabs {
+  display: flex;
+  gap: 6px;
+  max-width: 640px;
+  margin: 0 auto 12px;
+  background: #e7ecf5;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.inner-tab {
+  flex: 1 1 0;
+  padding: 9px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inner-tab.on {
+  background: #fff;
+  color: var(--brand-deep);
+  box-shadow: 0 2px 8px -3px rgba(12, 28, 64, 0.25);
+}
+
+/* 준비 탭 */
+.prep-view,
+.record-view,
+.guide-view {
+  margin-top: 4px;
+}
+
+.prep-head {
+  margin: 0 2px 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.prep-main {
+  margin: 0 2px 8px;
+  font-size: 1.35rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* 가이드 블록 (준비/가이드 공통) */
+.guide-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.guide-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.gb-head {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: var(--ink);
+}
+
+.guide-block ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.guide-block li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.guide-block li::before {
+  content: "·";
+  position: absolute;
+  left: 4px;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+/* 기록 탭 — 인라인 (기존 시트 스타일 재사용, 오늘 체크 버튼 추가) */
+.record-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-toggle {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 850;
+  box-shadow: 0 10px 24px -12px rgba(47, 107, 255, 0.7);
+  margin-bottom: 14px;
+}
+
+.record-toggle.done {
+  background: linear-gradient(135deg, var(--good), var(--good-deep));
+  box-shadow: 0 10px 24px -12px rgba(18, 148, 90, 0.6);
+}
+
+/* PC 좌측 카테고리 레일 (데스크탑 ≥1200px) */
+.activity-rail {
+  display: none;
+}
+
+.activity-rail .rail-title {
+  margin: 0 2px 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.activity-rail .act-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.activity-rail .act-item:hover {
+  border-color: #c8d6f5;
+}
+
+.activity-rail .act-item.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.activity-rail .act-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex: none;
+}
+
+.act-rail-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.act-rail-text strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.act-rail-text small {
+  font-size: 0.66rem;
+  color: var(--muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 1200px) {
+  .dashboard-frame {
+    grid-template-columns: 218px minmax(0, 1fr);
+    max-width: 1340px;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .activity-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: sticky;
+    top: 22px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .activity-tabs,
+  .activity-tagline {
+    display: none;
+  }
+}
