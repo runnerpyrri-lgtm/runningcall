@@ -4186,17 +4186,18 @@ button {
 .jc-icons {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 0;
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   line-height: 1;
 }
 
 .jc-more {
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   font-weight: 800;
   color: var(--muted);
+  margin-left: 1px;
 }
 
 .journal-hint {

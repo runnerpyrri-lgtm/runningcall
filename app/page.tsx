@@ -1117,13 +1117,13 @@ function JournalView({
                     <span className="jc-date">{cell.getDate()}</span>
                     {dayEntry && dayEntry.activities.length > 0 ? (
                       <span className="jc-icons">
-                        {dayEntry.activities.slice(0, 3).map((a) => (
+                        {dayEntry.activities.slice(0, 2).map((a) => (
                           <span key={a.key} aria-hidden="true">
                             {ACTIVITIES[a.key].emoji}
                           </span>
                         ))}
-                        {dayEntry.activities.length > 3 ? (
-                          <span className="jc-more">+{dayEntry.activities.length - 3}</span>
+                        {dayEntry.activities.length > 2 ? (
+                          <span className="jc-more">+{dayEntry.activities.length - 2}</span>
                         ) : null}
                       </span>
                     ) : null}
