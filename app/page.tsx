@@ -1444,7 +1444,7 @@ export default function Home() {
     const text =
       score !== null
         ? `오늘 ${location.name} ${profile.label} 점수 ${score}점 ${profile.emoji} — 러닝콜`
-        : "러닝콜 — 러닝·걷기·산책·자전거, 나가기 좋은 시간";
+        : "러닝콜 — 걷기·애견산책·러닝·등산·자전거, 나가기 좋은 시간";
     const url = window.location.href;
 
     if (navigator.share) {
@@ -1644,7 +1644,7 @@ export default function Home() {
                 <div className="drawer-head">
                   <div className="drawer-brand">
                     <strong>러닝콜</strong>
-                    <small>러닝·걷기·산책·자전거, 나가기 좋은 시간</small>
+                    <small>걷기·애견산책·러닝·등산·자전거, 나가기 좋은 시간</small>
                   </div>
                   <button className="sheet-close" type="button" onClick={() => setIsMenuOpen(false)} aria-label="닫기">
                     <X size={18} />

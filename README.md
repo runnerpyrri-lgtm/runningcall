@@ -1,42 +1,45 @@
-# 오늘 러닝 적기
+# 러닝콜 — 걷기·애견산책·러닝·등산·자전거, 나가기 좋은 시간
 
-기온, 습도, 미세먼지, 자외선지수를 합산해 오늘 남은 시간 중 러닝하기 좋은 시간을 0~100점으로 보여주는 모바일 반응형 웹사이트입니다.
+날씨·대기질을 활동별로 종합해 **"지금 나가도 돼? 오늘 언제가 좋아?"**에 답하는 야외활동 컨디션 PWA입니다. 걷기·애견산책·러닝·등산·자전거 5개 활동을 각각의 기준으로 0~100점으로 판단합니다.
+
+배포: https://runningcall.vercel.app
 
 ## 실행
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev      # 개발 서버
+pnpm test     # 테스트 (러닝 골든마스터 등)
+pnpm build    # 프로덕션 빌드
+pnpm typecheck
 ```
+
+## 활동 카테고리
+
+| 활동 | 특징 |
+|---|---|
+| 🚶 걷기 | 더위·습도 관대, 미세먼지·자외선 강조 |
+| 🐕 애견산책 | 강아지 기준(발바닥 화상·지면열 경고) |
+| 🏃 러닝 | 체감온도·습도 민감 (기존 완성형, 골든마스터로 불변 보장) |
+| ⛰️ 등산 | 목적지 산 검색·하산 마감·낙뢰/돌풍/조망·새벽 4시 시간대 |
+| 🚴 자전거 | 바람·비 민감, 강풍 위험 경고 |
 
 ## 데이터
 
-- 날씨: Open-Meteo Forecast API
-- 미세먼지: Open-Meteo Air Quality API
-- 좌표 기반 hourly 데이터를 받아 24시간 점수를 계산합니다.
+- 날씨: Open-Meteo Forecast API (체감온도·강수·바람·자외선·낙뢰·돌풍·시정·적설 등)
+- 대기질: Open-Meteo Air Quality API (PM2.5/PM10)
+- 위치 검색: Kakao Local API (없으면 Nominatim 폴백)
+
+## 주요 라우트
+
+- `/api/forecast` — 좌표 → 원본 시간별 예보(활동별 점수화는 클라이언트에서)
+- `/api/search-location` — 위치·산 검색
+- `/api/reverse-location` — 좌표 → 동네명
 
 ## 점수 로직
 
-- 미세먼지 40%: PM2.5 0~15, PM10 0~30을 가장 좋게 평가
-- 자외선 25%: UVI 0~2 최상, 높을수록 감점
-- 기온 20%: 10~18°C 최상, 더위와 추위 모두 감점
-- 습도 15%: 40~60% 최상, 건조와 다습 모두 감점
-
-## Vercel AI Gateway 설정
-
-AI 키가 없으면 로컬 기본 문구로 동작합니다. 키를 넣으면 `/api/tip` 라우트가 Vercel AI Gateway를 통해 Claude 모델로 오늘의 한마디를 생성합니다.
-
-1. Vercel 대시보드에서 AI Gateway API Keys 페이지로 이동
-2. Create key를 눌러 키 생성
-3. 로컬 `.env.local`에 추가
-
-```bash
-AI_GATEWAY_API_KEY=your_ai_gateway_api_key
-AI_GATEWAY_MODEL=anthropic/claude-sonnet-4.6
-```
-
-Vercel 배포 시에도 Project Settings의 Environment Variables에 같은 값을 추가하면 됩니다.
+활동마다 6개 지표(미세먼지·체감온도·강수·자외선·습도·바람)의 가중치가 다르고, 위험 조건(폭염·강풍·낙뢰 등)엔 하드캡을 건다. 프로필은 `lib/activity.ts` 참고. 러닝 프로필은 값이 고정되어 있으며 `lib/__tests__/scoring.test.ts`의 골든마스터로 잠겨 있다.
 
 ## 배포
 
-Vercel에 프로젝트를 연결한 뒤 기본 Next.js 설정으로 배포하면 됩니다. 애드센스 스크립트는 심사 통과 후 `app/page.tsx`의 광고 슬롯 위치에 삽입하면 됩니다.
+GitHub push → Vercel 자동 배포. 카카오 검색을 쓰려면 Vercel 환경변수에 `KAKAO_REST_API_KEY`를 추가한다.
