@@ -4,14 +4,14 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "러닝콜",
     short_name: "러닝콜",
-    description: "오늘과 내일의 러닝 골든타임을 알려주는 러닝 컨디션 앱",
+    description: "걷기·애견산책·러닝·등산·자전거까지, 나가기 좋은 시간을 알려주는 야외활동 컨디션 앱",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#e9eef6",
     theme_color: "#2f6bff",
-    categories: ["health", "sports", "weather"],
+    categories: ["health", "sports", "weather", "lifestyle"],
     lang: "ko-KR",
     icons: [
       {
