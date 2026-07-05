@@ -1939,13 +1939,13 @@ button {
 }
 
 .sun-rise {
-  background: linear-gradient(135deg, #fff5e6, #ffffff);
-  border-color: #ffe0ad;
+  background: linear-gradient(135deg, #ffedd0, #fffaf3);
+  border-color: #ffd699;
 }
 
 .sun-set {
-  background: linear-gradient(135deg, #f0ecff, #ffffff);
-  border-color: #dcd4f5;
+  background: linear-gradient(135deg, #eae4ff, #faf8ff);
+  border-color: #d3c8f2;
 }
 
 .sun-ic {
@@ -2758,17 +2758,30 @@ button {
 }
 
 .rank-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   text-align: left;
-  padding: 13px 15px;
+  padding: 13px 15px 13px 18px;
   border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+/* 좌측 액센트바로 순위 구분 — 넓은 앰버 색면을 없애 일출 카드와 안 겹치게 */
+.rank-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: #c3cfe2;
 }
 
 .rank-card:hover {
@@ -2781,9 +2794,21 @@ button {
 }
 
 .rank-1 {
-  background: linear-gradient(135deg, #fffaf0, #ffffff);
-  border-color: #ffdf9e;
-  box-shadow: 0 14px 30px -16px rgba(245, 166, 35, 0.4);
+  background: var(--card);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.rank-1::before {
+  background: linear-gradient(180deg, #f5b323, #f59023);
+}
+
+.rank-2::before {
+  background: linear-gradient(180deg, #aab6cc, #8f9fb8);
+}
+
+.rank-3::before {
+  background: linear-gradient(180deg, #d3a17a, #b9835c);
 }
 
 .rank-card.is-now {
@@ -3356,82 +3381,12 @@ button {
   font-weight: 800;
 }
 
-/* ══════════════ 활동 카테고리 (v0.2.0) ══════════════ */
+/* ══════════════ 활동 카테고리 ══════════════ */
 
-/* 데스크탑 좌측 컬럼 — 활동 레일 + 광고 */
-.side-left {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: sticky;
-  top: 22px;
-}
-
-.side-left .side-ad {
-  position: static;
-  min-height: 300px;
-}
-
-.activity-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 14px 12px;
-  box-shadow: var(--shadow-sm);
-}
-
-.rail-title {
-  margin: 0 0 2px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.activity-rail .act-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 12px 8px;
-  border-radius: 14px;
-  border: 1.5px solid var(--line);
-  background: #fff;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.activity-rail .act-item:hover {
-  border-color: #c8d6f5;
-  transform: translateY(-1px);
-}
-
-.activity-rail .act-item.on {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-  box-shadow: 0 6px 16px -8px rgba(47, 107, 255, 0.45);
-}
-
-.activity-rail .act-emoji {
-  font-size: 1.45rem;
-  line-height: 1;
-}
-
-.activity-rail .act-label {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--ink-2);
-}
-
-.activity-rail .act-item.on .act-label {
-  color: var(--brand-deep);
-}
-
-/* 모바일/태블릿 상단 가로 탭 */
+/* 상단 가로 탭 — 데스크탑·모바일 통일 (v0.3.0: 좌측 레일 제거) */
 .activity-tabs {
-  display: none;
+  display: flex;
+  justify-content: center;
   gap: 8px;
   overflow-x: auto;
   padding: 2px 2px 12px;
@@ -3455,6 +3410,10 @@ button {
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
+.activity-tabs .act-item:hover {
+  border-color: #c8d6f5;
+}
+
 .activity-tabs .act-item.on {
   border-color: var(--brand);
   background: var(--brand);
@@ -3474,16 +3433,6 @@ button {
 
 .activity-tabs .act-item.on .act-label {
   color: #fff;
-}
-
-@media (max-width: 1080px) {
-  .side-left {
-    display: none;
-  }
-
-  .activity-tabs {
-    display: flex;
-  }
 }
 
 /* 활동별 안내 카드 — 애견 발바닥 / 출퇴근 우산 */
@@ -3545,40 +3494,116 @@ button {
   color: var(--good-deep);
 }
 
-.advisory-umb-rain {
-  border-color: #ffc9cb;
-  background: #fff3f3;
+/* 애견산책 전용 카드 — 신호등 + 추천 길이 + 발바닥 + 챙길 것 */
+.dog-plan {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.advisory-umb-rain strong {
-  color: var(--bad-deep);
+.dog-signal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.advisory-umb-need {
-  border-color: #ffe3b3;
-  background: #fff9ee;
+.dog-signal strong {
+  font-size: 1.05rem;
+  font-weight: 850;
 }
 
-.advisory-umb-need strong {
+.dog-length {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: var(--brand-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.dog-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dog-go .dog-dot {
+  background: var(--good);
+}
+
+.dog-caution .dog-dot {
+  background: var(--warn);
+}
+
+.dog-avoid .dog-dot {
+  background: var(--bad);
+}
+
+.dog-go .dog-signal strong {
+  color: var(--good-deep);
+}
+
+.dog-caution .dog-signal strong {
   color: var(--warn-deep);
 }
 
-.advisory-umb-maybe {
-  border-color: #d9e4f8;
-  background: #f4f8ff;
+.dog-avoid .dog-signal strong {
+  color: var(--bad-deep);
 }
 
-.advisory-umb-maybe strong {
-  color: var(--brand-deep);
+.dog-paw {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f7f9fc;
 }
 
-.advisory-umb-none {
-  border-color: #c9ecd9;
-  background: #f2fbf6;
+.dog-paw b {
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
-.advisory-umb-none strong {
-  color: var(--good-deep);
+.dog-paw p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.dog-paw.paw-danger {
+  background: #fff3f3;
+}
+
+.dog-paw.paw-caution {
+  background: #fff9ee;
+}
+
+.dog-check {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dog-check li {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: #eef2f8;
+  border-radius: 999px;
+  padding: 5px 11px;
 }
 
 /* 드로어 — 활동 선택 */
