@@ -66,15 +66,15 @@ import {
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
 import {
   BADGES_SEEN_KEY,
-  BADGE_GROUP_LABELS,
-  BADGE_GROUP_ORDER,
+  GROUP_ORDER,
   computeStats,
   evaluateBadges,
+  evaluateSeries,
   loadSeen,
   newlyEarned,
   saveSeen,
   type Badge,
-  type EvaluatedBadge
+  type SeriesProgress
 } from "@/lib/achievements";
 import {
   ACTIVITY_JOURNAL_FIELDS,
@@ -1309,24 +1309,24 @@ function JournalView({
   );
 }
 
-// 도전과제 — 뱃지 그리드(달성/미달성·진행률·NEW), 소급 달성
+// 도전과제 — 시리즈 컬렉션(카드 + 아코디언 사다리·NEW), 소급 달성
 function AchievementsView({
-  evaluated,
+  series,
   seen,
   onClose
 }: {
-  evaluated: EvaluatedBadge[];
+  series: SeriesProgress[];
   seen: string[];
   onClose: () => void;
 }) {
-  const total = evaluated.length;
-  const earned = evaluated.filter((e) => e.earned).length;
-  const pct = total ? Math.round((earned / total) * 100) : 0;
+  const [expanded, setExpanded] = useState<string | null>(null);
   const seenSet = new Set(seen);
-  const byGroup = BADGE_GROUP_ORDER.map((group) => ({
+  const total = series.reduce((sum, s) => sum + s.total, 0);
+  const earned = series.reduce((sum, s) => sum + s.level, 0);
+  const pct = total ? Math.round((earned / total) * 100) : 0;
+  const byGroup = GROUP_ORDER.map((group) => ({
     group,
-    label: BADGE_GROUP_LABELS[group],
-    items: evaluated.filter((e) => e.badge.group === group)
+    items: series.filter((s) => s.series.group === group)
   })).filter((g) => g.items.length > 0);
 
   return (
@@ -1341,52 +1341,84 @@ function AchievementsView({
 
         <div className="sheet-head">
           <p className="sheet-title">🏅 도전과제</p>
-          <div className="ach-progress">
-            <div className="ach-progress-top">
-              <strong>
-                {earned} / {total} 달성
-              </strong>
-              <span>{pct}%</span>
+          <div className="ach-hero">
+            <div className="ach-ring" style={{ "--pct": `${pct}` } as React.CSSProperties}>
+              <span className="ach-ring-num">{pct}%</span>
             </div>
-            <div className="ach-bar">
-              <div className="ach-bar-fill" style={{ width: `${pct}%` }} />
+            <div className="ach-hero-text">
+              <strong>
+                {earned.toLocaleString()} <em>/ {total.toLocaleString()}</em>
+              </strong>
+              <span>달성한 뱃지</span>
             </div>
           </div>
         </div>
 
         {byGroup.map((g) => (
           <section className="ach-group" key={g.group}>
-            <p className="ach-group-label">{g.label}</p>
-            <div className="ach-grid">
-              {g.items.map(({ badge, current, earned: got }) => {
-                const isNew = got && !seenSet.has(badge.id);
+            <p className="ach-group-label">{g.group}</p>
+            <div className="ach-series-list">
+              {g.items.map((sp) => {
+                const isOpen = expanded === sp.series.id;
+                const done = sp.nextThreshold === null;
+                const barPct = Math.round((sp.level / sp.total) * 100);
                 return (
-                  <div
-                    key={badge.id}
-                    className={`ach-badge tier-${badge.tier}${got ? " got" : " locked"}`}
-                    title={badge.desc}
-                  >
-                    {isNew ? <span className="ach-new">NEW</span> : null}
-                    <span className="ach-emoji" aria-hidden="true">
-                      {badge.emoji}
-                    </span>
-                    <span className="ach-title">{badge.title}</span>
-                    <span className="ach-desc">{badge.desc}</span>
-                    {got ? (
-                      <span className="ach-done">달성 ✓</span>
-                    ) : (
-                      <span className="ach-prog">
-                        <span className="ach-prog-bar">
-                          <span
-                            className="ach-prog-fill"
-                            style={{ width: `${Math.round((current / badge.target) * 100)}%` }}
-                          />
+                  <div className={`ach-series${isOpen ? " open" : ""}`} key={sp.series.id}>
+                    <button
+                      type="button"
+                      className="ach-series-head"
+                      onClick={() => setExpanded(isOpen ? null : sp.series.id)}
+                    >
+                      <span className="ach-series-emoji" aria-hidden="true">
+                        {sp.series.emoji}
+                      </span>
+                      <span className="ach-series-main">
+                        <span className="ach-series-top">
+                          <b>{sp.series.name}</b>
+                          <span className="ach-series-lv">Lv {sp.level}</span>
                         </span>
-                        <span className="ach-prog-text">
-                          {current} / {badge.target}
+                        <span className="ach-series-bar">
+                          <span className="ach-series-fill" style={{ width: `${barPct}%` }} />
+                        </span>
+                        <span className="ach-series-sub">
+                          {done ? (
+                            <span className="ach-series-done">완주 ✓</span>
+                          ) : (
+                            <>
+                              다음: {sp.nextThreshold}
+                              {sp.series.unit}
+                            </>
+                          )}
+                          <span className="ach-series-count">
+                            {sp.level} / {sp.total}
+                          </span>
                         </span>
                       </span>
-                    )}
+                      <ChevronRight size={17} className={`ach-series-arrow${isOpen ? " open" : ""}`} />
+                    </button>
+
+                    {isOpen ? (
+                      <div className="ach-ladder">
+                        {sp.series.thresholds.map((t) => {
+                          const id = `${sp.series.id}@${t}`;
+                          const got = sp.value >= t;
+                          const isNext = t === sp.nextThreshold;
+                          const isNew = got && !seenSet.has(id);
+                          return (
+                            <div
+                              key={id}
+                              className={`ach-step${got ? " got" : ""}${isNext ? " next" : ""}`}
+                            >
+                              {isNew ? <span className="ach-new">NEW</span> : null}
+                              <span className="ach-step-emoji" aria-hidden="true">
+                                {sp.series.emoji}
+                              </span>
+                              <span className="ach-step-title">{sp.series.titleFor(t)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1398,23 +1430,25 @@ function AchievementsView({
   );
 }
 
-// 뱃지 획득 축하 팝업 — 새로 달성한 뱃지를 크게 보여줌
+// 뱃지 획득 축하 팝업 — 다수 달성 시 상위 몇 개 + "외 N개"
 function CelebrationModal({ badges, onClose }: { badges: Badge[]; onClose: () => void }) {
+  const shown = badges.slice(0, 4);
+  const rest = badges.length - shown.length;
   return (
     <div className="celebrate-backdrop" role="dialog" aria-modal="true" aria-label="뱃지 획득" onClick={onClose}>
       <div className="celebrate-card" onClick={(event) => event.stopPropagation()}>
-        <p className="celebrate-title">🎉 뱃지 획득!</p>
+        <p className="celebrate-title">🎉 뱃지 {badges.length}개 획득!</p>
         <div className="celebrate-badges">
-          {badges.map((b) => (
+          {shown.map((b) => (
             <div className={`celebrate-badge tier-${b.tier}`} key={b.id}>
               <span className="celebrate-emoji" aria-hidden="true">
                 {b.emoji}
               </span>
               <strong>{b.title}</strong>
-              <small>{b.desc}</small>
             </div>
           ))}
         </div>
+        {rest > 0 ? <p className="celebrate-rest">외 {rest}개 달성!</p> : null}
         <button type="button" className="celebrate-ok" onClick={onClose}>
           확인
         </button>
@@ -1620,10 +1654,9 @@ export default function Home() {
   const [badgesSeen, setBadgesSeen] = useState<string[]>([]);
   const [celebration, setCelebration] = useState<Badge[]>([]);
 
-  const evaluatedBadges = useMemo(
-    () => evaluateBadges(computeStats(journal, activityLog)),
-    [journal, activityLog]
-  );
+  const badgeStats = useMemo(() => computeStats(journal, activityLog), [journal, activityLog]);
+  const evaluatedBadges = useMemo(() => evaluateBadges(badgeStats), [badgeStats]);
+  const seriesProgress = useMemo(() => evaluateSeries(badgeStats), [badgeStats]);
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
     setIsLoading(true);
@@ -3016,7 +3049,7 @@ export default function Home() {
 
       {isAchievementsOpen ? (
         <AchievementsView
-          evaluated={evaluatedBadges}
+          series={seriesProgress}
           seen={badgesSeen}
           onClose={() => setIsAchievementsOpen(false)}
         />
