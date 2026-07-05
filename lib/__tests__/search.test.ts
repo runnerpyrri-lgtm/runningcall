@@ -20,3 +20,11 @@ describe("isMountain", () => {
     expect(isMountain("올림픽공원 둘레길", "여행 > 공원")).toBe(true);
   });
 });
+
+describe("isMountain 꼬리표", () => {
+  it("괄호·꼬리표가 붙어도 산으로 판정한다", () => {
+    expect(isMountain("북한산(백운대)")).toBe(true);
+    expect(isMountain("관악산 정상")).toBe(true);
+    expect(isMountain("지리산 국립공원")).toBe(true);
+  });
+});
