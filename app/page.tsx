@@ -65,6 +65,18 @@ import {
 } from "@/lib/activity-record";
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
 import {
+  BADGES_SEEN_KEY,
+  BADGE_GROUP_LABELS,
+  BADGE_GROUP_ORDER,
+  computeStats,
+  evaluateBadges,
+  loadSeen,
+  newlyEarned,
+  saveSeen,
+  type Badge,
+  type EvaluatedBadge
+} from "@/lib/achievements";
+import {
   ACTIVITY_JOURNAL_FIELDS,
   MOODS,
   deleteEntry,
@@ -1297,6 +1309,120 @@ function JournalView({
   );
 }
 
+// 도전과제 — 뱃지 그리드(달성/미달성·진행률·NEW), 소급 달성
+function AchievementsView({
+  evaluated,
+  seen,
+  onClose
+}: {
+  evaluated: EvaluatedBadge[];
+  seen: string[];
+  onClose: () => void;
+}) {
+  const total = evaluated.length;
+  const earned = evaluated.filter((e) => e.earned).length;
+  const pct = total ? Math.round((earned / total) * 100) : 0;
+  const seenSet = new Set(seen);
+  const byGroup = BADGE_GROUP_ORDER.map((group) => ({
+    group,
+    label: BADGE_GROUP_LABELS[group],
+    items: evaluated.filter((e) => e.badge.group === group)
+  })).filter((g) => g.items.length > 0);
+
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="도전과제" onClick={onClose}>
+      <div className="sheet achievements-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="sheet-topbar">
+          <div className="sheet-grip" aria-hidden="true" />
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="sheet-head">
+          <p className="sheet-title">🏅 도전과제</p>
+          <div className="ach-progress">
+            <div className="ach-progress-top">
+              <strong>
+                {earned} / {total} 달성
+              </strong>
+              <span>{pct}%</span>
+            </div>
+            <div className="ach-bar">
+              <div className="ach-bar-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {byGroup.map((g) => (
+          <section className="ach-group" key={g.group}>
+            <p className="ach-group-label">{g.label}</p>
+            <div className="ach-grid">
+              {g.items.map(({ badge, current, earned: got }) => {
+                const isNew = got && !seenSet.has(badge.id);
+                return (
+                  <div
+                    key={badge.id}
+                    className={`ach-badge tier-${badge.tier}${got ? " got" : " locked"}`}
+                    title={badge.desc}
+                  >
+                    {isNew ? <span className="ach-new">NEW</span> : null}
+                    <span className="ach-emoji" aria-hidden="true">
+                      {badge.emoji}
+                    </span>
+                    <span className="ach-title">{badge.title}</span>
+                    <span className="ach-desc">{badge.desc}</span>
+                    {got ? (
+                      <span className="ach-done">달성 ✓</span>
+                    ) : (
+                      <span className="ach-prog">
+                        <span className="ach-prog-bar">
+                          <span
+                            className="ach-prog-fill"
+                            style={{ width: `${Math.round((current / badge.target) * 100)}%` }}
+                          />
+                        </span>
+                        <span className="ach-prog-text">
+                          {current} / {badge.target}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 뱃지 획득 축하 팝업 — 새로 달성한 뱃지를 크게 보여줌
+function CelebrationModal({ badges, onClose }: { badges: Badge[]; onClose: () => void }) {
+  return (
+    <div className="celebrate-backdrop" role="dialog" aria-modal="true" aria-label="뱃지 획득" onClick={onClose}>
+      <div className="celebrate-card" onClick={(event) => event.stopPropagation()}>
+        <p className="celebrate-title">🎉 뱃지 획득!</p>
+        <div className="celebrate-badges">
+          {badges.map((b) => (
+            <div className={`celebrate-badge tier-${b.tier}`} key={b.id}>
+              <span className="celebrate-emoji" aria-hidden="true">
+                {b.emoji}
+              </span>
+              <strong>{b.title}</strong>
+              <small>{b.desc}</small>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="celebrate-ok" onClick={onClose}>
+          확인
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AlarmSheet({
   target,
   existing,
@@ -1392,12 +1518,14 @@ function ActivityRail({
   activity,
   onChange,
   variant,
-  onOpenJournal
+  onOpenJournal,
+  onOpenAchievements
 }: {
   activity: ActivityKey;
   onChange: (next: ActivityKey) => void;
   variant: "rail" | "tabs";
   onOpenJournal?: () => void;
+  onOpenAchievements?: () => void;
 }) {
   return (
     <nav className={variant === "rail" ? "activity-rail" : "activity-tabs"} aria-label="활동 선택">
@@ -1432,6 +1560,14 @@ function ActivityRail({
             </span>
             <span className="act-rail-label">운동 일지</span>
           </button>
+          {onOpenAchievements ? (
+            <button type="button" className="act-item journal-btn" onClick={onOpenAchievements}>
+              <span className="act-emoji" aria-hidden="true">
+                🏅
+              </span>
+              <span className="act-rail-label">도전과제</span>
+            </button>
+          ) : null}
         </>
       ) : null}
     </nav>
@@ -1480,6 +1616,14 @@ export default function Home() {
     return { y: d.getFullYear(), m: d.getMonth() };
   });
   const [journalSelectedDate, setJournalSelectedDate] = useState<string | null>(null);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [badgesSeen, setBadgesSeen] = useState<string[]>([]);
+  const [celebration, setCelebration] = useState<Badge[]>([]);
+
+  const evaluatedBadges = useMemo(
+    () => evaluateBadges(computeStats(journal, activityLog)),
+    [journal, activityLog]
+  );
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
     setIsLoading(true);
@@ -1622,6 +1766,44 @@ export default function Home() {
     if (!isJournalRestored) return;
     saveJournal(journal);
   }, [journal, isJournalRestored]);
+
+  // 도전과제 — seen 복원 + 신규 달성 감지(최초 실행은 조용히 baseline)
+  const badgesInitRef = useRef(false);
+  const seenRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!isJournalRestored || !isRecordRestored) return;
+    if (!badgesInitRef.current) {
+      badgesInitRef.current = true;
+      const raw = window.localStorage.getItem(BADGES_SEEN_KEY);
+      if (raw === null) {
+        // 최초: 지금까지 달성한 뱃지를 baseline으로 조용히 저장(팝업 없음)
+        const ids = evaluatedBadges.filter((e) => e.earned).map((e) => e.badge.id);
+        seenRef.current = ids;
+        setBadgesSeen(ids);
+        saveSeen(ids);
+        return;
+      }
+      const seen = loadSeen();
+      const fresh = newlyEarned(evaluatedBadges, seen);
+      const merged = fresh.length ? [...seen, ...fresh.map((b) => b.id)] : seen;
+      seenRef.current = merged;
+      setBadgesSeen(merged);
+      if (fresh.length) {
+        saveSeen(merged);
+        setCelebration(fresh);
+      }
+      return;
+    }
+    // 이후: 저장 등으로 달성 상태가 바뀌면 새 뱃지 축하
+    const fresh = newlyEarned(evaluatedBadges, seenRef.current);
+    if (fresh.length) {
+      const merged = [...seenRef.current, ...fresh.map((b) => b.id)];
+      seenRef.current = merged;
+      setBadgesSeen(merged);
+      saveSeen(merged);
+      setCelebration((q) => [...q, ...fresh]);
+    }
+  }, [evaluatedBadges, isJournalRestored, isRecordRestored]);
 
   // 복원 완료 후에만 저장 (초기 빈 값이 기존 기록을 덮어쓰지 않게)
   useEffect(() => {
@@ -2100,6 +2282,7 @@ export default function Home() {
           onChange={changeActivity}
           variant="rail"
           onOpenJournal={() => setIsJournalOpen(true)}
+          onOpenAchievements={() => setIsAchievementsOpen(true)}
         />
 
         <section className="app-shell">
@@ -2177,6 +2360,21 @@ export default function Home() {
                       📔
                     </span>
                     운동 일지 전체 보기
+                    <ChevronRight size={17} className="di-arrow" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="drawer-item"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsAchievementsOpen(true);
+                    }}
+                  >
+                    <span className="di-emoji" aria-hidden="true">
+                      🏅
+                    </span>
+                    도전과제 보기
                     <ChevronRight size={17} className="di-arrow" />
                   </button>
 
@@ -2814,6 +3012,18 @@ export default function Home() {
             setJournalSelectedDate(null);
           }}
         />
+      ) : null}
+
+      {isAchievementsOpen ? (
+        <AchievementsView
+          evaluated={evaluatedBadges}
+          seen={badgesSeen}
+          onClose={() => setIsAchievementsOpen(false)}
+        />
+      ) : null}
+
+      {celebration.length > 0 ? (
+        <CelebrationModal badges={celebration} onClose={() => setCelebration([])} />
       ) : null}
 
       {alarmTarget ? (

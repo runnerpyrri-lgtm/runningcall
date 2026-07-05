@@ -4553,3 +4553,286 @@ button {
   color: #fff;
   box-shadow: 0 12px 26px -14px rgba(47, 107, 255, 0.7);
 }
+
+/* ══════════════ v0.6.0 — 도전과제(뱃지) + 축하 팝업 ══════════════ */
+.achievements-sheet {
+  width: min(520px, 100%);
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.ach-progress {
+  margin-top: 10px;
+}
+
+.ach-progress-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ach-progress-top strong {
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.ach-progress-top span {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--brand-deep);
+}
+
+.ach-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #e9eef6;
+  overflow: hidden;
+}
+
+.ach-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-deep));
+  transition: width 0.4s ease;
+}
+
+.ach-group {
+  margin-top: 18px;
+}
+
+.ach-group-label {
+  margin: 0 2px 10px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ach-badge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+  padding: 14px 8px 11px;
+  border-radius: 15px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+}
+
+.ach-badge.locked {
+  background: #f4f6fa;
+}
+
+.ach-badge.locked .ach-emoji {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.ach-badge.locked .ach-title {
+  color: var(--muted);
+}
+
+.ach-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ach-title {
+  font-size: 0.82rem;
+  font-weight: 850;
+  color: var(--ink);
+}
+
+.ach-desc {
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.ach-done {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  color: #12945a;
+}
+
+.ach-prog {
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.ach-prog-bar {
+  width: 82%;
+  height: 5px;
+  border-radius: 999px;
+  background: #e3e9f2;
+  overflow: hidden;
+}
+
+.ach-prog-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.ach-prog-text {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+/* 획득 뱃지 등급 색 */
+.ach-badge.got.tier-bronze {
+  border-color: #cd7f32;
+  background: #fbf1e6;
+}
+.ach-badge.got.tier-silver {
+  border-color: #9aa7b8;
+  background: #f1f4f8;
+}
+.ach-badge.got.tier-gold {
+  border-color: #e0a92e;
+  background: #fdf6e3;
+}
+.ach-badge.got.tier-diamond {
+  border-color: #3aa0ff;
+  background: #eaf4ff;
+}
+.ach-badge.got.tier-special {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.ach-new {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 10px -4px rgba(229, 72, 77, 0.7);
+}
+
+/* 축하 팝업 */
+.celebrate-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 21, 38, 0.55);
+  backdrop-filter: blur(5px);
+  animation: fade-in 0.2s ease;
+}
+
+.celebrate-card {
+  width: min(360px, 100%);
+  padding: 26px 22px 20px;
+  border-radius: 24px;
+  background: var(--card);
+  text-align: center;
+  box-shadow: 0 30px 70px -30px rgba(12, 28, 64, 0.6);
+  animation: celebrate-pop 0.4s cubic-bezier(0.22, 1.4, 0.4, 1);
+}
+
+@keyframes celebrate-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.celebrate-title {
+  margin: 0 0 16px;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.celebrate-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.celebrate-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 14px;
+  border-radius: 18px;
+  border: 2px solid var(--brand);
+  background: var(--brand-soft);
+  min-width: 116px;
+}
+
+.celebrate-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  animation: celebrate-bounce 0.9s ease infinite alternate;
+}
+
+@keyframes celebrate-bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+.celebrate-badge strong {
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.celebrate-badge small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.celebrate-ok {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 850;
+}
+
+@media (max-width: 380px) {
+  .ach-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
