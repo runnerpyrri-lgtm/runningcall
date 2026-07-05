@@ -238,20 +238,6 @@ export function findBestRemainingSlot(slots: RunningSlot[]) {
   }, targetSlots[0]);
 }
 
-// 내일 새벽~오전(5~10시) 중 최고 슬롯
-export function findTomorrowMorningBest(tomorrow: RunningSlot[]) {
-  if (tomorrow.length === 0) {
-    return null;
-  }
-
-  const morning = tomorrow.filter((slot) => slot.hour >= 5 && slot.hour <= 10);
-  const targetSlots = morning.length > 0 ? morning : tomorrow;
-
-  return targetSlots.reduce((best, slot) => {
-    return slot.totalScore > best.totalScore ? slot : best;
-  }, targetSlots[0]);
-}
-
 // 어제 같은 시각과 점수 비교 (없으면 null)
 export function compareWithYesterday(current: RunningSlot, yesterday: RunningSlot[]) {
   const match = yesterday.find((slot) => slot.hour === current.hour);

@@ -3,7 +3,6 @@
 // 러닝콜 메인 화면 — 점수 히어로, 시간대 추천, 러닝 정보 드로어
 import {
   AlertCircle,
-  Bell,
   BellRing,
   ChevronDown,
   ChevronLeft,
@@ -31,15 +30,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { CITY_PRESETS, DEFAULT_CITY } from "@/lib/cities";
 import { GUIDE_TOPICS, type GuideTopic } from "@/lib/guide";
 import { getOutfit, getOutfitPlan } from "@/lib/outfit";
-import {
-  buildMonthGrid,
-  currentStreak,
-  fmtDate,
-  monthCount,
-  todayStr,
-  weekCount,
-  weekDates
-} from "@/lib/record";
+import { buildMonthGrid, currentStreak, fmtDate, monthCount, weekCount } from "@/lib/record";
 import {
   composeOneLiner,
   getConditionChips,
@@ -57,8 +48,7 @@ import {
   findCurrentSlot,
   scoreForecast,
   type LocationPoint,
-  type RawForecast,
-  type RunningForecast
+  type RawForecast
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, getHikePlan, type ActivityKey } from "@/lib/activity";
 import {
