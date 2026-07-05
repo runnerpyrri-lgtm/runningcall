@@ -156,7 +156,9 @@ async function searchNominatim(query: string): Promise<SearchResult[]> {
       .replace("광역시", "")
       .trim();
     const name = full || doc.name || "";
-    const result = toResult(name, "", doc.lon, doc.lat);
+    // 폴백에서도 산 우선 정렬이 동작하게 원래 지명(doc.name)으로 산 판정
+    const kind: SearchResult["kind"] = isMountain(doc.name || name) ? "mountain" : "place";
+    const result = toResult(name, "", doc.lon, doc.lat, kind);
     if (result) {
       results.push(result);
     }
