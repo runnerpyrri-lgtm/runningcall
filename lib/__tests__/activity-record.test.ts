@@ -66,3 +66,25 @@ describe("activity-record", () => {
     expect(recordButtonLabel("run")).toContain("뛰");
   });
 });
+
+describe("활동별 독립성 + 순서", () => {
+  it("ACTIVITY_ORDER는 걷기·애견·러닝·등산·자전거 순", async () => {
+    const { ACTIVITY_ORDER } = await import("@/lib/activity");
+    expect(ACTIVITY_ORDER).toEqual(["walk", "dog", "run", "hike", "bike"]);
+  });
+
+  it("한 활동을 토글해도 다른 활동 기록은 그대로", () => {
+    let log = { ...emptyLog(), run: ["2026-01-01", "2026-01-02"] };
+    log = toggleDay(log, "walk", "2026-05-05");
+    expect(log.run).toEqual(["2026-01-01", "2026-01-02"]);
+    expect(log.walk).toEqual(["2026-05-05"]);
+  });
+
+  it("활동별 Set으로 스트릭이 독립 계산된다", async () => {
+    const { currentStreak } = await import("@/lib/record");
+    const today = new Date("2026-03-10T12:00:00");
+    const log = { ...emptyLog(), run: ["2026-03-10", "2026-03-09"], walk: ["2026-03-10"] };
+    expect(currentStreak(new Set(log.run), today)).toBe(2);
+    expect(currentStreak(new Set(log.walk), today)).toBe(1);
+  });
+});
