@@ -60,7 +60,7 @@ import {
   type RawForecast,
   type RunningForecast
 } from "@/lib/weather";
-import { ACTIVITIES, ACTIVITY_ORDER, getPawRisk, getUmbrellaAdvice, type ActivityKey } from "@/lib/activity";
+import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, type ActivityKey } from "@/lib/activity";
 import {
   gradeHumidity,
   gradePm25,
@@ -154,7 +154,7 @@ async function getNotificationRegistration() {
 }
 
 async function showRunningNotification(alarm: AlarmConfig) {
-  const body = `${alarm.label} · 러닝하기 좋은 시간이 다가와요.`;
+  const body = `${alarm.label} · 나가기 좋은 시간이 다가와요.`;
   const registration = await getNotificationRegistration();
   if (registration?.showNotification) {
     const options = {
@@ -185,7 +185,7 @@ async function scheduleBackgroundAlarm(alarm: AlarmConfig) {
   try {
     const TriggerCtor = (window as unknown as { TimestampTrigger: new (t: number) => unknown }).TimestampTrigger;
     await registration.showNotification("러닝콜", {
-      body: `${alarm.label} · 러닝하기 좋은 시간이에요! 🏃`,
+      body: `${alarm.label} · 지금 나가기 좋은 시간이에요!`,
       tag: `running-alarm-${alarm.id}`,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
@@ -589,7 +589,7 @@ function MetricSheet({
         {bestTime || worstTime ? (
           <div className="chart-legend">
             {bestTime ? (
-              <span className="cl-best">🟢 러닝 좋은 {String(bestSlot.hour).padStart(2, "0")}시</span>
+              <span className="cl-best">🟢 {ACTIVITIES[activity].label} 좋은 {String(bestSlot.hour).padStart(2, "0")}시</span>
             ) : null}
             {worstTime ? (
               <span className="cl-worst">🔴 피할 {String(worstSlot.hour).padStart(2, "0")}시</span>
@@ -618,7 +618,7 @@ function OutfitSheet({
   const plan = getOutfitPlan(slots, slot, activity);
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="러닝 복장 상세" onClick={onClose}>
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="복장 상세" onClick={onClose}>
       <div className="sheet" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-topbar">
           <div className="sheet-grip" aria-hidden="true" />
@@ -628,7 +628,7 @@ function OutfitSheet({
         </div>
 
         <div className="sheet-head">
-          <p className="sheet-title">지금 러닝 복장 · 체감 {plan.feels.toFixed(0)}°C</p>
+          <p className="sheet-title">지금 {ACTIVITIES[activity].terms.outfitTitle} · 체감 {plan.feels.toFixed(0)}°C</p>
           <div className="sheet-value-row">
             <p className="sheet-value outfit-main">{plan.main}</p>
           </div>
@@ -782,7 +782,7 @@ function RecordSheet({
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="러닝 기록" onClick={onClose}>
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="활동 기록" onClick={onClose}>
       <div className="sheet" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-topbar">
           <div className="sheet-grip" aria-hidden="true" />
@@ -792,7 +792,7 @@ function RecordSheet({
         </div>
 
         <div className="sheet-head">
-          <p className="sheet-title">🏃 나의 러닝 기록</p>
+          <p className="sheet-title">🏃 나의 활동 기록</p>
         </div>
 
         <div className="rec-stats">
@@ -892,7 +892,7 @@ function AlarmSheet({
   const tooLate = fireMs <= Date.now();
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="러닝 알림 설정" onClick={onClose}>
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="알림 설정" onClick={onClose}>
       <div className="sheet" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-topbar">
           <div className="sheet-grip" aria-hidden="true" />
@@ -902,7 +902,7 @@ function AlarmSheet({
         </div>
 
         <div className="sheet-head">
-          <p className="sheet-title">🔔 러닝 알림</p>
+          <p className="sheet-title">🔔 알림 설정</p>
           <div className="sheet-value-row">
             <p className="sheet-value">{target.timeLabel}</p>
             <span className="pill pill-normal sheet-grade">{target.label}</span>
@@ -1169,7 +1169,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(ACTIVITY_KEY);
-      if (stored === "walk" || stored === "run" || stored === "dog" || stored === "commute") {
+      if (stored === "walk" || stored === "run" || stored === "dog" || stored === "bike") {
         setActivity(stored);
       }
     } catch {
@@ -1277,19 +1277,29 @@ export default function Home() {
     [view, isTomorrow, activity]
   );
 
-  // 애견산책 — 발바닥/지면 열기 위험 (현재 기준)
-  const pawRisk = useMemo(() => {
+  // 애견산책 — 산책 신호등·추천 길이·발바닥·체크리스트 (현재/최적 기준)
+  const dogPlan = useMemo(() => {
     if (activity !== "dog" || !view) return null;
     const ref = isTomorrow ? view.best : view.reference;
-    return getPawRisk({ hour: ref.hour, temperature: ref.temperature, uvIndex: ref.uvIndex });
+    return getDogPlan({
+      score: ref.totalScore,
+      hour: ref.hour,
+      temperature: ref.temperature,
+      apparentTemperature: ref.apparentTemperature,
+      uvIndex: ref.uvIndex,
+      precipitation: ref.precipitation,
+      precipitationProbability: ref.precipitationProbability
+    });
   }, [activity, view, isTomorrow]);
 
-  // 출퇴근 — 우산 필요 여부 (앞으로 12시간, 내일 이어보기 포함)
-  const umbrella = useMemo(() => {
-    if (activity !== "commute" || !view) return null;
-    const hour = nowHour >= 0 ? nowHour : new Date().getHours();
-    return getUmbrellaAdvice(view.timeline, isTomorrow ? 6 : hour);
-  }, [activity, view, isTomorrow, nowHour]);
+  // 자전거 — 강풍 위험 안내
+  const bikeWind = useMemo(() => {
+    if (activity !== "bike" || !view) return null;
+    const ref = isTomorrow ? view.best : view.reference;
+    if (ref.windSpeed >= 11) return { level: "danger" as const, text: "강풍이에요. 자전거가 휘청일 수 있으니 다리·둑길을 조심하세요." };
+    if (ref.windSpeed >= 7) return { level: "caution" as const, text: "바람이 조금 있어요. 맞바람 구간은 속도를 낮추세요." };
+    return null;
+  }, [activity, view, isTomorrow]);
 
   function rememberLocation(loc: LocationPoint, detail?: string) {
     setSaved((prev) => {
@@ -1408,7 +1418,7 @@ export default function Home() {
     const text =
       score !== null
         ? `오늘 ${location.name} ${profile.label} 점수 ${score}점 ${profile.emoji} — 러닝콜`
-        : "러닝콜 — 러닝·걷기·산책, 나가기 좋은 시간";
+        : "러닝콜 — 러닝·걷기·산책·자전거, 나가기 좋은 시간";
     const url = window.location.href;
 
     if (navigator.share) {
@@ -1435,7 +1445,7 @@ export default function Home() {
     const targetMs = slotToMs(part.best.time);
     setAlarmTarget({
       id: part.best.time,
-      label: `${part.label} 러닝`,
+      label: `${part.label} ${profile.label}`,
       timeLabel: formatHour(part.best),
       targetMs
     });
@@ -1447,7 +1457,7 @@ export default function Home() {
     if (!slot) return;
     setAlarmTarget({
       id: slot.time,
-      label: "추천 러닝",
+      label: `추천 ${profile.label}`,
       timeLabel: formatHour(slot),
       targetMs: slotToMs(slot.time)
     });
@@ -1578,10 +1588,7 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
-        <div className="side-left">
-          <ActivityRail activity={activity} onChange={changeActivity} variant="rail" />
-          <AdSlot side="left" />
-        </div>
+        <AdSlot side="left" />
 
         <section className="app-shell">
           {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
@@ -1613,7 +1620,7 @@ export default function Home() {
                 <div className="drawer-head">
                   <div className="drawer-brand">
                     <strong>러닝콜</strong>
-                    <small>러닝·걷기·산책, 나가기 좋은 시간</small>
+                    <small>러닝·걷기·산책·자전거, 나가기 좋은 시간</small>
                   </div>
                   <button className="sheet-close" type="button" onClick={() => setIsMenuOpen(false)} aria-label="닫기">
                     <X size={18} />
@@ -1955,28 +1962,40 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* 애견산책 — 발바닥·지면 열기 경고 */}
-              {pawRisk ? (
-                <section className={`advisory advisory-${pawRisk.level}`} aria-label="발바닥 안전">
-                  <span className="advisory-emoji" aria-hidden="true">
-                    {pawRisk.level === "danger" ? "🚨" : pawRisk.level === "caution" ? "⚠️" : "🐾"}
-                  </span>
-                  <div className="advisory-body">
-                    <strong>{pawRisk.title}</strong>
-                    <p>{pawRisk.detail}</p>
+              {/* 애견산책 전용 — 산책 신호등·추천 길이·발바닥·챙길 것 */}
+              {dogPlan ? (
+                <section className={`dog-plan dog-${dogPlan.signal}`} aria-label="산책 안내">
+                  <div className="dog-signal">
+                    <span className="dog-dot" aria-hidden="true" />
+                    <strong>{dogPlan.signalText}</strong>
+                    <span className="dog-length">{dogPlan.walkLength}</span>
                   </div>
+                  <div className={`dog-paw paw-${dogPlan.paw.level}`}>
+                    <span aria-hidden="true">
+                      {dogPlan.paw.level === "danger" ? "🚨" : dogPlan.paw.level === "caution" ? "⚠️" : "🐾"}
+                    </span>
+                    <div>
+                      <b>{dogPlan.paw.title}</b>
+                      <p>{dogPlan.paw.detail}</p>
+                    </div>
+                  </div>
+                  <ul className="dog-check">
+                    {dogPlan.checklist.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
                 </section>
               ) : null}
 
-              {/* 출퇴근 — 우산 필요 여부 */}
-              {umbrella ? (
-                <section className={`advisory advisory-umb-${umbrella.level}`} aria-label="우산 안내">
+              {/* 자전거 — 강풍 위험 안내 */}
+              {bikeWind ? (
+                <section className={`advisory advisory-${bikeWind.level}`} aria-label="바람 안내">
                   <span className="advisory-emoji" aria-hidden="true">
-                    {umbrella.level === "rain" ? "🌧️" : umbrella.level === "need" ? "☂️" : umbrella.level === "maybe" ? "🌥️" : "🌤️"}
+                    💨
                   </span>
                   <div className="advisory-body">
-                    <strong>{umbrella.title}</strong>
-                    <p>{umbrella.detail}</p>
+                    <strong>{bikeWind.level === "danger" ? "강풍 주의" : "바람 주의"}</strong>
+                    <p>{bikeWind.text}</p>
                   </div>
                 </section>
               ) : null}
@@ -2007,17 +2026,7 @@ export default function Home() {
                           <div className="rank-body">
                             <p className="rank-time">
                               {fmtAmPm(win.startHour)} ~ {fmtAmPm(win.startHour + 2)}
-                              {isNow ? (
-                                <em className="rank-now">
-                                  {activity === "run"
-                                    ? "지금 뛰기 딱!"
-                                    : activity === "dog"
-                                    ? "지금 산책 딱!"
-                                    : activity === "commute"
-                                    ? "지금 나가기 딱!"
-                                    : "지금 걷기 딱!"}
-                                </em>
-                              ) : null}
+                              {isNow ? <em className="rank-now">{profile.terms.nowTag}</em> : null}
                               {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
                             </p>
                             <div className="rank-metrics">
@@ -2106,11 +2115,11 @@ export default function Home() {
                           <>
                             <strong className="dp-time">{formatHour(part.best)}</strong>
                             <span className="dp-score" style={{ color: ringColor(part.best.totalScore) }}>
-                              {part.rainy ? `우중런 ${part.best.totalScore}점` : `${part.best.totalScore}점`}
+                              {part.rainy ? `${profile.terms.rainyTag} ${part.best.totalScore}점` : `${part.best.totalScore}점`}
                             </span>
                           </>
                         ) : (
-                          <span className="dp-score dp-blocked">러닝 어려움</span>
+                          <span className="dp-score dp-blocked">{profile.terms.blockedTag}</span>
                         )}
                       </button>
                     );
@@ -2127,7 +2136,7 @@ export default function Home() {
                   <Shirt size={19} />
                 </span>
                 <div className="outfit-text">
-                  <small>러닝 복장 · 눌러서 자세히</small>
+                  <small>{profile.terms.outfitTitle} · 눌러서 자세히</small>
                   <strong>
                     {outfit?.main ?? "-"}
                     {outfit && outfit.extras.length > 0 ? ` · ${outfit.extras.join(" · ")}` : ""}
@@ -2212,11 +2221,11 @@ export default function Home() {
       ) : null}
 
       {firedAlarm ? (
-        <div className="alarm-fire" role="alertdialog" aria-label="러닝 알림">
+        <div className="alarm-fire" role="alertdialog" aria-label="알림">
           <div className="alarm-fire-card">
             <BellRing size={30} />
-            <strong>{firedAlarm.timeLabel} 러닝 시간이에요!</strong>
-            <p>지금 나가면 딱 좋아요. 러닝화 신고 천천히 출발해볼까요?</p>
+            <strong>{firedAlarm.timeLabel} 나가기 좋은 시간이에요!</strong>
+            <p>지금 나가면 딱 좋아요. 준비하고 천천히 출발해볼까요?</p>
             <button type="button" className="primary-action" onClick={() => setFiredAlarm(null)}>
               확인
             </button>
