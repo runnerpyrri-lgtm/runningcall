@@ -125,12 +125,20 @@ describe("등산 플랜 (getHikePlan)", () => {
 });
 
 describe("등산 시간대", () => {
-  it("등산 데이파트는 새벽 포함 4구간이다", async () => {
+  it("등산 데이파트는 새벽·아침·낮·저녁 4구간을 유지한다 (새벽만 있고 저녁 없는 비대칭 방지)", async () => {
     const { getDayParts } = await import("@/lib/insights");
     const parts = getDayParts([], false, 6, "hike");
-    expect(parts.length).toBe(4);
-    expect(parts[0].label).toBe("새벽");
+    expect(parts.map((p) => p.label)).toEqual(["새벽", "아침", "낮", "저녁"]);
     expect(parts[0].range[0]).toBe(4);
+  });
+
+  it("저녁 구간이 항상 차단되는 하드코딩이 아니라 다른 구간과 같은 기준을 쓴다", async () => {
+    const { getDayParts } = await import("@/lib/insights");
+    const parts = getDayParts([], false, 6, "hike");
+    const evening = parts.find((p) => p.label === "저녁");
+    expect(evening).toBeDefined();
+    // 빈 슬롯 입력이라 best가 없는 것이지, "저녁=항상 위험" 특수 처리가 아님을 확인
+    expect(evening?.best).toBeNull();
   });
 
   it("다른 활동 데이파트는 3구간 유지", async () => {
