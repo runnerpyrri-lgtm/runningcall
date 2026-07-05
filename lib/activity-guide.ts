@@ -1,5 +1,6 @@
 // 활동별 실전 준비·가이드 콘텐츠 (준비/가이드 내부 탭에서 사용) — 형식적 문구 금지, 진짜 도움되는 내용
 import type { ActivityKey } from "@/lib/activity";
+import type { RunningSlot } from "@/lib/scoring";
 
 export type GuideBlock = { heading: string; items: string[] };
 
@@ -56,3 +57,45 @@ export const ACTIVITY_GUIDE: Record<ActivityKey, { prep: GuideBlock[]; guide: Gu
     ]
   }
 };
+
+// 오늘 조건에 맞춰 가이드 상단에 얹는 동적 블록. 해당 없으면 null(정적 가이드만 표시).
+export function getDynamicGuideBlock(activity: ActivityKey, slot: RunningSlot): GuideBlock | null {
+  const items: string[] = [];
+
+  if (slot.precipitation >= 0.5 || slot.precipitationProbability >= 60) {
+    items.push(
+      activity === "hike"
+        ? "🌧️ 비 소식 — 바위·계단이 미끄러워요. 하산 속도를 절반으로 낮추세요."
+        : activity === "bike"
+        ? "🌧️ 비 소식 — 제동거리가 길어져요. 속도를 줄이세요."
+        : activity === "dog"
+        ? "🌧️ 비 소식 — 배변 산책만 짧게, 다녀와서 발을 닦아주세요."
+        : "🌧️ 비 소식 — 접지 좋은 신발과 밝은 옷을 챙기세요."
+    );
+  }
+  if (slot.windSpeed >= 9) {
+    items.push(
+      activity === "hike"
+        ? "🌬️ 바람이 강해요 — 능선·정상에서 특히 조심하세요."
+        : activity === "bike"
+        ? "💨 바람이 강해요 — 맞바람으로 출발해 등바람으로 돌아오세요."
+        : "🌬️ 바람이 강해요 — 체감온도가 더 낮게 느껴져요."
+    );
+  }
+  if (slot.uvIndex >= 7) {
+    items.push("☀️ 자외선이 강해요 — 모자·선크림을 챙기세요.");
+  }
+  if (slot.apparentTemperature >= 30) {
+    items.push(
+      activity === "dog"
+        ? "🥵 폭염 — 아스팔트가 뜨거워요. 이른 아침·저녁으로 미루세요."
+        : "🥵 폭염 — 물을 넉넉히 챙기고 무리하지 마세요."
+    );
+  }
+  if (slot.pm25 > 55) {
+    items.push("😷 미세먼지가 나쁨이에요 — 강도를 낮추고 시간을 줄이세요.");
+  }
+
+  if (items.length === 0) return null;
+  return { heading: "🔔 오늘 이것만은", items };
+}

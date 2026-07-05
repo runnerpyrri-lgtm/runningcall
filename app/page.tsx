@@ -63,7 +63,7 @@ import {
   type ActivityGoal,
   type ActivityLog
 } from "@/lib/activity-record";
-import { ACTIVITY_GUIDE } from "@/lib/activity-guide";
+import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
 
 // 활동 내부 탭 (판단 / 준비 / 기록 / 가이드)
 type InnerTab = "today" | "prep" | "record" | "guide";
@@ -746,10 +746,12 @@ function OutfitSheet({
   );
 }
 
-// 가이드 탭 — 활동별 실전 팁
-function GuideView({ activity }: { activity: ActivityKey }) {
+// 가이드 탭 — 오늘 조건 맞춤 동적 블록 + 활동별 실전 팁
+function GuideView({ activity, slot }: { activity: ActivityKey; slot: RunningSlot | null }) {
+  const dynamicBlock = slot ? getDynamicGuideBlock(activity, slot) : null;
   return (
     <section className="guide-view" aria-label={`${ACTIVITIES[activity].label} 가이드`}>
+      {dynamicBlock ? <GuideBlocks blocks={[dynamicBlock]} /> : null}
       <GuideBlocks blocks={ACTIVITY_GUIDE[activity].guide} />
     </section>
   );
@@ -2009,7 +2011,7 @@ export default function Home() {
                 />
               ) : null}
 
-              {innerTab === "guide" ? <GuideView activity={activity} /> : null}
+              {innerTab === "guide" ? <GuideView activity={activity} slot={view?.reference ?? null} /> : null}
 
               {innerTab === "today" ? (
                 <>
