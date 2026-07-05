@@ -1,5 +1,5 @@
-// 활동(러닝·걷기·애견산책·자전거)별 점수 프로필과 표시 설정
-export type ActivityKey = "run" | "walk" | "dog" | "bike";
+// 활동(걷기·애견산책·러닝·등산·자전거)별 점수 프로필과 표시 설정
+export type ActivityKey = "run" | "walk" | "dog" | "hike" | "bike";
 
 export type ActivityWeights = {
   dust: number;
@@ -30,6 +30,8 @@ export type ActivityTerms = {
 export type ActivityProfile = {
   key: ActivityKey;
   label: string;
+  /** 탭용 짧은 라벨 (5개 탭이 좁은 화면에 딱 맞게) */
+  short: string;
   emoji: string;
   tagline: string;
   ready: boolean;
@@ -46,6 +48,7 @@ export const ACTIVITIES: Record<ActivityKey, ActivityProfile> = {
   run: {
     key: "run",
     label: "러닝",
+    short: "러닝",
     emoji: "🏃",
     tagline: "달리기 좋은 순간을 짚어드려요",
     ready: true,
@@ -67,6 +70,7 @@ export const ACTIVITIES: Record<ActivityKey, ActivityProfile> = {
   walk: {
     key: "walk",
     label: "걷기",
+    short: "걷기",
     emoji: "🚶",
     tagline: "가볍게 걷기 좋은 시간을 알려드려요",
     ready: true,
@@ -88,6 +92,7 @@ export const ACTIVITIES: Record<ActivityKey, ActivityProfile> = {
   dog: {
     key: "dog",
     label: "애견산책",
+    short: "산책",
     emoji: "🐕",
     tagline: "강아지 발바닥까지 생각한 산책 타이밍",
     ready: true,
@@ -106,9 +111,32 @@ export const ACTIVITIES: Record<ActivityKey, ActivityProfile> = {
       notifReady: "산책하기 좋은 시간이에요"
     }
   },
+  hike: {
+    key: "hike",
+    label: "등산",
+    short: "등산",
+    emoji: "⛰️",
+    tagline: "산 오르기 좋은 시간과 하산 여유까지",
+    ready: true,
+    resultMode: "score",
+    weights: { dust: 0.12, temperature: 0.18, precipitation: 0.28, uv: 0.1, humidity: 0.1, wind: 0.22 },
+    temp: { optimalLo: 6, optimalHi: 18, coldSlope: 4.5, hotSlope: 5 },
+    heat: { hot1: 31, hot1Cap: 55, hot2: 34, hot2Cap: 38 },
+    windCap: { speed: 12, cap: 38 },
+    terms: {
+      verbDo: "등산하",
+      outfitTitle: "등산 준비물",
+      alarmTitle: "산행 알림",
+      rainyTag: "우중 산행",
+      blockedTag: "산행 위험",
+      nowTag: "지금 산행 딱!",
+      notifReady: "산 오르기 좋은 시간이에요"
+    }
+  },
   bike: {
     key: "bike",
     label: "자전거",
+    short: "자전거",
     emoji: "🚴",
     tagline: "바람까지 계산한 라이딩 타이밍",
     ready: true,
@@ -129,7 +157,8 @@ export const ACTIVITIES: Record<ActivityKey, ActivityProfile> = {
   }
 };
 
-export const ACTIVITY_ORDER: ActivityKey[] = ["run", "walk", "dog", "bike"];
+// 수요 기준 확정 순서 — 걷기 → 애견산책 → 러닝 → 등산 → 자전거
+export const ACTIVITY_ORDER: ActivityKey[] = ["walk", "dog", "run", "hike", "bike"];
 
 /* ------------------------------------------------------------------ *
  * 애견산책 — 지면 열기(발바닥 화상) 경고
@@ -221,4 +250,112 @@ export function getDogPlan(input: {
   if (paw.level !== "safe") checklist.push("🐾 지면 온도 확인");
 
   return { signal, signalText, walkLength, paw, checklist };
+}
+
+/* ------------------------------------------------------------------ *
+ * 등산 종합 플랜 — 하산 마감 + 일출 산행 + 안전 신호 + 조망 + 준비물
+ * 등산은 목적지 산 중심 활동이라 안전 정보가 점수보다 중요하다.
+ * ------------------------------------------------------------------ */
+export type HikeSignal = { level: "danger" | "caution"; emoji: string; text: string };
+
+export type HikePlan = {
+  sunsetText: string | null;
+  descentDeadline: string | null;
+  sunrisePlan: string | null;
+  signals: HikeSignal[];
+  view: string;
+  summitNote: string;
+  checklist: string[];
+};
+
+function fmtAmPmKo(hour: number, minute: number) {
+  const ap = hour < 12 ? "오전" : "오후";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${ap} ${h}시${minute > 0 ? ` ${minute}분` : ""}`;
+}
+
+function parseClock(iso: string | null): { h: number; m: number } | null {
+  if (!iso) return null;
+  const h = Number(iso.slice(11, 13));
+  const m = Number(iso.slice(14, 16));
+  if (!Number.isFinite(h)) return null;
+  return { h, m: Number.isFinite(m) ? m : 0 };
+}
+
+export function getHikePlan(input: {
+  hour: number;
+  temperature: number;
+  apparentTemperature: number;
+  humidity: number;
+  uvIndex: number;
+  windSpeed: number;
+  windGust?: number;
+  precipitation: number;
+  precipitationProbability: number;
+  weatherCode?: number;
+  visibility?: number;
+  cloudCover?: number;
+  snowfall?: number;
+  pm25: number;
+  sunrise: string | null;
+  sunset: string | null;
+}): HikePlan {
+  // 하산 마감 = 일몰 2시간 30분 전 (해 지기 전 여유 확보)
+  const set = parseClock(input.sunset);
+  let sunsetText: string | null = null;
+  let descentDeadline: string | null = null;
+  if (set) {
+    sunsetText = `일몰 ${fmtAmPmKo(set.h, set.m)}`;
+    let dh = set.h - 2;
+    let dm = set.m - 30;
+    if (dm < 0) {
+      dm += 60;
+      dh -= 1;
+    }
+    descentDeadline = `늦어도 ${fmtAmPmKo((dh + 24) % 24, dm)}엔 하산을 시작하세요`;
+  }
+
+  // 일출 산행 (새벽·이른 아침에만 안내)
+  const rise = parseClock(input.sunrise);
+  const sunrisePlan =
+    rise && input.hour <= 8 ? `일출 ${fmtAmPmKo(rise.h, rise.m)} · 정상 일출을 보려면 여유 있게 출발하세요` : null;
+
+  // 안전 신호 — 낙뢰 > 돌풍 > 비 > 결빙 > 능선 바람 순
+  const signals: HikeSignal[] = [];
+  if (input.weatherCode !== undefined && input.weatherCode >= 95) {
+    signals.push({ level: "danger", emoji: "⛈️", text: "낙뢰 위험. 능선·정상은 매우 위험하니 산행을 미루세요." });
+  }
+  const gust = input.windGust ?? input.windSpeed;
+  if (gust >= 14) {
+    signals.push({ level: "danger", emoji: "💨", text: "돌풍이 강해요. 정상부 저체온·실족 위험이 커요." });
+  } else if (input.windSpeed >= 9) {
+    signals.push({ level: "caution", emoji: "🌬️", text: "능선 바람이 강해요. 정상부는 체감이 더 낮아요." });
+  }
+  if (input.precipitation >= 0.5 || input.precipitationProbability >= 60) {
+    signals.push({ level: "caution", emoji: "🌧️", text: "비 소식이 있어요. 바위·흙길·계단 미끄럼을 조심하세요." });
+  }
+  if ((input.snowfall ?? 0) > 0 || (input.temperature <= 0 && input.humidity >= 70)) {
+    signals.push({ level: "caution", emoji: "❄️", text: "결빙·눈 가능. 아이젠과 스틱을 챙기세요." });
+  }
+
+  // 조망 — 시정·구름·미세먼지 종합
+  const vis = input.visibility ?? 20000;
+  const view =
+    vis < 5000 || input.pm25 > 55
+      ? "오늘은 조망이 흐릴 수 있어요."
+      : (input.cloudCover ?? 0) >= 80
+      ? "구름이 많아 조망은 아쉬울 수 있어요."
+      : vis >= 15000 && input.pm25 <= 35
+      ? "조망이 트인 맑은 날이에요."
+      : "조망은 무난한 편이에요.";
+
+  const summitNote = "정상부는 기온보다 6~10°C 낮고 바람이 강해요. 겹쳐 입으세요.";
+
+  const checklist: string[] = ["💧 충분한 물", "🧥 바람막이", "🔋 보조배터리"];
+  if (input.uvIndex >= 5) checklist.push("🧢 모자·선크림");
+  if (input.precipitation >= 0.3 || input.precipitationProbability >= 60) checklist.push("🌂 우비");
+  if (input.hour >= 14 || (set && input.hour >= set.h - 3)) checklist.push("🔦 헤드랜턴");
+  if ((input.snowfall ?? 0) > 0 || input.temperature <= 2) checklist.push("🧊 아이젠·장갑");
+
+  return { sunsetText, descentDeadline, sunrisePlan, signals: signals.slice(0, 4), view, summitNote, checklist };
 }
