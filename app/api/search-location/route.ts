@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 
+import { isMountain, type SearchResultKind } from "@/lib/search";
+
 export type SearchResult = {
   name: string;
   detail: string;
   latitude: number;
   longitude: number;
+  kind?: SearchResultKind;
+  categoryName?: string;
 };
 
 type KakaoAddressDoc = {
@@ -19,6 +23,7 @@ type KakaoKeywordDoc = {
   place_name?: string;
   address_name?: string;
   road_address_name?: string;
+  category_name?: string;
   x?: string;
   y?: string;
 };
@@ -30,13 +35,20 @@ type NominatimDoc = {
   name?: string;
 };
 
-function toResult(name: string, detail: string, x?: string, y?: string): SearchResult | null {
+function toResult(
+  name: string,
+  detail: string,
+  x?: string,
+  y?: string,
+  kind?: SearchResult["kind"],
+  categoryName?: string
+): SearchResult | null {
   const latitude = Number(y);
   const longitude = Number(x);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null;
   }
-  return { name: name.trim(), detail: detail.trim(), latitude, longitude };
+  return { name: name.trim(), detail: detail.trim(), latitude, longitude, kind, categoryName };
 }
 
 function dedupe(results: SearchResult[]) {
@@ -81,7 +93,7 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
       // 항상 시/도부터 이어지는 전체 주소를 이름으로
       const full = road || jibun || doc.address_name || "";
       const other = road && jibun && road !== jibun ? (full === road ? jibun : road) : "";
-      const result = toResult(full, other, doc.x, doc.y);
+      const result = toResult(full, other, doc.x, doc.y, "address");
       if (result) {
         results.push(result);
       }
@@ -93,7 +105,8 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
     for (const doc of data.documents ?? []) {
       const primary = doc.place_name || doc.address_name || "";
       const detail = doc.road_address_name || doc.address_name || "";
-      const result = toResult(primary, detail, doc.x, doc.y);
+      const kind: SearchResult["kind"] = isMountain(primary, doc.category_name) ? "mountain" : "place";
+      const result = toResult(primary, detail, doc.x, doc.y, kind, doc.category_name);
       if (result) {
         results.push(result);
       }
@@ -160,6 +173,7 @@ export async function GET(request: Request) {
   }
 
   const apiKey = process.env.KAKAO_REST_API_KEY;
+  const wantMountain = url.searchParams.get("mountain") === "1";
 
   try {
     let results: SearchResult[] = [];
@@ -168,6 +182,11 @@ export async function GET(request: Request) {
     }
     if (results.length === 0) {
       results = await searchNominatim(query).catch(() => []);
+    }
+    // 등산 모드 — 산 결과를 위로, 그다음 장소, 주소 순
+    if (wantMountain) {
+      const rank = (r: SearchResult) => (r.kind === "mountain" ? 0 : r.kind === "place" ? 1 : 2);
+      results = [...results].sort((a, b) => rank(a) - rank(b));
     }
     return NextResponse.json({ results: dedupe(results).slice(0, 8) });
   } catch {
