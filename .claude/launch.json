@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "running-alarm-dev",
+      "runtimeExecutable": "/Users/runner706/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}
