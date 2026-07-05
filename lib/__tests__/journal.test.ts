@@ -1,40 +1,80 @@
-// 운동 일지(날짜별 활동+메모) 저장 구조 테스트
+// 운동 일지 v2(활동별 기록+기분+메모) 저장 구조 + v1 마이그레이션 테스트
 import { describe, it, expect } from "vitest";
-import { emptyJournal, normalizeJournal, setEntry, toggleJournalActivity, setNote } from "@/lib/journal";
+import {
+  emptyJournal,
+  emptyEntry,
+  normalizeJournal,
+  setEntry,
+  deleteEntry,
+  isEntryEmpty,
+  type JournalEntry
+} from "@/lib/journal";
 
-describe("journal", () => {
-  it("빈 일지는 빈 객체", () => {
+describe("journal v2", () => {
+  it("빈 일지·빈 항목", () => {
     expect(emptyJournal()).toEqual({});
+    expect(emptyEntry()).toEqual({ activities: [], note: "" });
   });
 
-  it("setEntry로 날짜에 항목을 넣는다", () => {
-    let j = emptyJournal();
-    j = setEntry(j, "2026-03-01", { activities: ["run"], note: "좋았다" });
-    expect(j["2026-03-01"]).toEqual({ activities: ["run"], note: "좋았다" });
+  it("setEntry로 활동 기록+기분+메모 저장", () => {
+    const entry: JournalEntry = {
+      activities: [{ key: "run", distanceKm: 5.2, durationMin: 30 }],
+      mood: "great",
+      note: "좋았다"
+    };
+    const j = setEntry(emptyJournal(), "2026-03-01", entry);
+    expect(j["2026-03-01"]).toEqual(entry);
   });
 
-  it("toggleJournalActivity는 활동을 추가/제거하고 없던 날짜는 새로 만든다", () => {
-    let j = emptyJournal();
-    j = toggleJournalActivity(j, "2026-03-02", "hike");
-    expect(j["2026-03-02"].activities).toEqual(["hike"]);
-    j = toggleJournalActivity(j, "2026-03-02", "hike");
-    expect(j["2026-03-02"].activities).toEqual([]);
+  it("등산은 산 이름을 기록한다", () => {
+    const j = setEntry(emptyJournal(), "2026-03-02", {
+      activities: [{ key: "hike", place: "북한산", durationMin: 180 }],
+      note: ""
+    });
+    expect(j["2026-03-02"].activities[0].place).toBe("북한산");
   });
 
-  it("setNote는 다른 필드를 건드리지 않는다", () => {
-    let j = setEntry(emptyJournal(), "2026-03-03", { activities: ["walk"], note: "" });
-    j = setNote(j, "2026-03-03", "산책 좋았음");
-    expect(j["2026-03-03"]).toEqual({ activities: ["walk"], note: "산책 좋았음" });
+  it("deleteEntry는 해당 날짜를 제거", () => {
+    let j = setEntry(emptyJournal(), "2026-03-03", emptyEntry());
+    j = deleteEntry(j, "2026-03-03");
+    expect(j["2026-03-03"]).toBeUndefined();
   });
 
-  it("normalizeJournal은 손상된 값을 걸러낸다", () => {
-    const j = normalizeJournal({ "2026-01-01": { activities: ["run", "bad"], note: 5 }, bad: "x" });
-    expect(j["2026-01-01"]).toEqual({ activities: ["run"], note: "" });
-    expect(j["bad"]).toBeUndefined();
+  it("isEntryEmpty는 활동·메모·기분이 전부 없을 때만 true", () => {
+    expect(isEntryEmpty({ activities: [], note: "  " })).toBe(true);
+    expect(isEntryEmpty({ activities: [], note: "", mood: "good" })).toBe(false);
+    expect(isEntryEmpty({ activities: [{ key: "walk" }], note: "" })).toBe(false);
+    expect(isEntryEmpty({ activities: [], note: "메모" })).toBe(false);
   });
 
-  it("normalizeJournal은 날짜 형식이 아닌 키를 건너뛴다", () => {
-    const j = normalizeJournal({ "not-a-date": { activities: [], note: "" } });
-    expect(Object.keys(j)).toEqual([]);
+  it("v1(활동=문자열 배열)을 v2(활동=객체)로 마이그레이션하며 메모 유지", () => {
+    const v1 = { "2026-01-01": { activities: ["run", "hike"], note: "옛 메모" } };
+    const j = normalizeJournal(v1);
+    expect(j["2026-01-01"].activities).toEqual([{ key: "run" }, { key: "hike" }]);
+    expect(j["2026-01-01"].note).toBe("옛 메모");
+  });
+
+  it("normalize는 손상된 값을 걸러낸다", () => {
+    const j = normalizeJournal({
+      "2026-01-02": {
+        activities: [{ key: "run", distanceKm: -3, durationMin: 20 }, { key: "bad" }, "walk"],
+        mood: "invalid",
+        note: 5
+      }
+    });
+    // 음수 거리는 버리고 시간은 유지, bad 활동 제거, 문자열 walk는 객체로
+    expect(j["2026-01-02"].activities).toEqual([{ key: "run", durationMin: 20 }, { key: "walk" }]);
+    expect(j["2026-01-02"].mood).toBeUndefined();
+    expect(j["2026-01-02"].note).toBe("");
+  });
+
+  it("과도하게 긴 산 이름은 40자로 자른다", () => {
+    const long = "산".repeat(60);
+    const j = normalizeJournal({ "2026-01-03": { activities: [{ key: "hike", place: long }], note: "" } });
+    expect(j["2026-01-03"].activities[0].place?.length).toBe(40);
+  });
+
+  it("날짜 형식이 아닌 키는 건너뛴다", () => {
+    expect(Object.keys(normalizeJournal({ "not-a-date": { activities: [], note: "" } }))).toEqual([]);
   });
 });

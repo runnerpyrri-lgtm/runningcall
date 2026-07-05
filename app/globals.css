@@ -4066,67 +4066,182 @@ button {
   color: var(--muted);
 }
 
-/* 운동 일지 — 전체 캘린더 + 상세(체크+메모) */
+/* 운동 일지 — 캘린더 + 다이어리 편집기 (v0.5.0) */
 .journal-sheet {
+  width: min(480px, 100%);
   max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.journal-cal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.journal-month-count {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .journal-grid.cal-grid {
   gap: 4px;
 }
 
+/* 캘린더 셀 — 고정 크기, 아이콘은 셀 안에서 클리핑(절대 안 삐져나감) */
 .journal-cell {
+  aspect-ratio: auto;
+  min-width: 0;
+  min-height: 54px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 2px;
-  min-height: 52px;
+  justify-content: flex-start;
+  gap: 3px;
+  padding: 7px 1px 5px;
+  border-radius: 13px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.journal-cell:not(.is-future):hover {
+  background: #f1f5fc;
+}
+
+.journal-cell.is-future {
+  color: #cdd6e6;
 }
 
 .jc-date {
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .jc-icons {
   display: flex;
+  align-items: center;
   gap: 1px;
-  font-size: 0.68rem;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.98rem;
+  line-height: 1;
 }
 
-.journal-cell.is-selected {
-  outline: 2px solid var(--brand);
-  border-radius: 10px;
-}
-
-.journal-detail {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-
-.journal-detail-date {
-  margin: 0 0 8px;
-  font-size: 0.9rem;
+.jc-more {
+  font-size: 0.64rem;
   font-weight: 800;
+  color: var(--muted);
+}
+
+.journal-hint {
+  margin: 14px 2px 2px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ── 편집기 ── */
+.journal-editor-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 14px;
+}
+
+.journal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f4f7fc;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.journal-editor-date {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.journal-section-label {
+  margin: 16px 2px 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.journal-moods {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.journal-mood {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 2px 8px;
+  border-radius: 15px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+}
+
+.journal-mood .jm-emoji {
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.journal-mood small {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.journal-mood.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.journal-mood.on small {
+  color: var(--brand-deep);
 }
 
 .journal-activity-picks {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 7px;
 }
 
 .journal-pick {
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
   background: #fff;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 700;
   color: var(--ink-2);
+}
+
+.journal-pick .jp-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .journal-pick.on {
@@ -4135,19 +4250,126 @@ button {
   color: var(--brand-deep);
 }
 
-.journal-note {
-  width: 100%;
-  min-height: 64px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1.5px solid var(--line);
-  font-family: inherit;
-  font-size: 0.86rem;
-  resize: vertical;
+/* 활동별 입력칸 */
+.journal-fields {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.journal-hint {
-  margin: 14px 2px 0;
-  font-size: 0.82rem;
+.jf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: #f5f8fd;
+}
+
+.jf-act {
+  font-size: 0.86rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.jf-inputs {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.jf-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jf-label {
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--muted);
+}
+
+.jf-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 9px;
+}
+
+.jf-input input {
+  width: 74px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+  outline: none;
+}
+
+.jf-input em {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.journal-note {
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 13px;
+  border-radius: 13px;
+  border: 1.5px solid var(--line);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.journal-note:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.journal-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--card) 32%);
+}
+
+.journal-cancel,
+.journal-save {
+  flex: 1;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.journal-cancel {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--ink-2);
+  flex: 0 0 34%;
+}
+
+.journal-save {
+  border: 0;
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+  color: #fff;
+  box-shadow: 0 12px 26px -14px rgba(47, 107, 255, 0.7);
 }
