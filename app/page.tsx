@@ -60,7 +60,7 @@ import {
   type RawForecast,
   type RunningForecast
 } from "@/lib/weather";
-import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, type ActivityKey } from "@/lib/activity";
+import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, getHikePlan, type ActivityKey } from "@/lib/activity";
 import {
   gradeHumidity,
   gradePm25,
@@ -265,8 +265,10 @@ async function fetchLocationName(latitude: number, longitude: number) {
   return data.name || "내 위치";
 }
 
-async function fetchSearch(query: string) {
-  const response = await fetch(`/api/search-location?query=${encodeURIComponent(query)}`, { cache: "no-store" });
+async function fetchSearch(query: string, mountainFirst = false) {
+  const response = await fetch(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`, {
+    cache: "no-store"
+  });
   if (!response.ok) return [];
   const data = (await response.json()) as { results?: SearchResult[] };
   return data.results ?? [];
@@ -988,7 +990,7 @@ function ActivityRail({
             <span className="act-emoji" aria-hidden="true">
               {item.emoji}
             </span>
-            <span className="act-label">{item.label}</span>
+            <span className="act-label">{item.short}</span>
           </button>
         );
       })}
@@ -999,7 +1001,7 @@ function ActivityRail({
 export default function Home() {
   const [location, setLocation] = useState<LocationPoint>(DEFAULT_LOCATION);
   const [rawForecast, setRawForecast] = useState<RawForecast | null>(null);
-  const [activity, setActivity] = useState<ActivityKey>("run");
+  const [activity, setActivity] = useState<ActivityKey>("walk");
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [locationStep, setLocationStep] = useState<LocationStep>("idle");
@@ -1169,7 +1171,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(ACTIVITY_KEY);
-      if (stored === "walk" || stored === "run" || stored === "dog" || stored === "bike") {
+      if (stored === "walk" || stored === "run" || stored === "dog" || stored === "hike" || stored === "bike") {
         setActivity(stored);
       }
     } catch {
@@ -1246,7 +1248,7 @@ export default function Home() {
         delta: best.totalScore - todayBest.totalScore,
         deltaLabel: "오늘보다",
         parts,
-        rankedWindows: getRankedWindows(slots, false, hour)
+        rankedWindows: getRankedWindows(slots, false, hour, activity)
       };
     }
 
@@ -1263,7 +1265,7 @@ export default function Home() {
       delta: compareWithYesterday(current, forecast.yesterday),
       deltaLabel: "어제보다",
       parts,
-      rankedWindows: getRankedWindows(slots, true, hour)
+      rankedWindows: getRankedWindows(slots, true, hour, activity)
     };
   }, [forecast, isTomorrow, nowHour, activity]);
 
@@ -1291,6 +1293,30 @@ export default function Home() {
       precipitationProbability: ref.precipitationProbability
     });
   }, [activity, view, isTomorrow]);
+
+  // 등산 — 하산 마감·일출·안전 신호·조망·준비물 (내일 탭이면 내일 일출·일몰 사용)
+  const hikePlan = useMemo(() => {
+    if (activity !== "hike" || !view || !forecast) return null;
+    const ref = isTomorrow ? view.best : view.reference;
+    return getHikePlan({
+      hour: ref.hour,
+      temperature: ref.temperature,
+      apparentTemperature: ref.apparentTemperature,
+      humidity: ref.humidity,
+      uvIndex: ref.uvIndex,
+      windSpeed: ref.windSpeed,
+      windGust: ref.windGust,
+      precipitation: ref.precipitation,
+      precipitationProbability: ref.precipitationProbability,
+      weatherCode: ref.weatherCode,
+      visibility: ref.visibility,
+      cloudCover: ref.cloudCover,
+      snowfall: ref.snowfall,
+      pm25: ref.pm25,
+      sunrise: isTomorrow ? forecast.sunriseTomorrow : forecast.sunrise,
+      sunset: isTomorrow ? forecast.sunsetTomorrow : forecast.sunset
+    });
+  }, [activity, view, isTomorrow, forecast]);
 
   // 자전거 — 강풍 위험 안내
   const bikeWind = useMemo(() => {
@@ -1353,7 +1379,7 @@ export default function Home() {
     setIsSearching(true);
     setSearchNote("");
     try {
-      const results = await fetchSearch(trimmed);
+      const results = await fetchSearch(trimmed, activity === "hike");
       setSearchResults(results);
       setSearchNote(results.length === 0 ? "검색 결과가 없어요. 동/도로명/장소명을 확인해 주세요." : "");
     } catch {
@@ -1640,8 +1666,10 @@ export default function Home() {
                             setIsMenuOpen(false);
                           }}
                         >
-                          <span aria-hidden="true">{item.emoji}</span>
-                          {item.label}
+                          <strong>
+                            <span aria-hidden="true">{item.emoji}</span> {item.label}
+                          </strong>
+                          <small>{item.tagline}</small>
                         </button>
                       );
                     })}
@@ -1748,7 +1776,7 @@ export default function Home() {
                     autoFocus
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="동·도로명·장소 검색"
+                    placeholder={activity === "hike" ? "산 이름 검색 (예: 북한산)" : "동·도로명·장소 검색"}
                     aria-label="검색어"
                   />
                   <button type="submit" className="search-go">
@@ -1881,6 +1909,10 @@ export default function Home() {
             <>
               <ActivityRail activity={activity} onChange={changeActivity} variant="tabs" />
 
+              <p className="activity-tagline">
+                {profile.emoji} {profile.tagline}
+              </p>
+
               <div className="day-toggle" role="tablist" aria-label="날짜 선택">
                 <button
                   type="button"
@@ -1983,6 +2015,39 @@ export default function Home() {
                   </div>
                   <ul className="dog-check">
                     {dogPlan.checklist.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
+              {/* 등산 전용 — 하산 마감·일출·안전 신호·조망·준비물 */}
+              {hikePlan ? (
+                <section className="hike-plan" aria-label="등산 안내">
+                  {hikePlan.descentDeadline ? (
+                    <div className="hike-descent">
+                      <span aria-hidden="true">🌄</span>
+                      <div>
+                        <b>{hikePlan.sunsetText} · 하산 여유 확인</b>
+                        <p>
+                          {hikePlan.descentDeadline}. {hikePlan.summitNote}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {hikePlan.sunrisePlan ? <p className="hike-sunrise">🌅 {hikePlan.sunrisePlan}</p> : null}
+                  {hikePlan.signals.length > 0 ? (
+                    <ul className="hike-signals">
+                      {hikePlan.signals.map((s) => (
+                        <li key={s.text} className={`hs-${s.level}`}>
+                          <span aria-hidden="true">{s.emoji}</span> {s.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <p className="hike-view">👁️ {hikePlan.view}</p>
+                  <ul className="hike-check">
+                    {hikePlan.checklist.map((c) => (
                       <li key={c}>{c}</li>
                     ))}
                   </ul>
@@ -2093,10 +2158,10 @@ export default function Home() {
               {/* 아침·낮·저녁 각 구간에서 가장 뛰기 좋은 시각 (탭 → 알림) */}
               <section className="dayparts" aria-label="아침 낮 저녁 베스트 시각">
                 <div className="section-title ranks-title">
-                  <b>아침·낮·저녁 베스트</b>
+                  <b>{view.parts.map((p) => p.label).join("·")} 베스트</b>
                   <small>탭하면 알림 설정</small>
                 </div>
-                <div className="dayparts-grid">
+                <div className={`dayparts-grid cols-${view.parts.length}`}>
                   {view.parts.map((part) => {
                     const isBest = !part.past && part.best && part.best.time === view.best.time;
                     const blocked = !part.past && !part.best;

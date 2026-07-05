@@ -3432,8 +3432,9 @@ button {
 
   /* 탭·날짜토글은 2단 위에서 가운데 폭 제한 */
   .activity-tabs,
-  .day-toggle {
-    max-width: 620px;
+  .day-toggle,
+  .activity-tagline {
+    max-width: 640px;
     margin-left: auto;
     margin-right: auto;
   }
@@ -3670,4 +3671,173 @@ button {
   border-color: var(--brand);
   background: var(--brand-soft);
   color: var(--brand-deep);
+}
+
+/* ══════════════ v0.4.0 — 등산 + 5탭 + 활동 설명 ══════════════ */
+
+/* 활동 한 줄 설명 (탭 아래) */
+.activity-tagline {
+  text-align: center;
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* 드로어 활동 버튼 — 설명 포함 세로형 */
+.drawer-act {
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  text-align: center;
+}
+
+.drawer-act strong {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.drawer-act small {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* 등산 종합 카드 */
+.hike-plan {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hike-descent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff6ec;
+}
+
+.hike-descent span {
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.hike-descent b {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #9a5a00;
+}
+
+.hike-descent p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.hike-sunrise {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hike-signals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hike-signals li {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  color: var(--ink-2);
+}
+
+.hike-signals .hs-danger {
+  background: #fff3f3;
+  color: var(--bad-deep);
+}
+
+.hike-signals .hs-caution {
+  background: #fff9ee;
+  color: var(--warn-deep);
+}
+
+.hike-view {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hike-check {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hike-check li {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: #eef2f8;
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+
+/* 등산 4구간 데이파트 — 데스크탑 4열, 모바일 2×2 */
+.dayparts-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 620px) {
+  .dayparts-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 5개 탭 — 소형 폰(iPhone SE급)에서도 한 줄 */
+@media (max-width: 400px) {
+  .activity-tabs {
+    gap: 5px;
+  }
+
+  .activity-tabs .act-item {
+    gap: 3px;
+    padding: 9px 4px;
+  }
+
+  .activity-tabs .act-label {
+    font-size: 0.76rem;
+  }
+
+  .activity-tabs .act-emoji {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .activity-tabs .act-emoji {
+    display: none;
+  }
 }
