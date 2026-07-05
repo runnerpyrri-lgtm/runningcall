@@ -55,9 +55,12 @@ import {
   compareWithYesterday,
   findBestRemainingSlot,
   findCurrentSlot,
+  scoreForecast,
   type LocationPoint,
+  type RawForecast,
   type RunningForecast
 } from "@/lib/weather";
+import { ACTIVITIES, ACTIVITY_ORDER, getPawRisk, getUmbrellaAdvice, type ActivityKey } from "@/lib/activity";
 import {
   gradeHumidity,
   gradePm25,
@@ -117,6 +120,7 @@ const METRICS: Array<{
 
 const ALARM_KEY = "running-alarm:alarms";
 const SAVED_KEY = "running-alarm:saved";
+const ACTIVITY_KEY = "running-alarm:activity";
 
 type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number };
 
@@ -250,7 +254,7 @@ async function fetchAppForecast(location: LocationPoint) {
     headers: { Accept: "application/json" }
   });
   if (!response.ok) throw new Error("Forecast unavailable");
-  return (await response.json()) as RunningForecast;
+  return (await response.json()) as RawForecast;
 }
 
 async function fetchLocationName(latitude: number, longitude: number) {
@@ -499,12 +503,14 @@ function MetricSheet({
   reference,
   slots,
   currentTime,
+  activity,
   onClose
 }: {
   sheetKey: DetailKey;
   reference: RunningSlot;
   slots: RunningSlot[];
   currentTime: string | null;
+  activity: ActivityKey;
   onClose: () => void;
 }) {
   const metric = METRICS.find((item) => item.key === sheetKey) ?? METRICS[0];
@@ -515,7 +521,7 @@ function MetricSheet({
   const [selTime, setSelTime] = useState(defaultSel);
   const selSlot = chart.find((s) => s.time === selTime) ?? reference;
   const isNowSel = currentTime != null && selTime === currentTime;
-  const detail = getMetricDetail(sheetKey, selSlot);
+  const detail = getMetricDetail(sheetKey, selSlot, activity);
 
   // 러닝 관점 최고/최저 시각 (지표 점수 기준)
   const bestSlot = chart.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a), chart[0]);
@@ -598,8 +604,18 @@ function MetricSheet({
   );
 }
 
-function OutfitSheet({ slot, slots, onClose }: { slot: RunningSlot; slots: RunningSlot[]; onClose: () => void }) {
-  const plan = getOutfitPlan(slots, slot);
+function OutfitSheet({
+  slot,
+  slots,
+  activity,
+  onClose
+}: {
+  slot: RunningSlot;
+  slots: RunningSlot[];
+  activity: ActivityKey;
+  onClose: () => void;
+}) {
+  const plan = getOutfitPlan(slots, slot, activity);
 
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="러닝 복장 상세" onClick={onClose}>
@@ -945,9 +961,45 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
   );
 }
 
+// 활동 선택 — 데스크탑 좌측 레일(rail) / 모바일 상단 탭(tabs)
+function ActivityRail({
+  activity,
+  onChange,
+  variant
+}: {
+  activity: ActivityKey;
+  onChange: (next: ActivityKey) => void;
+  variant: "rail" | "tabs";
+}) {
+  return (
+    <nav className={variant === "rail" ? "activity-rail" : "activity-tabs"} aria-label="활동 선택">
+      {variant === "rail" ? <p className="rail-title">활동</p> : null}
+      {ACTIVITY_ORDER.map((key) => {
+        const item = ACTIVITIES[key];
+        const on = key === activity;
+        return (
+          <button
+            key={key}
+            type="button"
+            className={`act-item${on ? " on" : ""}`}
+            aria-pressed={on}
+            onClick={() => onChange(key)}
+          >
+            <span className="act-emoji" aria-hidden="true">
+              {item.emoji}
+            </span>
+            <span className="act-label">{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function Home() {
   const [location, setLocation] = useState<LocationPoint>(DEFAULT_LOCATION);
-  const [forecast, setForecast] = useState<RunningForecast | null>(null);
+  const [rawForecast, setRawForecast] = useState<RawForecast | null>(null);
+  const [activity, setActivity] = useState<ActivityKey>("run");
   const [isLoading, setIsLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [locationStep, setLocationStep] = useState<LocationStep>("idle");
@@ -982,7 +1034,7 @@ export default function Home() {
     setError("");
     try {
       const data = await fetchAppForecast(target);
-      setForecast(data);
+      setRawForecast(data);
     } catch {
       setError("데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -1113,6 +1165,41 @@ export default function Home() {
     setRunLog((prev) => (prev.includes(dateStr) ? prev.filter((d) => d !== dateStr) : [...prev, dateStr]));
   }
 
+  // 활동 선택 복원·저장
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(ACTIVITY_KEY);
+      if (stored === "walk" || stored === "run" || stored === "dog" || stored === "commute") {
+        setActivity(stored);
+      }
+    } catch {
+      // 무시
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVITY_KEY, activity);
+    } catch {
+      // 무시
+    }
+  }, [activity]);
+
+  // 활동 전환 — 열린 시트를 닫고 즉시(재요청 없이) 재계산
+  const changeActivity = useCallback((next: ActivityKey) => {
+    setSheetKey(null);
+    setIsOutfitOpen(false);
+    setActivity(next);
+  }, []);
+
+  // 원본 예보를 선택된 활동 프로필로 점수화 (활동 전환 시 이 줄만 다시 돈다)
+  const forecast = useMemo(
+    () => (rawForecast ? scoreForecast(rawForecast, ACTIVITIES[activity]) : null),
+    [rawForecast, activity]
+  );
+
+  const profile = ACTIVITIES[activity];
+
   // 알림 예약 — 앱이 열려 있는 동안 지정 시각에 발동
   useEffect(() => {
     const now = Date.now();
@@ -1147,7 +1234,7 @@ export default function Home() {
 
     if (isTomorrow) {
       const slots = forecast.tomorrow;
-      const parts = getDayParts(slots, false, hour);
+      const parts = getDayParts(slots, false, hour, activity);
       const best = pickBest(parts, bestOf(slots));
       const todayBest = bestOf(forecast.slots);
       return {
@@ -1165,7 +1252,7 @@ export default function Home() {
 
     const slots = forecast.slots;
     const current = findCurrentSlot(slots);
-    const parts = getDayParts(slots, true, hour);
+    const parts = getDayParts(slots, true, hour, activity);
     const best = pickBest(parts, findBestRemainingSlot(slots));
     return {
       slots,
@@ -1178,17 +1265,31 @@ export default function Home() {
       parts,
       rankedWindows: getRankedWindows(slots, true, hour)
     };
-  }, [forecast, isTomorrow, nowHour]);
+  }, [forecast, isTomorrow, nowHour, activity]);
 
-  const outfit = useMemo(() => (view ? getOutfit(view.reference) : null), [view]);
+  const outfit = useMemo(() => (view ? getOutfit(view.reference, activity) : null), [view, activity]);
   const chips = useMemo(
     () => (view ? getConditionChips(isTomorrow ? view.best : view.reference).slice(0, 2) : []),
     [view, isTomorrow]
   );
   const oneLiner = useMemo(
-    () => (view ? composeOneLiner(isTomorrow ? view.best : view.reference, isTomorrow) : ""),
-    [view, isTomorrow]
+    () => (view ? composeOneLiner(isTomorrow ? view.best : view.reference, isTomorrow, activity) : ""),
+    [view, isTomorrow, activity]
   );
+
+  // 애견산책 — 발바닥/지면 열기 위험 (현재 기준)
+  const pawRisk = useMemo(() => {
+    if (activity !== "dog" || !view) return null;
+    const ref = isTomorrow ? view.best : view.reference;
+    return getPawRisk({ hour: ref.hour, temperature: ref.temperature, uvIndex: ref.uvIndex });
+  }, [activity, view, isTomorrow]);
+
+  // 출퇴근 — 우산 필요 여부 (앞으로 12시간, 내일 이어보기 포함)
+  const umbrella = useMemo(() => {
+    if (activity !== "commute" || !view) return null;
+    const hour = nowHour >= 0 ? nowHour : new Date().getHours();
+    return getUmbrellaAdvice(view.timeline, isTomorrow ? 6 : hour);
+  }, [activity, view, isTomorrow, nowHour]);
 
   function rememberLocation(loc: LocationPoint, detail?: string) {
     setSaved((prev) => {
@@ -1304,7 +1405,10 @@ export default function Home() {
 
   async function handleShare() {
     const score = view ? (isTomorrow ? view.best.totalScore : view.reference.totalScore) : null;
-    const text = score !== null ? `오늘 ${location.name} 러닝 점수 ${score}점 🏃 — 러닝콜` : "러닝콜 — 오늘 러닝 골든타임";
+    const text =
+      score !== null
+        ? `오늘 ${location.name} ${profile.label} 점수 ${score}점 ${profile.emoji} — 러닝콜`
+        : "러닝콜 — 러닝·걷기·산책, 나가기 좋은 시간";
     const url = window.location.href;
 
     if (navigator.share) {
@@ -1474,7 +1578,10 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
-        <AdSlot side="left" />
+        <div className="side-left">
+          <ActivityRail activity={activity} onChange={changeActivity} variant="rail" />
+          <AdSlot side="left" />
+        </div>
 
         <section className="app-shell">
           {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
@@ -1506,13 +1613,37 @@ export default function Home() {
                 <div className="drawer-head">
                   <div className="drawer-brand">
                     <strong>러닝콜</strong>
-                    <small>오늘·내일 러닝 골든타임 알리미</small>
+                    <small>러닝·걷기·산책, 나가기 좋은 시간</small>
                   </div>
                   <button className="sheet-close" type="button" onClick={() => setIsMenuOpen(false)} aria-label="닫기">
                     <X size={18} />
                   </button>
                 </div>
                 <nav>
+                  <p className="drawer-label">활동 선택</p>
+                  <div className="drawer-acts">
+                    {ACTIVITY_ORDER.map((key) => {
+                      const item = ACTIVITIES[key];
+                      const on = key === activity;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`drawer-act${on ? " on" : ""}`}
+                          onClick={() => {
+                            changeActivity(key);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          <span aria-hidden="true">{item.emoji}</span>
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="drawer-sep" aria-hidden="true" />
+
                   <button
                     type="button"
                     className="drawer-item"
@@ -1524,7 +1655,7 @@ export default function Home() {
                     <span className="di-emoji" aria-hidden="true">
                       🏃
                     </span>
-                    나의 러닝 기록
+                    나의 활동 기록
                     <ChevronRight size={17} className="di-arrow" />
                   </button>
 
@@ -1739,10 +1870,12 @@ export default function Home() {
           ) : !ready || !view ? (
             <section className="loading-panel">
               <RefreshCw className="spin" size={28} />
-              <p>러닝 점수를 계산하고 있어요</p>
+              <p>{profile.label} 점수를 계산하고 있어요</p>
             </section>
           ) : (
             <>
+              <ActivityRail activity={activity} onChange={changeActivity} variant="tabs" />
+
               <div className="day-toggle" role="tablist" aria-label="날짜 선택">
                 <button
                   type="button"
@@ -1770,7 +1903,11 @@ export default function Home() {
                 <div className="hero-top">
                   <span className="hero-cond">
                     <Clock size={14} />
-                    {isTomorrow ? "내일 러닝 전망" : nowClock ? `${nowClock} 기준` : "지금 러닝 컨디션"}
+                    {isTomorrow
+                      ? `내일 ${profile.label} 전망`
+                      : nowClock
+                      ? `${nowClock} 기준 · ${profile.label}`
+                      : `지금 ${profile.label} 컨디션`}
                   </span>
                 </div>
                 <div className="gauge-row">
@@ -1791,13 +1928,13 @@ export default function Home() {
                   <div className="hero-copy">
                     <FitText
                       className="hero-h1"
-                      text={heroHeadline(isTomorrow ? view.best : view.reference)}
+                      text={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
                       maxPx={29}
                       minPx={17}
                     />
                     <FitText
                       className="hero-why"
-                      text={heroSubline(isTomorrow ? view.best : view.reference)}
+                      text={heroSubline(isTomorrow ? view.best : view.reference, activity)}
                       maxPx={17}
                       minPx={12}
                     />
@@ -1818,11 +1955,39 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* 오늘/내일 추천 러닝 시간대 — 2시간 구간 1·2·3등 */}
+              {/* 애견산책 — 발바닥·지면 열기 경고 */}
+              {pawRisk ? (
+                <section className={`advisory advisory-${pawRisk.level}`} aria-label="발바닥 안전">
+                  <span className="advisory-emoji" aria-hidden="true">
+                    {pawRisk.level === "danger" ? "🚨" : pawRisk.level === "caution" ? "⚠️" : "🐾"}
+                  </span>
+                  <div className="advisory-body">
+                    <strong>{pawRisk.title}</strong>
+                    <p>{pawRisk.detail}</p>
+                  </div>
+                </section>
+              ) : null}
+
+              {/* 출퇴근 — 우산 필요 여부 */}
+              {umbrella ? (
+                <section className={`advisory advisory-umb-${umbrella.level}`} aria-label="우산 안내">
+                  <span className="advisory-emoji" aria-hidden="true">
+                    {umbrella.level === "rain" ? "🌧️" : umbrella.level === "need" ? "☂️" : umbrella.level === "maybe" ? "🌥️" : "🌤️"}
+                  </span>
+                  <div className="advisory-body">
+                    <strong>{umbrella.title}</strong>
+                    <p>{umbrella.detail}</p>
+                  </div>
+                </section>
+              ) : null}
+
+              {/* 오늘/내일 추천 시간대 — 2시간 구간 1·2·3등 */}
               {view.rankedWindows.length > 0 ? (
-                <section className="ranks" aria-label="추천 러닝 시간대">
+                <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
                   <div className="section-title ranks-title">
-                    <b>{isTomorrow ? "내일" : "오늘"} 추천 러닝 시간대</b>
+                    <b>
+                      {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
+                    </b>
                     <small>2시간 · 점수순</small>
                   </div>
                   <div className="rank-list">
@@ -1842,7 +2007,17 @@ export default function Home() {
                           <div className="rank-body">
                             <p className="rank-time">
                               {fmtAmPm(win.startHour)} ~ {fmtAmPm(win.startHour + 2)}
-                              {isNow ? <em className="rank-now">지금 뛰기 딱!</em> : null}
+                              {isNow ? (
+                                <em className="rank-now">
+                                  {activity === "run"
+                                    ? "지금 뛰기 딱!"
+                                    : activity === "dog"
+                                    ? "지금 산책 딱!"
+                                    : activity === "commute"
+                                    ? "지금 나가기 딱!"
+                                    : "지금 걷기 딱!"}
+                                </em>
+                              ) : null}
                               {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
                             </p>
                             <div className="rank-metrics">
@@ -1863,11 +2038,11 @@ export default function Home() {
                 </section>
               ) : (
                 <section className="rec-card rec-empty">
-                  <p className="rec-eyebrow">{isTomorrow ? "내일 러닝 전망" : "오늘 추천 시간대"}</p>
+                  <p className="rec-eyebrow">{isTomorrow ? `내일 ${profile.label} 전망` : "오늘 추천 시간대"}</p>
                   <p className="rec-none">
                     {isTomorrow
                       ? "내일은 딱 추천할 만한 시간대가 없어요."
-                      : "오늘 뛰기 좋은 시간대는 이미 지나갔어요."}
+                      : `오늘 ${profile.label === "출퇴근" ? "나가기" : profile.label} 좋은 시간대는 이미 지나갔어요.`}
                   </p>
                   {!isTomorrow && hasTomorrow ? (
                     <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
@@ -2004,12 +2179,13 @@ export default function Home() {
           reference={view.reference}
           slots={view.timeline}
           currentTime={view.currentTime}
+          activity={activity}
           onClose={() => setSheetKey(null)}
         />
       ) : null}
 
       {isOutfitOpen && view ? (
-        <OutfitSheet slot={view.reference} slots={view.slots} onClose={() => setIsOutfitOpen(false)} />
+        <OutfitSheet slot={view.reference} slots={view.slots} activity={activity} onClose={() => setIsOutfitOpen(false)} />
       ) : null}
 
       {isRecordOpen ? (

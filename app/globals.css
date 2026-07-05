@@ -3355,3 +3355,265 @@ button {
   color: var(--brand);
   font-weight: 800;
 }
+
+/* ══════════════ 활동 카테고리 (v0.2.0) ══════════════ */
+
+/* 데스크탑 좌측 컬럼 — 활동 레일 + 광고 */
+.side-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 22px;
+}
+
+.side-left .side-ad {
+  position: static;
+  min-height: 300px;
+}
+
+.activity-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.rail-title {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.activity-rail .act-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.activity-rail .act-item:hover {
+  border-color: #c8d6f5;
+  transform: translateY(-1px);
+}
+
+.activity-rail .act-item.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: 0 6px 16px -8px rgba(47, 107, 255, 0.45);
+}
+
+.activity-rail .act-emoji {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.activity-rail .act-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+
+.activity-rail .act-item.on .act-label {
+  color: var(--brand-deep);
+}
+
+/* 모바일/태블릿 상단 가로 탭 */
+.activity-tabs {
+  display: none;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 12px;
+  scrollbar-width: none;
+}
+
+.activity-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.activity-tabs .act-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.activity-tabs .act-item.on {
+  border-color: var(--brand);
+  background: var(--brand);
+  box-shadow: 0 6px 16px -8px rgba(47, 107, 255, 0.55);
+}
+
+.activity-tabs .act-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.activity-tabs .act-label {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+
+.activity-tabs .act-item.on .act-label {
+  color: #fff;
+}
+
+@media (max-width: 1080px) {
+  .side-left {
+    display: none;
+  }
+
+  .activity-tabs {
+    display: flex;
+  }
+}
+
+/* 활동별 안내 카드 — 애견 발바닥 / 출퇴근 우산 */
+.advisory {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.advisory-emoji {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.advisory-body strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.advisory-body p {
+  margin: 3px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.advisory-danger {
+  border-color: #ffc9cb;
+  background: #fff3f3;
+}
+
+.advisory-danger strong {
+  color: var(--bad-deep);
+}
+
+.advisory-caution {
+  border-color: #ffe3b3;
+  background: #fff9ee;
+}
+
+.advisory-caution strong {
+  color: var(--warn-deep);
+}
+
+.advisory-safe {
+  border-color: #c9ecd9;
+  background: #f2fbf6;
+}
+
+.advisory-safe strong {
+  color: var(--good-deep);
+}
+
+.advisory-umb-rain {
+  border-color: #ffc9cb;
+  background: #fff3f3;
+}
+
+.advisory-umb-rain strong {
+  color: var(--bad-deep);
+}
+
+.advisory-umb-need {
+  border-color: #ffe3b3;
+  background: #fff9ee;
+}
+
+.advisory-umb-need strong {
+  color: var(--warn-deep);
+}
+
+.advisory-umb-maybe {
+  border-color: #d9e4f8;
+  background: #f4f8ff;
+}
+
+.advisory-umb-maybe strong {
+  color: var(--brand-deep);
+}
+
+.advisory-umb-none {
+  border-color: #c9ecd9;
+  background: #f2fbf6;
+}
+
+.advisory-umb-none strong {
+  color: var(--good-deep);
+}
+
+/* 드로어 — 활동 선택 */
+.drawer-label {
+  margin: 4px 6px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.drawer-acts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0 4px 12px;
+}
+
+.drawer-act {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--ink-2);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.drawer-act.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
