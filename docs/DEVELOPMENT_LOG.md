@@ -2,6 +2,20 @@
 
 날짜별로 무엇을 했는지 기록합니다. 최신이 위로.
 
+## 2026-07-05 (심야 3) — v0.4.2 운동 일지 + 동적 가이드 + UI 정리
+
+- **운동 일지**(lib/journal.ts): 날짜별 활동 다중체크+메모, 정규화·안전 저장. JournalView(캘린더+상세). 좌측 레일 하단 진입. 브라우저에서 저장→새로고침 후 유지 검증
+- **동적 가이드**: getDynamicGuideBlock — 비/강풍/자외선/폭염/미세먼지 조건별 활동 맞춤 블록을 정적 가이드 위에
+- **애견 플랜 심화**: reason(판정 이유)·alternative(대안)·careTip(케어) 추가
+- **레일 정리**: 큰 글자만(tagline 제거), 운동일지 버튼 추가. activity-tagline 완전 삭제
+- **활동별 위치 기억**: running-alarm:activity-location:v1 — 활동 전환 시 그 활동 마지막 위치로. 브라우저에서 dog=부산/run=인천 분리 검증
+- **등산 4구간 재확정**: 사용자 재검토로 저녁 제거 결정 철회 — 새벽만 있고 저녁 없는 비대칭이 이상하다는 지적이 맞음. 4구간(새벽/아침/낮/저녁) 유지 + 회귀 테스트로 고정
+- **죽은 코드 제거**: composeBriefing/Briefing/BRIEFING_VERDICT, findTomorrowMorningBest, shortReason/heroReason, 미사용 import
+- 히어로 조건 칩 모바일 2열 그리드
+- 테스트 36개로 확대(journal 6개, 등산 회귀 2개 추가)
+
+배포: v0.4.2 태그 + push → Vercel 자동배포.
+
 ## 2026-07-05 (심야 2) — v0.4.1 활동별 허브 구조 재설계
 
 외부 AI 리뷰 + 자체 코드 리뷰 통합. "점수만 바뀌는 구조" → 활동별 허브.
