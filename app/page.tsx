@@ -713,12 +713,23 @@ function OutfitPlanBody({ plan }: { plan: ReturnType<typeof getOutfitPlan> }) {
 // 준비 탭 — 복장 상세 + 활동별 준비/주의 콘텐츠
 function PrepView({ slot, slots, activity }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey }) {
   const plan = getOutfitPlan(slots, slot, activity);
+  const keyBlock = getDynamicGuideBlock(activity, slot);
   return (
     <section className="prep-view" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
       <p className="prep-head">
         {ACTIVITIES[activity].terms.outfitTitle} · 체감 {plan.feels.toFixed(0)}°C
       </p>
       <p className="prep-main">{plan.main}</p>
+      {keyBlock ? (
+        <div className="prep-key" role="note">
+          <p className="prep-key-head">🔑 오늘 준비 핵심</p>
+          <ul>
+            {keyBlock.items.map((it) => (
+              <li key={it}>{it}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <OutfitPlanBody plan={plan} />
       <GuideBlocks blocks={ACTIVITY_GUIDE[activity].prep} />
     </section>

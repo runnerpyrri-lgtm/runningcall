@@ -3625,19 +3625,30 @@ button {
 .dog-check {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 2px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, #000 88%, transparent);
+}
+
+.dog-check::-webkit-scrollbar {
+  display: none;
 }
 
 .dog-check li {
-  font-size: 0.8rem;
+  flex: none;
+  white-space: nowrap;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--ink-2);
   background: #eef2f8;
   border-radius: 999px;
-  padding: 5px 11px;
+  padding: 5px 10px;
 }
 
 /* 드로어 — 활동 선택 */
@@ -3900,18 +3911,64 @@ button {
 }
 
 .guide-block {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--line);
+  border-left: 4px solid var(--brand);
   border-radius: 16px;
   padding: 14px 16px;
   box-shadow: var(--shadow-sm);
 }
 
+/* 준비/가이드 블록마다 액센트 색을 번갈아 — 위계·특색 */
+.guide-block:nth-child(3n + 1) {
+  border-left-color: var(--brand);
+}
+.guide-block:nth-child(3n + 2) {
+  border-left-color: #f59e0b;
+}
+.guide-block:nth-child(3n + 3) {
+  border-left-color: #12945a;
+}
+
 .gb-head {
   margin: 0 0 8px;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 850;
   color: var(--ink);
+}
+
+/* 준비 탭 — 오늘 준비 핵심 강조 카드 */
+.prep-key {
+  margin: 2px 0 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff5e6, #ffece9);
+  border: 1.5px solid #ffd8a8;
+  box-shadow: 0 12px 26px -18px rgba(245, 158, 11, 0.5);
+}
+
+.prep-key-head {
+  margin: 0 0 8px;
+  font-size: 0.96rem;
+  font-weight: 850;
+  color: #b45309;
+}
+
+.prep-key ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.prep-key li {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #7c3d12;
 }
 
 .guide-block ul {
