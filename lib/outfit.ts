@@ -25,6 +25,14 @@ function mainFor(feel: number, activity: ActivityKey): string {
     return "방한 방풍 라이딩복";
   }
 
+  if (activity === "hike") {
+    if (feel >= 22) return "기능성 반팔 + 등산 반바지";
+    if (feel >= 13) return "긴팔 + 바람막이 + 등산바지";
+    if (feel >= 5) return "긴팔 + 플리스 + 바람막이";
+    if (feel >= -3) return "보온 레이어 + 방풍 재킷";
+    return "방한 등산복 풀레이어";
+  }
+
   // 걷기·애견산책 — 몸 열이 적어 같은 온도에서 더 따뜻하게
   if (feel >= 23) return "반팔 + 얇은 하의";
   if (feel >= 17) return "긴팔 또는 얇은 겉옷";
@@ -46,6 +54,7 @@ export function getOutfit(slot: RunningSlot, activity: ActivityKey = "run"): Out
   if (slot.windSpeed >= 8 && feel < 20) extras.push(activity === "run" ? "바람막이" : activity === "bike" ? "방풍 자켓" : "겉옷 한 겹");
   if (feel < 3) extras.push("장갑");
   if (activity === "bike") extras.push("헬멧");
+  if (activity === "hike") extras.push("스틱");
   if (activity === "dog" && slot.apparentTemperature >= 26) extras.push("강아지 물통");
 
   return { main, extras: [...new Set(extras)].slice(0, 3) };
@@ -93,6 +102,13 @@ function topFor(feel: number, activity: ActivityKey): { value: string; reason: s
     return { value: "방한 방풍 상의(레이어)", reason: "여러 겹에 방풍을 더하세요." };
   }
 
+  if (activity === "hike") {
+    if (feel >= 22) return { value: "기능성 반팔 + 여벌 상의", reason: "오르막에서 땀이 많이 나요. 젖으면 갈아입을 여벌이 정상에서 효자예요." };
+    if (feel >= 13) return { value: "긴팔 + 바람막이", reason: "오를 땐 덥고 능선에선 추워요. 벗고 입기 쉬운 레이어링이 답이에요." };
+    if (feel >= 5) return { value: "긴팔 + 플리스 + 바람막이", reason: "정상부는 여기보다 6~10°C 낮아요. 세 겹 레이어링이 기본이에요." };
+    return { value: "보온 이너 + 플리스 + 방풍 재킷", reason: "산 위 추위는 평지와 차원이 달라요. 겹겹이 입으세요." };
+  }
+
   if (feel >= 23) return { value: "반팔 티셔츠", reason: "가볍고 통풍 잘 되는 옷이 편해요." };
   if (feel >= 17) return { value: "얇은 긴팔 또는 반팔+가디건", reason: "걷는 정도면 이 정도가 딱 좋아요." };
   if (feel >= 10) return { value: "맨투맨 + 가벼운 자켓", reason: "걷기는 열이 덜 나요. 한 겹 더 챙기세요." };
@@ -113,6 +129,12 @@ function bottomFor(feel: number, activity: ActivityKey): { value: string; reason
     if (feel >= 10) return { value: "긴바지(패드 있으면 좋음)", reason: "무릎 보온과 안장 편의를 챙겨요." };
     if (feel >= 2) return { value: "기모 긴바지", reason: "다리 보온이 라이딩 지속력을 좌우해요." };
     return { value: "방풍 기모 하의", reason: "찬 바람 정면 대비가 필요해요." };
+  }
+
+  if (activity === "hike") {
+    if (feel >= 20) return { value: "등산 반바지 또는 7부", reason: "통풍 좋고 신축성 있는 소재가 편해요." };
+    if (feel >= 8) return { value: "신축 등산바지", reason: "바위 오르내릴 때 무릎 굽힘이 편해야 해요." };
+    return { value: "기모 등산바지", reason: "하체가 따뜻해야 다리에 힘이 들어가요." };
   }
 
   if (feel >= 20) return { value: "얇은 하의", reason: "시원하고 편한 소재가 좋아요." };
@@ -147,6 +169,14 @@ function headlineFor(feel: number, activity: ActivityKey): string {
     return "한파 라이딩이에요. 방풍·방한 단단히 하고 짧게 다녀오세요.";
   }
 
+  if (activity === "hike") {
+    if (feel >= 24) return "더운 산행이에요. 물은 평소 1.5배, 이른 시간 출발에 그늘 코스를 노리세요.";
+    if (feel >= 13) return "산행하기 좋은 온도예요. 정상 방한용 바람막이 한 겹만 더 챙기세요.";
+    if (feel >= 5) return "능선은 서늘해요. 플리스와 바람막이로 레이어링하세요.";
+    if (feel >= -3) return "추운 산행이에요. 방풍·방한 단단히 하고 하산 시간을 여유 있게 잡으세요.";
+    return "한파 산행이에요. 풀레이어에 아이젠까지, 무리는 절대 금물이에요.";
+  }
+
   if (feel >= 26) return "덥게 느껴지는 날이에요. 가볍게 입고 그늘길로 다니세요.";
   if (feel >= 16) return "걷기 좋은 온도예요. 편한 차림에 낮이면 선글라스만 더해요.";
   if (feel >= 8) return "살짝 서늘해요. 가벼운 겉옷 하나 걸치고 나가세요.";
@@ -159,6 +189,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
   const isRun = activity === "run";
   const isDog = activity === "dog";
   const isBike = activity === "bike";
+  const isHike = activity === "hike";
   const top = topFor(feel, activity);
   const bottom = bottomFor(feel, activity);
 
@@ -197,6 +228,15 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
     categories.push({ emoji: "🐕", label: "산책 준비물", value: "배변봉투 + 물", reason: "기본 매너와 강아지 수분 보충은 필수예요." });
     if (feel >= 26) {
       categories.push({ emoji: "🐾", label: "발바닥 보호", value: "그늘길·흙길 코스", reason: "뜨거운 아스팔트는 발바닥 화상 위험이 있어요." });
+    }
+  }
+
+  // 등산 전용 준비물
+  if (isHike) {
+    categories.push({ emoji: "🎒", label: "필수 준비물", value: "물 + 간식 + 보조배터리", reason: "산에서는 체력과 연락 수단이 곧 안전이에요." });
+    categories.push({ emoji: "🥾", label: "발·무릎", value: "등산화 + 스틱", reason: "미끄럼 방지와 무릎 보호에 가장 큰 차이를 만들어요." });
+    if (feel < 10 || current.windSpeed >= 8) {
+      categories.push({ emoji: "🧥", label: "정상 방한", value: "플리스·바람막이 한 겹", reason: "정상부는 여기보다 6~10°C 낮고 바람이 강해요." });
     }
   }
 
