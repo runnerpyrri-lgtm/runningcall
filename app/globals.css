@@ -3437,8 +3437,7 @@ button {
 
   /* 탭·날짜토글은 2단 위에서 가운데 폭 제한 */
   .activity-tabs,
-  .day-toggle,
-  .activity-tagline {
+  .day-toggle {
     max-width: 640px;
     margin-left: auto;
     margin-right: auto;
@@ -3680,14 +3679,6 @@ button {
 
 /* ══════════════ v0.4.0 — 등산 + 5탭 + 활동 설명 ══════════════ */
 
-/* 활동 한 줄 설명 (탭 아래) */
-.activity-tagline {
-  text-align: center;
-  margin: 0 0 10px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--muted);
-}
 
 /* 드로어 활동 버튼 — 설명 포함 세로형 */
 .drawer-act {
@@ -3972,25 +3963,17 @@ button {
   box-shadow: 0 10px 24px -12px rgba(18, 148, 90, 0.6);
 }
 
-/* PC 좌측 카테고리 레일 (데스크탑 ≥1200px) */
+/* PC 좌측 카테고리 레일 (데스크탑 ≥1200px) — 큰 글자만, 설명 없음 */
 .activity-rail {
   display: none;
-}
-
-.activity-rail .rail-title {
-  margin: 0 2px 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--muted);
 }
 
 .activity-rail .act-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 11px 12px;
+  padding: 13px 12px;
   border-radius: 14px;
   border: 1.5px solid transparent;
   background: #fff;
@@ -4008,30 +3991,29 @@ button {
 }
 
 .activity-rail .act-emoji {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   line-height: 1;
   flex: none;
 }
 
-.act-rail-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.act-rail-text strong {
-  font-size: 0.9rem;
-  font-weight: 800;
+.act-rail-label {
+  font-size: 1.02rem;
+  font-weight: 850;
   color: var(--ink);
 }
 
-.act-rail-text small {
-  font-size: 0.66rem;
-  color: var(--muted);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.rail-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 6px 4px;
+}
+
+.journal-btn {
+  background: var(--brand-soft);
+}
+
+.journal-btn .act-rail-label {
+  color: var(--brand-deep);
 }
 
 @media (min-width: 1200px) {
@@ -4055,8 +4037,7 @@ button {
     box-shadow: var(--shadow-sm);
   }
 
-  .activity-tabs,
-  .activity-tagline {
+  .activity-tabs {
     display: none;
   }
 }
@@ -4081,6 +4062,92 @@ button {
 
 .dog-care {
   margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* 운동 일지 — 전체 캘린더 + 상세(체크+메모) */
+.journal-sheet {
+  max-width: 480px;
+}
+
+.journal-grid.cal-grid {
+  gap: 4px;
+}
+
+.journal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  min-height: 52px;
+}
+
+.jc-date {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.jc-icons {
+  display: flex;
+  gap: 1px;
+  font-size: 0.68rem;
+}
+
+.journal-cell.is-selected {
+  outline: 2px solid var(--brand);
+  border-radius: 10px;
+}
+
+.journal-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.journal-detail-date {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.journal-activity-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.journal-pick {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.journal-pick.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.journal-note {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  font-family: inherit;
+  font-size: 0.86rem;
+  resize: vertical;
+}
+
+.journal-hint {
+  margin: 14px 2px 0;
   font-size: 0.82rem;
   color: var(--muted);
 }

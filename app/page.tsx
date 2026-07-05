@@ -64,6 +64,7 @@ import {
   type ActivityLog
 } from "@/lib/activity-record";
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
+import { emptyJournal, loadJournal, saveJournal, setNote, toggleJournalActivity, type Journal } from "@/lib/journal";
 
 // 활동 내부 탭 (판단 / 준비 / 기록 / 가이드)
 type InnerTab = "today" | "prep" | "record" | "guide";
@@ -932,6 +933,125 @@ function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[
   );
 }
 
+// 전체 운동 일지 — 월 캘린더(활동 이모지) + 날짜별 활동 체크·한 줄 메모
+function JournalView({
+  journal,
+  ym,
+  onShiftMonth,
+  selectedDate,
+  onSelectDate,
+  onToggleActivity,
+  onNoteChange,
+  onClose
+}: {
+  journal: Journal;
+  ym: { y: number; m: number };
+  onShiftMonth: (delta: number) => void;
+  selectedDate: string | null;
+  onSelectDate: (date: string | null) => void;
+  onToggleActivity: (date: string, activity: ActivityKey) => void;
+  onNoteChange: (date: string, note: string) => void;
+  onClose: () => void;
+}) {
+  const grid = buildMonthGrid(ym.y, ym.m);
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const todayS = fmtDate(new Date());
+  const entry = selectedDate ? journal[selectedDate] ?? { activities: [], note: "" } : null;
+
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="운동 일지" onClick={onClose}>
+      <div className="sheet journal-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="sheet-topbar">
+          <div className="sheet-grip" aria-hidden="true" />
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="sheet-head">
+          <p className="sheet-title">📔 나의 운동 일지</p>
+        </div>
+
+        <div className="cal-nav">
+          <button type="button" onClick={() => onShiftMonth(-1)} aria-label="이전 달">
+            <ChevronLeft size={18} />
+          </button>
+          <strong>
+            {ym.y}년 {ym.m + 1}월
+          </strong>
+          <button type="button" onClick={() => onShiftMonth(1)} aria-label="다음 달">
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div className="cal-grid journal-grid">
+          {weekdays.map((w) => (
+            <span className={`cal-wd ${w === "일" ? "sun" : w === "토" ? "sat" : ""}`} key={w}>
+              {w}
+            </span>
+          ))}
+          {grid.map((cell, i) => {
+            if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
+            const ds = fmtDate(cell);
+            const dayEntry = journal[ds];
+            const isToday = ds === todayS;
+            const isSelected = ds === selectedDate;
+            return (
+              <button
+                type="button"
+                key={ds}
+                onClick={() => onSelectDate(isSelected ? null : ds)}
+                className={`cal-cell journal-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""}`}
+              >
+                <span className="jc-date">{cell.getDate()}</span>
+                {dayEntry && dayEntry.activities.length > 0 ? (
+                  <span className="jc-icons">
+                    {dayEntry.activities.slice(0, 3).map((a) => (
+                      <span key={a} aria-hidden="true">
+                        {ACTIVITIES[a].emoji}
+                      </span>
+                    ))}
+                    {dayEntry.activities.length > 3 ? <span>+{dayEntry.activities.length - 3}</span> : null}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedDate && entry ? (
+          <div className="journal-detail">
+            <p className="journal-detail-date">{selectedDate}</p>
+            <div className="journal-activity-picks">
+              {ACTIVITY_ORDER.map((key) => {
+                const on = entry.activities.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`journal-pick${on ? " on" : ""}`}
+                    onClick={() => onToggleActivity(selectedDate, key)}
+                  >
+                    {ACTIVITIES[key].emoji} {ACTIVITIES[key].label}
+                  </button>
+                );
+              })}
+            </div>
+            <textarea
+              className="journal-note"
+              placeholder="오늘 한 줄 남겨보세요 (예: 컨디션, 코스, 느낀 점)"
+              value={entry.note}
+              maxLength={200}
+              onChange={(e) => onNoteChange(selectedDate, e.target.value)}
+            />
+          </div>
+        ) : (
+          <p className="journal-hint">날짜를 눌러 그날 한 활동과 한 줄 메모를 남겨보세요.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AlarmSheet({
   target,
   existing,
@@ -1022,19 +1142,20 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
   );
 }
 
-// 활동 선택 — 데스크탑 좌측 레일(rail) / 모바일 상단 탭(tabs)
+// 활동 선택 — 데스크탑 좌측 레일(rail, 큰 글자) / 모바일 상단 탭(tabs)
 function ActivityRail({
   activity,
   onChange,
-  variant
+  variant,
+  onOpenJournal
 }: {
   activity: ActivityKey;
   onChange: (next: ActivityKey) => void;
   variant: "rail" | "tabs";
+  onOpenJournal?: () => void;
 }) {
   return (
     <nav className={variant === "rail" ? "activity-rail" : "activity-tabs"} aria-label="활동 선택">
-      {variant === "rail" ? <p className="rail-title">활동</p> : null}
       {ACTIVITY_ORDER.map((key) => {
         const item = ACTIVITIES[key];
         const on = key === activity;
@@ -1050,16 +1171,24 @@ function ActivityRail({
               {item.emoji}
             </span>
             {variant === "rail" ? (
-              <span className="act-rail-text">
-                <strong>{item.label}</strong>
-                <small>{item.tagline}</small>
-              </span>
+              <span className="act-rail-label">{item.label}</span>
             ) : (
               <span className="act-label">{item.short}</span>
             )}
           </button>
         );
       })}
+      {variant === "rail" && onOpenJournal ? (
+        <>
+          <div className="rail-sep" aria-hidden="true" />
+          <button type="button" className="act-item journal-btn" onClick={onOpenJournal}>
+            <span className="act-emoji" aria-hidden="true">
+              📔
+            </span>
+            <span className="act-rail-label">운동 일지</span>
+          </button>
+        </>
+      ) : null}
     </nav>
   );
 }
@@ -1097,6 +1226,15 @@ export default function Home() {
   const [goals, setGoals] = useState(DEFAULT_GOALS);
   const [isRecordRestored, setIsRecordRestored] = useState(false);
   const [innerTab, setInnerTab] = useState<InnerTab>("today");
+  const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
+  const [journal, setJournalState] = useState<Journal>(emptyJournal);
+  const [isJournalRestored, setIsJournalRestored] = useState(false);
+  const [isJournalOpen, setIsJournalOpen] = useState(false);
+  const [journalYm, setJournalYm] = useState(() => {
+    const d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth() };
+  });
+  const [journalSelectedDate, setJournalSelectedDate] = useState<string | null>(null);
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
     setIsLoading(true);
@@ -1211,6 +1349,35 @@ export default function Home() {
     setIsRecordRestored(true);
   }, []);
 
+  // 활동별 마지막 위치 복원
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("running-alarm:activity-location:v1");
+      if (raw) setActivityLocations(JSON.parse(raw));
+    } catch {
+      // 무시
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("running-alarm:activity-location:v1", JSON.stringify(activityLocations));
+    } catch {
+      // 무시
+    }
+  }, [activityLocations]);
+
+  // 운동 일지 복원·저장
+  useEffect(() => {
+    setJournalState(loadJournal());
+    setIsJournalRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isJournalRestored) return;
+    saveJournal(journal);
+  }, [journal, isJournalRestored]);
+
   // 복원 완료 후에만 저장 (초기 빈 값이 기존 기록을 덮어쓰지 않게)
   useEffect(() => {
     if (!isRecordRestored) return;
@@ -1250,12 +1417,17 @@ export default function Home() {
   }, [activity]);
 
   // 활동 전환 — 열린 시트를 닫고 즉시(재요청 없이) 재계산
-  const changeActivity = useCallback((next: ActivityKey) => {
-    setSheetKey(null);
-    setIsOutfitOpen(false);
-    setInnerTab("today");
-    setActivity(next);
-  }, []);
+  const changeActivity = useCallback(
+    (next: ActivityKey) => {
+      setSheetKey(null);
+      setIsOutfitOpen(false);
+      setInnerTab("today");
+      setActivity(next);
+      const remembered = activityLocations[next];
+      if (remembered) setLocation(remembered);
+    },
+    [activityLocations]
+  );
 
   // 원본 예보를 선택된 활동 프로필로 점수화 (활동 전환 시 이 줄만 다시 돈다)
   const forecast = useMemo(
@@ -1419,6 +1591,7 @@ export default function Home() {
   function chooseLocation(next: LocationPoint, detail?: string) {
     setLocation(next);
     rememberLocation(next, detail);
+    setActivityLocations((prev) => ({ ...prev, [activity]: next }));
     setDayMode("today");
     setIsSearchOpen(false);
     setSearchResults([]);
@@ -1677,7 +1850,12 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
-        <ActivityRail activity={activity} onChange={changeActivity} variant="rail" />
+        <ActivityRail
+          activity={activity}
+          onChange={changeActivity}
+          variant="rail"
+          onOpenJournal={() => setIsJournalOpen(true)}
+        />
 
         <section className="app-shell">
           {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
@@ -1747,13 +1925,13 @@ export default function Home() {
                     className="drawer-item"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      setInnerTab("record");
+                      setIsJournalOpen(true);
                     }}
                   >
                     <span className="di-emoji" aria-hidden="true">
-                      📅
+                      📔
                     </span>
-                    {ACTIVITIES[activity].label} 기록 보기
+                    운동 일지 전체 보기
                     <ChevronRight size={17} className="di-arrow" />
                   </button>
 
@@ -1973,10 +2151,6 @@ export default function Home() {
           ) : (
             <>
               <ActivityRail activity={activity} onChange={changeActivity} variant="tabs" />
-
-              <p className="activity-tagline">
-                {profile.emoji} {profile.tagline}
-              </p>
 
               <nav className="inner-tabs" aria-label="세부 보기">
                 {([
@@ -2377,6 +2551,25 @@ export default function Home() {
       ) : null}
 
       {guideTopic ? <GuideSheet topic={guideTopic} onClose={() => setGuideTopic(null)} /> : null}
+
+      {isJournalOpen ? (
+        <JournalView
+          journal={journal}
+          ym={journalYm}
+          onShiftMonth={(delta) => {
+            const d = new Date(journalYm.y, journalYm.m + delta, 1);
+            setJournalYm({ y: d.getFullYear(), m: d.getMonth() });
+          }}
+          selectedDate={journalSelectedDate}
+          onSelectDate={setJournalSelectedDate}
+          onToggleActivity={(date, act) => setJournalState((prev) => toggleJournalActivity(prev, date, act))}
+          onNoteChange={(date, note) => setJournalState((prev) => setNote(prev, date, note))}
+          onClose={() => {
+            setIsJournalOpen(false);
+            setJournalSelectedDate(null);
+          }}
+        />
+      ) : null}
 
       {alarmTarget ? (
         <AlarmSheet
