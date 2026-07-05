@@ -2094,10 +2094,10 @@ export default function Home() {
                             setIsMenuOpen(false);
                           }}
                         >
-                          <strong>
-                            <span aria-hidden="true">{item.emoji}</span> {item.label}
-                          </strong>
-                          <small>{item.tagline}</small>
+                          <span className="da-emoji" aria-hidden="true">
+                            {item.emoji}
+                          </span>
+                          <strong>{item.label}</strong>
                         </button>
                       );
                     })}
