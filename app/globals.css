@@ -20,11 +20,67 @@
   --bad: #ff5a5f;
   --bad-deep: #d63238;
   --orange: #ff8a3d;
-  --shadow: 0 22px 60px -18px rgba(12, 28, 64, 0.24);
-  --shadow-sm: 0 8px 24px -12px rgba(12, 28, 64, 0.2);
+  --surface: #fafbfe;
+  --surface-2: #f4f7fc;
+  /* 층진 소프트 섀도 — 은은한 밀착 그림자 + 넓은 확산 (v0.7.1 폴리시) */
+  --shadow-sm: 0 1px 2px rgba(12, 28, 64, 0.04), 0 6px 16px -9px rgba(12, 28, 64, 0.16);
+  --shadow: 0 2px 6px rgba(12, 28, 64, 0.05), 0 18px 46px -20px rgba(12, 28, 64, 0.22);
+  --shadow-lg: 0 4px 12px rgba(12, 28, 64, 0.06), 0 30px 66px -26px rgba(12, 28, 64, 0.3);
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
   --sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Apple SD Gothic Neo",
     "Malgun Gothic", sans-serif;
   --mono: "SFMono-Regular", ui-monospace, Consolas, monospace;
+}
+
+/* 눌림 마이크로 인터랙션 — 탭 가능한 카드/버튼이 살짝 눌림 */
+.act-item,
+.journal-pick,
+.journal-mood,
+.drawer-act,
+.drawer-item,
+.ach-series-head,
+.rc,
+.record-toggle,
+.js-edit,
+.js-close,
+.journal-save,
+.journal-cancel,
+.journal-back,
+.celebrate-ok,
+.chip-card,
+.day-toggle button,
+.inner-tabs button {
+  transition: transform 0.12s ease, box-shadow 0.16s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.act-item:active,
+.journal-pick:active,
+.journal-mood:active,
+.drawer-act:active,
+.drawer-item:active,
+.ach-series-head:active,
+.rc:active,
+.record-toggle:active,
+.js-edit:active,
+.js-close:active,
+.journal-save:active,
+.journal-cancel:active,
+.journal-back:active,
+.celebrate-ok:active,
+.chip-card:active,
+.day-toggle button:active,
+.inner-tabs button:active {
+  transform: scale(0.975);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 * {
