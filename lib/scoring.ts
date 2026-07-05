@@ -157,8 +157,13 @@ export function scoreWind(speedMs: number) {
   );
 }
 
-// 위험 조건에서는 아무리 다른 지표가 좋아도 총점 상한을 건다. 더위 2단계는 활동별.
-function applyCaps(total: number, input: HourlyInput, heat: HeatCaps = ACTIVITIES.run.heat) {
+// 위험 조건에서는 아무리 다른 지표가 좋아도 총점 상한을 건다. 더위·바람 상한은 활동별.
+function applyCaps(
+  total: number,
+  input: HourlyInput,
+  heat: HeatCaps = ACTIVITIES.run.heat,
+  windCap: { speed: number; cap: number } = ACTIVITIES.run.windCap
+) {
   let cap = 100;
 
   if (input.precipitation >= 4) {
@@ -185,8 +190,8 @@ function applyCaps(total: number, input: HourlyInput, heat: HeatCaps = ACTIVITIE
     cap = Math.min(cap, 30);
   }
 
-  if (input.windSpeed >= 14) {
-    cap = Math.min(cap, 40);
+  if (input.windSpeed >= windCap.speed) {
+    cap = Math.min(cap, windCap.cap);
   }
 
   if (input.uvIndex >= 11) {
@@ -219,12 +224,12 @@ const COMMENTS: Record<ActivityKey, Record<ScoreTone, string[]>> = {
     caution: ["오늘은 짧은 산책만요", "배변 산책 정도만 추천해요", "그늘길 위주로 잠깐만요", "무리한 산책은 피해요"],
     bad: ["오늘 산책은 쉬어가요", "실내 놀이가 나은 날이에요", "꼭 나가야 하면 아주 짧게만요", "강아지 건강이 우선이에요"]
   },
-  commute: {
-    excellent: ["걸어서 출근하기 최고예요", "쾌적하게 이동할 수 있어요", "오늘 도보 이동 딱 좋아요", "걷기 좋은 출퇴근길이에요"],
-    good: ["걸어 다니기 좋아요", "이동하기 무난한 날씨예요", "가볍게 걸어서 가도 좋아요", "도보 이동 괜찮아요"],
-    fair: ["이동엔 무리 없어요", "걸을 만한 날씨예요", "평소처럼 다니면 돼요", "무난한 이동 컨디션이에요"],
-    caution: ["이동 시 대비가 필요해요", "날씨 확인하고 나서요", "가까운 길로 다녀요", "환승·지하 구간을 활용해요"],
-    bad: ["오늘은 대중교통이 나아요", "도보 이동은 피하는 게 좋아요", "이동 시간을 조정해봐요", "짧은 구간만 걸어요"]
+  bike: {
+    excellent: ["라이딩하기 최고예요", "완벽한 라이딩 날씨예요", "바람 없이 시원하게 달려요", "지금 페달 밟기 딱이에요"],
+    good: ["라이딩하기 좋아요", "가볍게 달리기 좋아요", "기분 좋게 탈 수 있어요", "부담 없이 나가기 좋아요"],
+    fair: ["무난한 라이딩이에요", "짧은 코스는 괜찮아요", "바람 보며 달려봐요", "가볍게라면 좋아요"],
+    caution: ["짧게만 타는 게 좋아요", "바람·노면 주의해요", "무리한 코스는 피해요", "가까운 길만 돌아요"],
+    bad: ["오늘 라이딩은 위험해요", "실내 운동이 나아요", "바람·비가 부담이에요", "쉬어가는 날이에요"]
   }
 };
 
@@ -274,7 +279,7 @@ export function calculateSlot(input: HourlyInput, profile: ActivityProfile): Run
     humidityScore * w.humidity +
     windScore * w.wind;
 
-  const totalScore = clampScore(applyCaps(weighted, input, profile.heat));
+  const totalScore = clampScore(applyCaps(weighted, input, profile.heat, profile.windCap));
   const hour = Number(input.time.slice(11, 13));
   const day = Number(input.time.slice(8, 10));
   const seed = day * 31 + hour;

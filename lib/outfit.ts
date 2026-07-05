@@ -7,7 +7,7 @@ export type OutfitAdvice = {
   extras: string[];
 };
 
-// 러닝은 몸에 열이 올라 체감 +5~8°C, 걷기·이동은 그대로 느낀다. 활동별 기준 온도 분리.
+// 러닝은 몸에 열이 올라 체감 +5~8°C, 자전거는 속도 바람으로 더 시원, 걷기·산책은 그대로.
 function mainFor(feel: number, activity: ActivityKey): string {
   if (activity === "run") {
     if (feel >= 16) return "반팔 + 반바지";
@@ -17,7 +17,15 @@ function mainFor(feel: number, activity: ActivityKey): string {
     return "방한 상하의";
   }
 
-  // 걷기·애견산책·출퇴근 — 몸 열이 적어 같은 온도에서 더 따뜻하게
+  if (activity === "bike") {
+    if (feel >= 23) return "저지 + 반바지";
+    if (feel >= 15) return "긴팔 저지 + 긴바지";
+    if (feel >= 8) return "바람막이 + 긴바지";
+    if (feel >= 2) return "방풍 자켓 + 기모 하의";
+    return "방한 방풍 라이딩복";
+  }
+
+  // 걷기·애견산책 — 몸 열이 적어 같은 온도에서 더 따뜻하게
   if (feel >= 23) return "반팔 + 얇은 하의";
   if (feel >= 17) return "긴팔 또는 얇은 겉옷";
   if (feel >= 10) return "가벼운 자켓 + 긴바지";
@@ -35,8 +43,9 @@ export function getOutfit(slot: RunningSlot, activity: ActivityKey = "run"): Out
     extras.push(activity === "run" ? "방수 자켓" : "우산");
   }
   if (slot.uvIndex >= 5) extras.push("선글라스");
-  if (slot.windSpeed >= 8 && feel < 20) extras.push(activity === "run" ? "바람막이" : "겉옷 한 겹");
+  if (slot.windSpeed >= 8 && feel < 20) extras.push(activity === "run" ? "바람막이" : activity === "bike" ? "방풍 자켓" : "겉옷 한 겹");
   if (feel < 3) extras.push("장갑");
+  if (activity === "bike") extras.push("헬멧");
   if (activity === "dog" && slot.apparentTemperature >= 26) extras.push("강아지 물통");
 
   return { main, extras: [...new Set(extras)].slice(0, 3) };
@@ -76,6 +85,14 @@ function topFor(feel: number, activity: ActivityKey): { value: string; reason: s
     return { value: "방한 상의(레이어)", reason: "얇은 옷을 여러 겹 겹쳐 입으세요." };
   }
 
+  if (activity === "bike") {
+    if (feel >= 23) return { value: "반팔 저지", reason: "속도 바람에 금방 시원해져요. 통풍 되는 저지로." };
+    if (feel >= 15) return { value: "긴팔 저지", reason: "달릴 때 바람을 막아주는 한 겹이 좋아요." };
+    if (feel >= 8) return { value: "바람막이 자켓", reason: "속도 체감이 커요. 방풍이 핵심이에요." };
+    if (feel >= 2) return { value: "방풍 자켓 + 이너", reason: "찬 바람을 정면으로 맞아요. 방풍 필수예요." };
+    return { value: "방한 방풍 상의(레이어)", reason: "여러 겹에 방풍을 더하세요." };
+  }
+
   if (feel >= 23) return { value: "반팔 티셔츠", reason: "가볍고 통풍 잘 되는 옷이 편해요." };
   if (feel >= 17) return { value: "얇은 긴팔 또는 반팔+가디건", reason: "걷는 정도면 이 정도가 딱 좋아요." };
   if (feel >= 10) return { value: "맨투맨 + 가벼운 자켓", reason: "걷기는 열이 덜 나요. 한 겹 더 챙기세요." };
@@ -89,6 +106,13 @@ function bottomFor(feel: number, activity: ActivityKey): { value: string; reason
     if (feel >= 10) return { value: "반바지 또는 7부", reason: "하체는 금방 열이 올라와요." };
     if (feel >= 3) return { value: "긴바지(레깅스)", reason: "무릎 관절 보온에 좋아요." };
     return { value: "기모 긴바지", reason: "다리 보온이 필수예요." };
+  }
+
+  if (activity === "bike") {
+    if (feel >= 20) return { value: "반바지 또는 7부", reason: "페달 편한 신축 소재로." };
+    if (feel >= 10) return { value: "긴바지(패드 있으면 좋음)", reason: "무릎 보온과 안장 편의를 챙겨요." };
+    if (feel >= 2) return { value: "기모 긴바지", reason: "다리 보온이 라이딩 지속력을 좌우해요." };
+    return { value: "방풍 기모 하의", reason: "찬 바람 정면 대비가 필요해요." };
   }
 
   if (feel >= 20) return { value: "얇은 하의", reason: "시원하고 편한 소재가 좋아요." };
@@ -115,12 +139,12 @@ function headlineFor(feel: number, activity: ActivityKey): string {
     return "한파예요. 산책은 짧게, 강아지 발 시림도 챙겨주세요.";
   }
 
-  if (activity === "commute") {
-    if (feel >= 26) return "더운 이동길이에요. 시원한 옷차림에 땀 대비 손수건이 유용해요.";
-    if (feel >= 16) return "이동하기 좋은 온도예요. 평소 차림이면 충분해요.";
-    if (feel >= 8) return "아침저녁 쌀쌀할 수 있어요. 벗기 쉬운 겉옷으로 조절하세요.";
-    if (feel >= 0) return "추운 출퇴근길이에요. 장갑·목도리로 체감온도를 지키세요.";
-    return "한파 이동길이에요. 최대한 껴입고 실내 경로를 활용하세요.";
+  if (activity === "bike") {
+    if (feel >= 26) return "더운 라이딩이에요. 통풍 저지에 물통은 필수, 그늘 코스를 노리세요.";
+    if (feel >= 15) return "라이딩 좋은 온도예요. 얇게 입고 아이웨어만 더하면 완벽해요.";
+    if (feel >= 8) return "속도 바람이 서늘해요. 바람막이 한 겹이면 딱 좋아요.";
+    if (feel >= 2) return "찬 바람을 정면으로 맞아요. 방풍 자켓과 장갑을 꼭 챙기세요.";
+    return "한파 라이딩이에요. 방풍·방한 단단히 하고 짧게 다녀오세요.";
   }
 
   if (feel >= 26) return "덥게 느껴지는 날이에요. 가볍게 입고 그늘길로 다니세요.";
@@ -134,6 +158,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
   const feel = current.apparentTemperature;
   const isRun = activity === "run";
   const isDog = activity === "dog";
+  const isBike = activity === "bike";
   const top = topFor(feel, activity);
   const bottom = bottomFor(feel, activity);
 
@@ -172,6 +197,17 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
     categories.push({ emoji: "🐕", label: "산책 준비물", value: "배변봉투 + 물", reason: "기본 매너와 강아지 수분 보충은 필수예요." });
     if (feel >= 26) {
       categories.push({ emoji: "🐾", label: "발바닥 보호", value: "그늘길·흙길 코스", reason: "뜨거운 아스팔트는 발바닥 화상 위험이 있어요." });
+    }
+  }
+
+  // 자전거 전용 안전 장비
+  if (isBike) {
+    categories.push({ emoji: "⛑️", label: "안전 장비", value: "헬멧 + 장갑", reason: "라이딩 안전의 기본이에요." });
+    if (current.uvIndex >= 3 || feel >= 20) {
+      categories.push({ emoji: "🕶️", label: "아이웨어", value: "라이딩 고글", reason: "바람·벌레·자외선에서 눈을 지켜요." });
+    }
+    if (current.precipitation >= 0.3 || current.precipitationProbability >= 60 || current.uvIndex <= 1) {
+      categories.push({ emoji: "🔦", label: "라이트", value: "전조등 + 후미등", reason: "흐리거나 비 오면 시야 확보가 안전을 좌우해요." });
     }
   }
 

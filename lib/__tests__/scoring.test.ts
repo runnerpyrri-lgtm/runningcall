@@ -49,11 +49,21 @@ describe("활동별 점수 차이", () => {
     expect(dog).toBeLessThan(walk);
   });
 
-  it("비 오는 날 출퇴근 점수가 크게 깎인다 (강수 가중 최상)", () => {
-    const rainy: HourlyInput = { ...hot, apparentTemperature: 20, uvIndex: 2, precipitation: 2, precipitationProbability: 90 };
-    const dry: HourlyInput = { ...rainy, precipitation: 0, precipitationProbability: 0 };
-    const wet = calculateSlot(rainy, ACTIVITIES.commute).totalScore;
-    const fine = calculateSlot(dry, ACTIVITIES.commute).totalScore;
-    expect(fine - wet).toBeGreaterThanOrEqual(30);
+  it("강풍일 때 자전거 점수가 러닝보다 크게 낮다 (바람 위험)", () => {
+    const windy: HourlyInput = {
+      time: "2026-04-01T15:00",
+      temperature: 15,
+      apparentTemperature: 14,
+      humidity: 50,
+      pm10: 30,
+      pm25: 15,
+      uvIndex: 3,
+      precipitation: 0,
+      precipitationProbability: 10,
+      windSpeed: 12
+    };
+    const run = calculateSlot(windy, ACTIVITIES.run).totalScore;
+    const bike = calculateSlot(windy, ACTIVITIES.bike).totalScore;
+    expect(bike).toBeLessThan(run);
   });
 });
