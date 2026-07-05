@@ -2051,7 +2051,7 @@ export default function Home() {
                   <p className="rec-none">
                     {isTomorrow
                       ? "내일은 딱 추천할 만한 시간대가 없어요."
-                      : `오늘 ${profile.label === "출퇴근" ? "나가기" : profile.label} 좋은 시간대는 이미 지나갔어요.`}
+                      : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
                   </p>
                   {!isTomorrow && hasTomorrow ? (
                     <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
