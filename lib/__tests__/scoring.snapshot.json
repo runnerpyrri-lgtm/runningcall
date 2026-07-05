@@ -1,0 +1,222 @@
+{
+  "samples": [
+    {
+      "time": "2026-07-05T06:00",
+      "temperature": 18,
+      "apparentTemperature": 17,
+      "humidity": 55,
+      "pm10": 20,
+      "pm25": 10,
+      "uvIndex": 1,
+      "precipitation": 0,
+      "precipitationProbability": 5,
+      "windSpeed": 2
+    },
+    {
+      "time": "2026-07-05T09:00",
+      "temperature": 24,
+      "apparentTemperature": 26,
+      "humidity": 60,
+      "pm10": 40,
+      "pm25": 22,
+      "uvIndex": 5,
+      "precipitation": 0,
+      "precipitationProbability": 10,
+      "windSpeed": 3
+    },
+    {
+      "time": "2026-07-05T12:00",
+      "temperature": 31,
+      "apparentTemperature": 34,
+      "humidity": 70,
+      "pm10": 55,
+      "pm25": 38,
+      "uvIndex": 9,
+      "precipitation": 0,
+      "precipitationProbability": 20,
+      "windSpeed": 4
+    },
+    {
+      "time": "2026-07-05T15:00",
+      "temperature": 33,
+      "apparentTemperature": 36,
+      "humidity": 65,
+      "pm10": 80,
+      "pm25": 55,
+      "uvIndex": 8,
+      "precipitation": 0.3,
+      "precipitationProbability": 40,
+      "windSpeed": 5
+    },
+    {
+      "time": "2026-07-05T18:00",
+      "temperature": 27,
+      "apparentTemperature": 28,
+      "humidity": 75,
+      "pm10": 30,
+      "pm25": 15,
+      "uvIndex": 3,
+      "precipitation": 0,
+      "precipitationProbability": 0,
+      "windSpeed": 6
+    },
+    {
+      "time": "2026-07-05T21:00",
+      "temperature": 22,
+      "apparentTemperature": 21,
+      "humidity": 80,
+      "pm10": 25,
+      "pm25": 12,
+      "uvIndex": 0,
+      "precipitation": 0,
+      "precipitationProbability": 0,
+      "windSpeed": 2
+    },
+    {
+      "time": "2026-01-10T08:00",
+      "temperature": -3,
+      "apparentTemperature": -8,
+      "humidity": 40,
+      "pm10": 90,
+      "pm25": 60,
+      "uvIndex": 1,
+      "precipitation": 0,
+      "precipitationProbability": 10,
+      "windSpeed": 7
+    },
+    {
+      "time": "2026-01-10T14:00",
+      "temperature": 2,
+      "apparentTemperature": 0,
+      "humidity": 35,
+      "pm10": 150,
+      "pm25": 90,
+      "uvIndex": 2,
+      "precipitation": 0,
+      "precipitationProbability": 5,
+      "windSpeed": 9
+    },
+    {
+      "time": "2026-04-01T07:00",
+      "temperature": 12,
+      "apparentTemperature": 11,
+      "humidity": 50,
+      "pm10": 15,
+      "pm25": 8,
+      "uvIndex": 2,
+      "precipitation": 0,
+      "precipitationProbability": 0,
+      "windSpeed": 1
+    },
+    {
+      "time": "2026-04-01T13:00",
+      "temperature": 19,
+      "apparentTemperature": 18,
+      "humidity": 45,
+      "pm10": 35,
+      "pm25": 18,
+      "uvIndex": 6,
+      "precipitation": 1.2,
+      "precipitationProbability": 70,
+      "windSpeed": 12
+    },
+    {
+      "time": "2026-09-01T17:00",
+      "temperature": 26,
+      "apparentTemperature": 27,
+      "humidity": 68,
+      "pm10": 45,
+      "pm25": 28,
+      "uvIndex": 4,
+      "precipitation": 5,
+      "precipitationProbability": 90,
+      "windSpeed": 14
+    },
+    {
+      "time": "2026-09-01T22:00",
+      "temperature": 20,
+      "apparentTemperature": 19,
+      "humidity": 72,
+      "pm10": 22,
+      "pm25": 11,
+      "uvIndex": 0,
+      "precipitation": 0,
+      "precipitationProbability": 0,
+      "windSpeed": 3
+    }
+  ],
+  "expected": [
+    {
+      "time": "2026-07-05T06:00",
+      "total": 99,
+      "comment": "완벽한 러닝 타이밍이에요",
+      "tone": "excellent"
+    },
+    {
+      "time": "2026-07-05T09:00",
+      "total": 84,
+      "comment": "지금 뛰기 좋아요",
+      "tone": "good"
+    },
+    {
+      "time": "2026-07-05T12:00",
+      "total": 35,
+      "comment": "회복에 집중할 날이에요",
+      "tone": "bad"
+    },
+    {
+      "time": "2026-07-05T15:00",
+      "total": 35,
+      "comment": "쉬어가도 괜찮은 날이에요",
+      "tone": "bad"
+    },
+    {
+      "time": "2026-07-05T18:00",
+      "total": 78,
+      "comment": "무리 없이 달리기 좋아요",
+      "tone": "good"
+    },
+    {
+      "time": "2026-07-05T21:00",
+      "total": 88,
+      "comment": "지금 뛰기 아주 좋아요",
+      "tone": "excellent"
+    },
+    {
+      "time": "2026-01-10T08:00",
+      "total": 55,
+      "comment": "짧은 코스가 어울려요",
+      "tone": "fair"
+    },
+    {
+      "time": "2026-01-10T14:00",
+      "total": 30,
+      "comment": "오늘은 실내 운동이 나아요",
+      "tone": "bad"
+    },
+    {
+      "time": "2026-04-01T07:00",
+      "total": 100,
+      "comment": "이런 날 안 뛰면 아까워요",
+      "tone": "excellent"
+    },
+    {
+      "time": "2026-04-01T13:00",
+      "total": 45,
+      "comment": "오늘은 가볍게 짧게만",
+      "tone": "caution"
+    },
+    {
+      "time": "2026-09-01T17:00",
+      "total": 25,
+      "comment": "오늘은 실내 운동이 나아요",
+      "tone": "bad"
+    },
+    {
+      "time": "2026-09-01T22:00",
+      "total": 92,
+      "comment": "완벽한 러닝 타이밍이에요",
+      "tone": "excellent"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { ACTIVITIES, type ActivityKey, type ActivityProfile, type HeatCaps, type TempCurve } from "@/lib/activity";
+
 export type ScoreTone = "excellent" | "good" | "fair" | "caution" | "bad";
 export type GradeTone = "good" | "normal" | "caution" | "bad";
 
@@ -32,14 +34,7 @@ export type MetricGrade = {
   tone: GradeTone;
 };
 
-const WEIGHTS = {
-  dust: 0.28,
-  temperature: 0.22,
-  precipitation: 0.16,
-  uv: 0.12,
-  humidity: 0.11,
-  wind: 0.11
-} as const;
+// 가중치·온도곡선·더위캡은 활동 프로필(lib/activity.ts)에서 온다. run = 기존 러닝콜 값 그대로.
 
 function clampScore(value: number) {
   if (!Number.isFinite(value)) {
@@ -101,17 +96,17 @@ export function scoreUv(uvIndex: number) {
   );
 }
 
-// 체감온도 기준. 러닝 최적 구간은 8~16°C.
-export function scoreTemperature(apparent: number) {
-  if (apparent >= 8 && apparent <= 16) {
+// 체감온도 기준. 최적 구간·기울기는 활동 프로필에서 (러닝 8~16°C).
+export function scoreTemperature(apparent: number, temp: TempCurve = ACTIVITIES.run.temp) {
+  if (apparent >= temp.optimalLo && apparent <= temp.optimalHi) {
     return 100;
   }
 
-  if (apparent < 8) {
-    return clampScore(100 - (8 - apparent) * 6);
+  if (apparent < temp.optimalLo) {
+    return clampScore(100 - (temp.optimalLo - apparent) * temp.coldSlope);
   }
 
-  return clampScore(100 - (apparent - 16) * 5.2);
+  return clampScore(100 - (apparent - temp.optimalHi) * temp.hotSlope);
 }
 
 export function scoreHumidity(humidity: number) {
@@ -162,8 +157,8 @@ export function scoreWind(speedMs: number) {
   );
 }
 
-// 위험 조건에서는 아무리 다른 지표가 좋아도 총점 상한을 건다.
-function applyCaps(total: number, input: HourlyInput) {
+// 위험 조건에서는 아무리 다른 지표가 좋아도 총점 상한을 건다. 더위 2단계는 활동별.
+function applyCaps(total: number, input: HourlyInput, heat: HeatCaps = ACTIVITIES.run.heat) {
   let cap = 100;
 
   if (input.precipitation >= 4) {
@@ -174,10 +169,10 @@ function applyCaps(total: number, input: HourlyInput) {
     cap = Math.min(cap, 60);
   }
 
-  if (input.apparentTemperature >= 33) {
-    cap = Math.min(cap, 35);
-  } else if (input.apparentTemperature >= 30) {
-    cap = Math.min(cap, 55);
+  if (input.apparentTemperature >= heat.hot2) {
+    cap = Math.min(cap, heat.hot2Cap);
+  } else if (input.apparentTemperature >= heat.hot1) {
+    cap = Math.min(cap, heat.hot1Cap);
   }
 
   if (input.apparentTemperature <= -10) {
@@ -201,13 +196,36 @@ function applyCaps(total: number, input: HourlyInput) {
   return Math.min(total, cap);
 }
 
-// 히어로 우측 두 줄에 자연스럽게 떨어지는 길이
-const COMMENTS: Record<ScoreTone, string[]> = {
-  excellent: ["지금 뛰기 아주 좋아요", "완벽한 러닝 타이밍이에요", "이런 날 안 뛰면 아까워요", "최고의 컨디션이에요"],
-  good: ["지금 뛰기 좋아요", "무리 없이 달리기 좋아요", "가볍게 나가기 좋은 때예요", "평소 페이스면 충분해요"],
-  fair: ["무난한 컨디션이에요", "가볍게 뛸 만해요", "짧은 코스가 어울려요", "컨디션 보며 달려봐요"],
-  caution: ["오늘은 가볍게 짧게만", "무리하지 않는 게 좋아요", "조깅 정도만 추천해요", "몸 푸는 정도가 좋아요"],
-  bad: ["오늘은 실내 운동이 나아요", "무리해서 나갈 날은 아니에요", "쉬어가도 괜찮은 날이에요", "회복에 집중할 날이에요"]
+// 히어로 우측 두 줄에 자연스럽게 떨어지는 길이. run 문구는 기존 값 그대로 (골든마스터 잠금).
+const COMMENTS: Record<ActivityKey, Record<ScoreTone, string[]>> = {
+  run: {
+    excellent: ["지금 뛰기 아주 좋아요", "완벽한 러닝 타이밍이에요", "이런 날 안 뛰면 아까워요", "최고의 컨디션이에요"],
+    good: ["지금 뛰기 좋아요", "무리 없이 달리기 좋아요", "가볍게 나가기 좋은 때예요", "평소 페이스면 충분해요"],
+    fair: ["무난한 컨디션이에요", "가볍게 뛸 만해요", "짧은 코스가 어울려요", "컨디션 보며 달려봐요"],
+    caution: ["오늘은 가볍게 짧게만", "무리하지 않는 게 좋아요", "조깅 정도만 추천해요", "몸 푸는 정도가 좋아요"],
+    bad: ["오늘은 실내 운동이 나아요", "무리해서 나갈 날은 아니에요", "쉬어가도 괜찮은 날이에요", "회복에 집중할 날이에요"]
+  },
+  walk: {
+    excellent: ["지금 걷기 아주 좋아요", "산책하기 완벽한 날이에요", "이런 날 집에만 있긴 아까워요", "바깥 공기가 최고예요"],
+    good: ["지금 걷기 좋아요", "가볍게 산책 나가기 좋아요", "동네 한 바퀴 딱 좋아요", "느긋하게 걷기 좋은 때예요"],
+    fair: ["무난하게 걸을 만해요", "짧은 산책은 충분해요", "가볍게 다녀오기 좋아요", "천천히 걸어봐요"],
+    caution: ["오늘은 짧게만 걸어요", "무리하지 않는 게 좋아요", "잠깐 바람만 쐬고 와요", "가까운 곳만 다녀와요"],
+    bad: ["오늘은 실내가 나아요", "나가기 아쉬운 날이에요", "꼭 나가야 하면 짧게만요", "쉬어가도 괜찮은 날이에요"]
+  },
+  dog: {
+    excellent: ["산책 나가기 최고예요", "강아지가 신날 날씨예요", "이런 날 산책 안 하면 서운해요", "꼬리 흔들 컨디션이에요"],
+    good: ["산책하기 좋아요", "기분 좋게 걸을 수 있어요", "여유롭게 한 바퀴 어때요", "강아지도 좋아할 날씨예요"],
+    fair: ["무난한 산책 컨디션이에요", "평소 코스로 가볍게요", "짧은 산책은 충분해요", "상태 보며 걸어봐요"],
+    caution: ["오늘은 짧은 산책만요", "배변 산책 정도만 추천해요", "그늘길 위주로 잠깐만요", "무리한 산책은 피해요"],
+    bad: ["오늘 산책은 쉬어가요", "실내 놀이가 나은 날이에요", "꼭 나가야 하면 아주 짧게만요", "강아지 건강이 우선이에요"]
+  },
+  commute: {
+    excellent: ["걸어서 출근하기 최고예요", "쾌적하게 이동할 수 있어요", "오늘 도보 이동 딱 좋아요", "걷기 좋은 출퇴근길이에요"],
+    good: ["걸어 다니기 좋아요", "이동하기 무난한 날씨예요", "가볍게 걸어서 가도 좋아요", "도보 이동 괜찮아요"],
+    fair: ["이동엔 무리 없어요", "걸을 만한 날씨예요", "평소처럼 다니면 돼요", "무난한 이동 컨디션이에요"],
+    caution: ["이동 시 대비가 필요해요", "날씨 확인하고 나서요", "가까운 길로 다녀요", "환승·지하 구간을 활용해요"],
+    bad: ["오늘은 대중교통이 나아요", "도보 이동은 피하는 게 좋아요", "이동 시간을 조정해봐요", "짧은 구간만 걸어요"]
+  }
 };
 
 function pickVariant(variants: string[], seed: number) {
@@ -235,27 +253,28 @@ export function scoreTone(score: number): ScoreTone {
   return "bad";
 }
 
-export function scoreComment(score: number, seed = 0) {
-  return pickVariant(COMMENTS[scoreTone(score)], seed);
+export function scoreComment(score: number, activity: ActivityKey = "run", seed = 0) {
+  return pickVariant(COMMENTS[activity][scoreTone(score)], seed);
 }
 
-export function calculateRunningSlot(input: HourlyInput): RunningSlot {
+export function calculateSlot(input: HourlyInput, profile: ActivityProfile): RunningSlot {
   const dustScore = scoreDust(input.pm25, input.pm10);
   const uvScore = scoreUv(input.uvIndex);
-  const temperatureScore = scoreTemperature(input.apparentTemperature);
+  const temperatureScore = scoreTemperature(input.apparentTemperature, profile.temp);
   const humidityScore = scoreHumidity(input.humidity);
   const precipitationScore = scorePrecipitation(input.precipitation, input.precipitationProbability);
   const windScore = scoreWind(input.windSpeed);
 
+  const w = profile.weights;
   const weighted =
-    dustScore * WEIGHTS.dust +
-    temperatureScore * WEIGHTS.temperature +
-    precipitationScore * WEIGHTS.precipitation +
-    uvScore * WEIGHTS.uv +
-    humidityScore * WEIGHTS.humidity +
-    windScore * WEIGHTS.wind;
+    dustScore * w.dust +
+    temperatureScore * w.temperature +
+    precipitationScore * w.precipitation +
+    uvScore * w.uv +
+    humidityScore * w.humidity +
+    windScore * w.wind;
 
-  const totalScore = clampScore(applyCaps(weighted, input));
+  const totalScore = clampScore(applyCaps(weighted, input, profile.heat));
   const hour = Number(input.time.slice(11, 13));
   const day = Number(input.time.slice(8, 10));
   const seed = day * 31 + hour;
@@ -270,9 +289,14 @@ export function calculateRunningSlot(input: HourlyInput): RunningSlot {
     humidityScore,
     precipitationScore,
     windScore,
-    comment: scoreComment(totalScore, seed),
+    comment: scoreComment(totalScore, profile.key, seed),
     tone: scoreTone(totalScore)
   };
+}
+
+// 기존 러닝콜 호환 별칭 — run 프로필로 계산 (삭제 금지)
+export function calculateRunningSlot(input: HourlyInput): RunningSlot {
+  return calculateSlot(input, ACTIVITIES.run);
 }
 
 export function gradePm25(value: number): MetricGrade {
