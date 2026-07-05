@@ -1020,16 +1020,27 @@ function JournalView({
   const todayS = fmtDate(new Date());
   const [draft, setDraft] = useState<JournalDraft>({ activities: [], note: "" });
   const [savedFlash, setSavedFlash] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  // 날짜를 새로 열 때만 원본에서 draft 초기화 (편집 중엔 draft 독립)
+  // 날짜를 새로 열 때만 원본에서 draft 초기화 (편집 중엔 draft 독립).
+  // 기록이 있으면 요약(editing=false), 없으면 바로 편집기(editing=true)
   useEffect(() => {
     if (selectedDate) {
       const e = journal[selectedDate];
       setDraft(toDraft(e ?? emptyEntry()));
+      setEditing(!e || isEntryEmpty(e));
     }
     // journal은 의도적으로 의존성 제외 — 저장 시 draft가 리셋되지 않게
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
+
+  const selectedEntry = selectedDate ? journal[selectedDate] : undefined;
+
+  // 편집기에서 나가기 — 저장된 기록이 있으면 요약으로, 없으면 캘린더로
+  function exitEditor() {
+    if (selectedEntry && !isEntryEmpty(selectedEntry)) setEditing(false);
+    else onSelectDate(null);
+  }
 
   const monthPrefix = `${ym.y}-${String(ym.m + 1).padStart(2, "0")}`;
   const recordedDays = Object.entries(journal).filter(
@@ -1056,12 +1067,14 @@ function JournalView({
   function handleSave() {
     if (!selectedDate) return;
     const entry = fromDraft(draft);
-    if (isEntryEmpty(entry)) onDeleteEntry(selectedDate);
+    const empty = isEntryEmpty(entry);
+    if (empty) onDeleteEntry(selectedDate);
     else onSaveEntry(selectedDate, entry);
     setSavedFlash(true);
     window.setTimeout(() => {
       setSavedFlash(false);
-      onSelectDate(null);
+      if (empty) onSelectDate(null);
+      else setEditing(false); // 저장 후 그날 성과 요약으로
     }, 700);
   }
 
@@ -1075,7 +1088,7 @@ function JournalView({
           </button>
         </div>
 
-        {!selectedDate ? (
+        {!editing ? (
           <>
             <div className="sheet-head journal-cal-head">
               <p className="sheet-title">📔 나의 운동 일지</p>
@@ -1104,15 +1117,19 @@ function JournalView({
                 if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
                 const ds = fmtDate(cell);
                 const dayEntry = journal[ds];
+                const hasRecord = dayEntry && !isEntryEmpty(dayEntry);
                 const isToday = ds === todayS;
                 const isFuture = ds > todayS;
+                const isSelected = ds === selectedDate;
                 return (
                   <button
                     type="button"
                     key={ds}
                     disabled={isFuture}
                     onClick={() => onSelectDate(ds)}
-                    className={`cal-cell journal-cell ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""}`}
+                    className={`cal-cell journal-cell ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""} ${
+                      hasRecord ? "has-record" : ""
+                    } ${isSelected ? "is-picked" : ""}`}
                   >
                     <span className="jc-date">{cell.getDate()}</span>
                     {dayEntry && dayEntry.activities.length > 0 ? (
@@ -1131,15 +1148,58 @@ function JournalView({
                 );
               })}
             </div>
-            <p className="journal-hint">날짜를 눌러 그날의 운동과 기분, 일기를 남겨보세요.</p>
+
+            {selectedDate && selectedEntry && !isEntryEmpty(selectedEntry) ? (
+              <div className="journal-summary">
+                <div className="js-head">
+                  <p className="js-date">{prettyDate(selectedDate)}</p>
+                  {selectedEntry.mood ? (
+                    <span className="js-mood" aria-hidden="true">
+                      {MOODS.find((m) => m.key === selectedEntry.mood)?.emoji}
+                    </span>
+                  ) : null}
+                </div>
+                {selectedEntry.activities.length > 0 ? (
+                  <ul className="js-acts">
+                    {selectedEntry.activities.map((a) => {
+                      const detail = [
+                        a.place,
+                        typeof a.distanceKm === "number" ? `${a.distanceKm}km` : null,
+                        typeof a.durationMin === "number" ? `${a.durationMin}분` : null
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return (
+                        <li key={a.key}>
+                          <span aria-hidden="true">{ACTIVITIES[a.key].emoji}</span>
+                          <b>{ACTIVITIES[a.key].label}</b>
+                          {detail ? <span className="js-detail">{detail}</span> : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
+                {selectedEntry.note.trim() ? <p className="js-note">{selectedEntry.note}</p> : null}
+                <div className="js-actions">
+                  <button type="button" className="js-close" onClick={() => onSelectDate(null)}>
+                    닫기
+                  </button>
+                  <button type="button" className="js-edit" onClick={() => setEditing(true)}>
+                    ✏️ 편집
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="journal-hint">날짜를 눌러 그날의 운동과 기분, 일기를 남겨보세요.</p>
+            )}
           </>
         ) : (
           <div className="journal-editor">
             <div className="journal-editor-top">
-              <button type="button" className="journal-back" onClick={() => onSelectDate(null)}>
+              <button type="button" className="journal-back" onClick={exitEditor}>
                 <ChevronLeft size={16} /> 달력
               </button>
-              <p className="journal-editor-date">{prettyDate(selectedDate)}</p>
+              <p className="journal-editor-date">{selectedDate ? prettyDate(selectedDate) : ""}</p>
             </div>
 
             <p className="journal-section-label">오늘 기분</p>

@@ -4178,6 +4178,31 @@ button {
   color: #cdd6e6;
 }
 
+/* 기록 있는 날 — 빨간 링 */
+.journal-cell.has-record {
+  box-shadow: inset 0 0 0 2px #e5484d;
+}
+
+/* 오늘 + 기록이면 빨간 링 유지 + 파란 점으로 오늘 구분 */
+.journal-cell.has-record.is-today::after,
+.journal-cell.is-today:not(.has-record)::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+.journal-cell.is-today {
+  position: relative;
+}
+
+.journal-cell.is-picked {
+  background: var(--brand-soft);
+}
+
 .jc-date {
   font-size: 0.84rem;
   font-weight: 800;
@@ -4205,6 +4230,102 @@ button {
   font-size: 0.82rem;
   color: var(--muted);
   text-align: center;
+}
+
+/* 날짜 성과 요약 패널 (캘린더 아래) */
+.journal-summary {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f5f8fd;
+  border: 1px solid var(--line);
+}
+
+.js-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.js-date {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 850;
+}
+
+.js-mood {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.js-acts {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.js-acts li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9rem;
+}
+
+.js-acts li span[aria-hidden] {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.js-acts li b {
+  font-weight: 800;
+}
+
+.js-detail {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.js-note {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+.js-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.js-close,
+.js-edit {
+  padding: 9px 16px;
+  border-radius: 11px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.js-close {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--ink-2);
+}
+
+.js-edit {
+  border: 0;
+  background: var(--brand);
+  color: #fff;
 }
 
 /* ── 편집기 ── */
