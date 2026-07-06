@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CITY_PRESETS, DEFAULT_CITY } from "@/lib/cities";
+import { ActivityPictogram } from "@/lib/pictograms";
 import { GUIDE_TOPICS, type GuideTopic } from "@/lib/guide";
 import { getOutfit, getOutfitPlan } from "@/lib/outfit";
 import { buildMonthGrid, currentStreak, fmtDate, monthCount, weekCount } from "@/lib/record";
@@ -348,6 +349,14 @@ function ringColor(score: number) {
   if (score >= 55) return "#ffb020";
   if (score >= 38) return "#ff8a3d";
   return "#ff5a5f";
+}
+
+// 신호 다이얼 등급 문구 — ringColor와 같은 구간 (초록 GO / 앰버 주의 / 오렌지·레드 나쁨)
+function gradeLabel(score: number) {
+  if (score >= 72) return "좋음 · GO";
+  if (score >= 55) return "보통";
+  if (score >= 38) return "주의";
+  return "나쁨";
 }
 
 // 상황에 맞는 이모지 (미세 좋음인데 마스크 같은 오류 방지)
@@ -1574,9 +1583,7 @@ function ActivityRail({
             aria-pressed={on}
             onClick={() => onChange(key)}
           >
-            <span className="act-emoji" aria-hidden="true">
-              {item.emoji}
-            </span>
+            <ActivityPictogram activity={key} className="act-picto" />
             {variant === "rail" ? (
               <span className="act-rail-label">{item.label}</span>
             ) : (
@@ -2370,9 +2377,7 @@ export default function Home() {
                             setIsMenuOpen(false);
                           }}
                         >
-                          <span className="da-emoji" aria-hidden="true">
-                            {item.emoji}
-                          </span>
+                          <ActivityPictogram activity={key} className="act-picto da-picto" />
                           <strong>{item.label}</strong>
                         </button>
                       );
@@ -2692,8 +2697,16 @@ export default function Home() {
               <div className="content-cols">
                 <div className="col-main">
 
-              {/* HERO — 좌: 점수만 크게 / 우: 문구 + 이유 + 조건 2개 */}
-              <section className="hero">
+              {/* HERO — 출발선 신호 다이얼: 픽토그램 + 대형 점수 + 등급칩, 링이 점수만큼 차오름 */}
+              <section
+                className="hero"
+                style={
+                  {
+                    "--p": isTomorrow ? view.best.totalScore : view.reference.totalScore,
+                    "--sig": ringColor(isTomorrow ? view.best.totalScore : view.reference.totalScore)
+                  } as React.CSSProperties
+                }
+              >
                 <div className="hero-top">
                   <span className="hero-cond">
                     <Clock size={14} />
@@ -2704,47 +2717,44 @@ export default function Home() {
                       : `지금 ${profile.label} 컨디션`}
                   </span>
                 </div>
-                <div className="gauge-row">
-                  <div
-                    className="gauge"
-                    style={
-                      {
-                        "--p": isTomorrow ? view.best.totalScore : view.reference.totalScore,
-                        "--ring": ringColor(isTomorrow ? view.best.totalScore : view.reference.totalScore)
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div className="gauge-num">
-                      {isTomorrow ? view.best.totalScore : view.reference.totalScore}
-                      <span>점</span>
+                <div className="dial-wrap">
+                  <div className="dial-glow" aria-hidden="true" />
+                  <div className="dial">
+                    <div className="dial-in">
+                      <ActivityPictogram activity={activity} className="dial-picto" />
+                      <span className="dial-eyebrow">{isTomorrow ? "내일 점수" : "오늘 점수"}</span>
+                      <div className="dial-score">{isTomorrow ? view.best.totalScore : view.reference.totalScore}</div>
+                      <span className="dial-grade">
+                        {gradeLabel(isTomorrow ? view.best.totalScore : view.reference.totalScore)}
+                      </span>
                     </div>
                   </div>
-                  <div className="hero-copy">
-                    <FitText
-                      className="hero-h1"
-                      text={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
-                      maxPx={29}
-                      minPx={17}
-                    />
-                    <FitText
-                      className="hero-why"
-                      text={heroSubline(isTomorrow ? view.best : view.reference, activity)}
-                      maxPx={17}
-                      minPx={12}
-                    />
-                    <div className="status-chips">
-                      {chips.map((chip) => (
-                        <button
-                          key={chip.key}
-                          type="button"
-                          className={`status-chip status-${chip.tone}`}
-                          onClick={() => setSheetKey(chip.key === "temp" ? "feel" : chip.key)}
-                        >
-                          {chipIcon(chip)}
-                          {chip.label}
-                        </button>
-                      ))}
-                    </div>
+                </div>
+                <div className="hero-copy">
+                  <FitText
+                    className="hero-h1"
+                    text={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
+                    maxPx={27}
+                    minPx={17}
+                  />
+                  <FitText
+                    className="hero-why"
+                    text={heroSubline(isTomorrow ? view.best : view.reference, activity)}
+                    maxPx={16}
+                    minPx={12}
+                  />
+                  <div className="status-chips">
+                    {chips.map((chip) => (
+                      <button
+                        key={chip.key}
+                        type="button"
+                        className={`status-chip status-${chip.tone}`}
+                        onClick={() => setSheetKey(chip.key === "temp" ? "feel" : chip.key)}
+                      >
+                        {chipIcon(chip)}
+                        {chip.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </section>
