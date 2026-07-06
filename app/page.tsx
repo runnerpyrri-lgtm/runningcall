@@ -15,7 +15,6 @@ import {
   RefreshCw,
   Search,
   Share2,
-  Shirt,
   Sparkles,
   Star,
   Sun,
@@ -26,10 +25,8 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CITY_PRESETS, DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
-import { getOutfit, getOutfitPlan } from "@/lib/outfit";
+import { getOutfitPlan } from "@/lib/outfit";
 import {
-  composeOneLiner,
-  getRankedWindows,
   getDayParts,
   getMetricDetail,
   heroHeadline,
@@ -294,6 +291,9 @@ function gradeLabel(score: number) {
   if (score >= 38) return "주의";
   return "나쁨";
 }
+
+// 추천 시간대에 올릴 최소 점수(보통 이상). 이 밑(주의·나쁨)은 억지로 추천하지 않고 뺀다.
+const RECO_MIN = 55;
 
 // 상황에 맞는 이모지 (미세 좋음인데 마스크 같은 오류 방지)
 function precipEmoji(prob: number) {
@@ -1109,8 +1109,7 @@ export default function Home() {
         currentTime: null as string | null,
         delta: best.totalScore - todayBest.totalScore,
         deltaLabel: "오늘보다",
-        parts,
-        rankedWindows: getRankedWindows(slots, false, hour, activity)
+        parts
       };
     }
 
@@ -1126,16 +1125,10 @@ export default function Home() {
       currentTime: current.time,
       delta: compareWithYesterday(current, forecast.yesterday),
       deltaLabel: "어제보다",
-      parts,
-      rankedWindows: getRankedWindows(slots, true, hour, activity)
+      parts
     };
   }, [forecast, isTomorrow, nowHour, activity]);
 
-  const outfit = useMemo(() => (view ? getOutfit(view.reference, activity) : null), [view, activity]);
-  const oneLiner = useMemo(
-    () => (view ? composeOneLiner(isTomorrow ? view.best : view.reference, isTomorrow, activity) : ""),
-    [view, isTomorrow, activity]
-  );
 
   // 애견산책 — 산책 신호등·추천 길이·발바닥·체크리스트 (현재/최적 기준)
   const dogPlan = useMemo(() => {
@@ -1354,18 +1347,6 @@ export default function Home() {
     });
   }
 
-  // 랭킹 카드 탭 → 그 구간 시작 시각 기준 알림 설정
-  function openWindowAlarm(startHour: number) {
-    const slot = view?.slots.find((s) => s.hour === startHour);
-    if (!slot) return;
-    setAlarmTarget({
-      id: slot.time,
-      label: `추천 ${profile.label}`,
-      timeLabel: formatHour(slot),
-      targetMs: slotToMs(slot.time)
-    });
-  }
-
   async function saveAlarm(leadMin: number, popup: boolean) {
     if (!alarmTarget) return;
     if (popup && canNotify && Notification.permission !== "granted") {
@@ -1488,9 +1469,6 @@ export default function Home() {
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
 
-  // 아침·낮·저녁이 모두 지났고, 지금 이후 추천 구간도 없을 때만 안내
-  const allDayPartsPast =
-    !isTomorrow && view ? view.parts.every((part) => part.past) && view.rankedWindows.length === 0 : false;
   const ready = !isLoading && view;
 
   return (
@@ -1863,163 +1841,104 @@ export default function Home() {
                 </section>
               ) : null}
 
-              {/* 오늘/내일 추천 시간대 — 2시간 구간 1·2·3등 */}
-              {view.rankedWindows.length > 0 ? (
-                <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
-                  <div className="section-title ranks-title">
-                    <b>
-                      {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
-                    </b>
-                    <small>2시간 · 점수순</small>
-                  </div>
-                  <div className="rank-list">
-                    {view.rankedWindows.map((win, index) => {
-                      const isNow = !isTomorrow && win.startHour === nowHour;
-                      const hasAlarm = view.slots.some(
-                        (s) => s.hour === win.startHour && alarms.some((a) => a.id === s.time)
-                      );
-                      return (
-                        <button
-                          type="button"
-                          className={`rank-card rank-${index + 1} ${isNow ? "is-now" : ""}`}
-                          key={win.startHour}
-                          onClick={() => openWindowAlarm(win.startHour)}
-                        >
-                          <span className="rank-badge">{index + 1}</span>
-                          <div className="rank-body">
-                            <p className="rank-time">
-                              {fmtAmPm(win.startHour)} ~ {fmtAmPm(win.startHour + 2)}
-                              {isNow ? <em className="rank-now">{profile.terms.nowTag}</em> : null}
-                              {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
-                            </p>
-                            <div className="rank-metrics">
-                              <span>🌡️ 체감 {win.feel}°</span>
-                              <span>{precipEmoji(win.precipProb)} 강수 {win.precipProb}%</span>
-                              <span>{dustEmoji(win.dustLabel)} 미세 {win.dustLabel}</span>
-                              <span>{windEmoji(win.windLabel)} 바람 {win.windLabel}</span>
-                            </div>
-                          </div>
-                          <span className="rank-score" style={{ color: ringColor(win.score) }}>
-                            {win.score}
-                            <small>점</small>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ) : (
-                <section className="rec-card rec-empty">
-                  <p className="rec-eyebrow">{isTomorrow ? `내일 ${profile.label} 전망` : "오늘 추천 시간대"}</p>
-                  <p className="rec-none">
-                    {isTomorrow
-                      ? "내일은 딱 추천할 만한 시간대가 없어요."
-                      : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
-                  </p>
-                  {!isTomorrow && hasTomorrow ? (
-                    <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
-                      내일 시간대 보기 <ChevronRight size={16} />
-                    </button>
-                  ) : null}
-                </section>
-              )}
-
                 </div>
                 <div className="col-side">
 
-              {/* 아침·낮·저녁 각 구간에서 가장 뛰기 좋은 시각 (탭 → 알림) */}
-              <section className="dayparts" aria-label="아침 낮 저녁 베스트 시각">
-                <div className="section-title ranks-title">
-                  <b>{view.parts.map((p) => p.label).join("·")} 베스트</b>
-                  <small>탭하면 알림 설정</small>
-                </div>
-                <div className={`dayparts-grid cols-${view.parts.length}`}>
-                  {view.parts.map((part) => {
-                    const isBest = !part.past && part.best && part.best.time === view.best.time;
-                    const blocked = !part.past && !part.best;
-                    const hasAlarm = part.best ? alarms.some((a) => a.id === part.best!.time) : false;
-                    const clickable = !!part.best && !part.past;
-                    return (
-                      <button
-                        key={part.key}
-                        type="button"
-                        disabled={!clickable}
-                        onClick={() => openAlarm(part)}
-                        className={`daypart ${part.past ? "is-past" : ""} ${isBest ? "is-best" : ""} ${
-                          blocked ? "is-blocked" : ""
-                        }`}
-                      >
-                        {hasAlarm ? <BellRing size={14} className="dp-bell" /> : null}
-                        <span className="dp-label">{part.label}</span>
-                        {part.past ? (
-                          <span className="dp-score dp-none">지난 시간</span>
-                        ) : part.best ? (
-                          <>
-                            <strong className="dp-time">{formatHour(part.best)}</strong>
-                            <span className="dp-score" style={{ color: ringColor(part.best.totalScore) }}>
-                              {part.rainy ? `${profile.terms.rainyTag} ${part.best.totalScore}점` : `${part.best.totalScore}점`}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="dp-score dp-blocked">{profile.terms.blockedTag}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {allDayPartsPast ? (
-                  <p className="dayparts-done">오늘 추천 시간은 모두 지났어요. 내일 컨디션을 확인해볼까요?</p>
-                ) : null}
-              </section>
+              {/* 추천 시간대 — 아침·낮·저녁 중 '추천할 만한'(RECO_MIN 이상) 블록만. 낮게 나오면 억지로 안 넣음 */}
+              {(() => {
+                const goodParts = view.parts.filter((p) => !p.past && p.best && p.best.totalScore >= RECO_MIN);
+                const hasUpcoming = view.parts.some((p) => !p.past);
+                return (
+                  <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
+                    <div className="section-title ranks-title">
+                      <b>
+                        {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
+                      </b>
+                      <small>시간대별 베스트</small>
+                    </div>
+                    {goodParts.length > 0 ? (
+                      <div className="rank-list">
+                        {goodParts.map((part) => {
+                          const best = part.best!;
+                          const isNow = !isTomorrow && nowHour >= part.range[0] && nowHour <= part.range[1];
+                          const isBest = best.time === view.best.time;
+                          const hasAlarm = alarms.some((a) => a.id === best.time);
+                          return (
+                            <button
+                              type="button"
+                              key={part.key}
+                              className={`rank-card daypart-card ${isBest ? "is-best" : ""} ${isNow ? "is-now" : ""}`}
+                              onClick={() => openAlarm(part)}
+                            >
+                              <span className="rank-badge daypart-badge">{part.label}</span>
+                              <div className="rank-body">
+                                <p className="rank-time">
+                                  {formatHour(best)}
+                                  {isBest ? (
+                                    <em className="rank-now">오늘 베스트</em>
+                                  ) : isNow ? (
+                                    <em className="rank-now">지금 딱</em>
+                                  ) : null}
+                                  {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
+                                </p>
+                                <div className="rank-metrics">
+                                  <span>🌡️ 체감 {Math.round(best.apparentTemperature)}°</span>
+                                  <span>
+                                    {precipEmoji(best.precipitationProbability)} 강수{" "}
+                                    {Math.round(best.precipitationProbability)}%
+                                  </span>
+                                  <span>
+                                    {dustEmoji(gradePm25(best.pm25).label)} 미세 {gradePm25(best.pm25).label}
+                                  </span>
+                                  <span>
+                                    {windEmoji(gradeWind(best.windSpeed).label)} 바람 {gradeWind(best.windSpeed).label}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="rank-score" style={{ color: ringColor(best.totalScore) }}>
+                                {best.totalScore}
+                                <small>점</small>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rec-empty-body">
+                        <p className="rec-none">
+                          {isTomorrow
+                            ? `내일은 ${profile.label}하기 좋은 시간대가 없어요.`
+                            : hasUpcoming
+                            ? `오늘은 남은 시간 중 ${profile.label}하기 좋은 때가 없어요.`
+                            : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
+                        </p>
+                        {!isTomorrow && hasTomorrow ? (
+                          <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
+                            내일 시간대 보기 <ChevronRight size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                  </section>
+                );
+              })()}
 
-              {/* 일출 · 일몰 — 밝은 시간대 판단용 */}
+              {/* 일출 · 일몰 — 슬림 한 줄(숫자 위주) */}
               {sunrise && sunset ? (
-                <div className="sun-cards" aria-label="일출과 일몰">
-                  <div className="sun-card sun-rise">
-                    <span className="sun-ic" aria-hidden="true">
-                      🌅
-                    </span>
-                    <div>
-                      <small>일출</small>
-                      <strong>{sunrise}</strong>
-                    </div>
-                  </div>
-                  <div className="sun-card sun-set">
-                    <span className="sun-ic" aria-hidden="true">
-                      🌇
-                    </span>
-                    <div>
-                      <small>일몰</small>
-                      <strong>{sunset}</strong>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* 복장 */}
-              <button type="button" className="outfit-chip" onClick={() => setIsOutfitOpen(true)}>
-                <span className="ci ci-green">
-                  <Shirt size={19} />
-                </span>
-                <div className="outfit-text">
-                  <small>{profile.terms.outfitTitle} · 눌러서 자세히</small>
-                  <strong>
-                    {outfit?.main ?? "-"}
-                    {outfit && outfit.extras.length > 0 ? ` · ${outfit.extras.join(" · ")}` : ""}
-                  </strong>
-                </div>
-                <ChevronRight size={20} className="chip-arrow" />
-              </button>
-
-              {/* 오늘의 한마디 */}
-              <section className="oneliner">
-                <div className="oneliner-head">
+                <div className="suntimes" aria-label="일출과 일몰">
                   <span>
-                    <Sparkles size={15} /> 오늘의 한마디
+                    <b>일출</b>
+                    {sunrise}
+                  </span>
+                  <span className="suntimes-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>
+                    <b>일몰</b>
+                    {sunset}
                   </span>
                 </div>
-                <p>{oneLiner}</p>
-              </section>
+              ) : null}
 
               <AdSlot />
 

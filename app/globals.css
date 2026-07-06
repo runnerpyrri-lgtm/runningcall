@@ -2119,52 +2119,31 @@ button {
 
 /* ---------- sun row ---------- */
 /* ---------- 일출·일몰 카드 ---------- */
-.sun-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.sun-card {
+/* 일출·일몰 — 부차 정보라 슬림 한 줄, 숫자 위주 */
+.suntimes {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 13px 15px;
-  border-radius: 16px;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
-.sun-rise {
-  background: linear-gradient(135deg, rgba(255, 180, 61, 0.2), rgba(255, 180, 61, 0.06));
-  border-color: rgba(255, 180, 61, 0.4);
-}
-
-.sun-set {
-  background: linear-gradient(135deg, rgba(139, 116, 255, 0.22), rgba(139, 116, 255, 0.07));
-  border-color: rgba(139, 116, 255, 0.4);
-}
-
-.sun-ic {
-  font-size: 1.7rem;
-  line-height: 1;
-}
-
-.sun-card small {
-  display: block;
-  font-size: 0.8rem;
+.suntimes b {
   font-weight: 700;
   color: var(--muted);
+  margin-right: 6px;
 }
 
-.sun-card strong {
-  display: block;
-  font-size: 1.28rem;
-  font-weight: 850;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
+.suntimes-sep {
+  color: var(--line);
 }
 
 /* ---------- 시간대별 옷차림 ---------- */
@@ -3043,6 +3022,49 @@ button {
 .rank-body {
   flex: 1;
   min-width: 0;
+}
+
+/* 시간대별 추천 카드 — 배지가 숫자 대신 아침/낮/저녁 라벨 */
+.daypart-card::before {
+  display: none;
+}
+
+.daypart-badge {
+  width: auto;
+  min-width: 46px;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.daypart-card.is-best {
+  border-color: rgba(43, 213, 118, 0.55);
+  box-shadow: 0 14px 30px -16px rgba(18, 184, 102, 0.5);
+}
+
+.daypart-card.is-best .daypart-badge {
+  color: #04140b;
+  background: var(--good);
+}
+
+.daypart-card.is-muted {
+  opacity: 0.55;
+}
+
+.rank-muted {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rec-empty-body {
+  padding: 2px 2px 4px;
 }
 
 .rank-time {
