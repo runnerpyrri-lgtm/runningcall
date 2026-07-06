@@ -41,7 +41,7 @@ import {
   type LocationPoint,
   type RawForecast
 } from "@/lib/weather";
-import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, getHikePlan, type ActivityKey } from "@/lib/activity";
+import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
@@ -1130,54 +1130,6 @@ export default function Home() {
   }, [forecast, isTomorrow, nowHour, activity]);
 
 
-  // 애견산책 — 산책 신호등·추천 길이·발바닥·체크리스트 (현재/최적 기준)
-  const dogPlan = useMemo(() => {
-    if (activity !== "dog" || !view) return null;
-    const ref = isTomorrow ? view.best : view.reference;
-    return getDogPlan({
-      score: ref.totalScore,
-      hour: ref.hour,
-      temperature: ref.temperature,
-      apparentTemperature: ref.apparentTemperature,
-      uvIndex: ref.uvIndex,
-      precipitation: ref.precipitation,
-      precipitationProbability: ref.precipitationProbability
-    });
-  }, [activity, view, isTomorrow]);
-
-  // 등산 — 하산 마감·일출·안전 신호·조망·준비물 (내일 탭이면 내일 일출·일몰 사용)
-  const hikePlan = useMemo(() => {
-    if (activity !== "hike" || !view || !forecast) return null;
-    const ref = isTomorrow ? view.best : view.reference;
-    return getHikePlan({
-      hour: ref.hour,
-      temperature: ref.temperature,
-      apparentTemperature: ref.apparentTemperature,
-      humidity: ref.humidity,
-      uvIndex: ref.uvIndex,
-      windSpeed: ref.windSpeed,
-      windGust: ref.windGust,
-      precipitation: ref.precipitation,
-      precipitationProbability: ref.precipitationProbability,
-      weatherCode: ref.weatherCode,
-      visibility: ref.visibility,
-      cloudCover: ref.cloudCover,
-      snowfall: ref.snowfall,
-      pm25: ref.pm25,
-      sunrise: isTomorrow ? forecast.sunriseTomorrow : forecast.sunrise,
-      sunset: isTomorrow ? forecast.sunsetTomorrow : forecast.sunset
-    });
-  }, [activity, view, isTomorrow, forecast]);
-
-  // 자전거 — 강풍 위험 안내
-  const bikeWind = useMemo(() => {
-    if (activity !== "bike" || !view) return null;
-    const ref = isTomorrow ? view.best : view.reference;
-    if (ref.windSpeed >= 11) return { level: "danger" as const, text: "강풍이에요. 자전거가 휘청일 수 있으니 다리·둑길을 조심하세요." };
-    if (ref.windSpeed >= 7) return { level: "caution" as const, text: "바람이 조금 있어요. 맞바람 구간은 속도를 낮추세요." };
-    return null;
-  }, [activity, view, isTomorrow]);
-
   function rememberLocation(loc: LocationPoint, detail?: string) {
     setSaved((prev) => {
       const key = locKey(loc);
@@ -1766,80 +1718,6 @@ export default function Home() {
                   </div>
                 </div>
               </section>
-
-              {/* 애견산책 전용 — 산책 신호등·추천 길이·발바닥·챙길 것 */}
-              {dogPlan ? (
-                <section className={`dog-plan dog-${dogPlan.signal}`} aria-label="산책 안내">
-                  <div className="dog-signal">
-                    <span className="dog-dot" aria-hidden="true" />
-                    <strong>{dogPlan.signalText}</strong>
-                    <span className="dog-length">{dogPlan.walkLength}</span>
-                  </div>
-                  <p className="dog-reason">{dogPlan.reason}</p>
-                  {dogPlan.alternative ? <p className="dog-alt">💡 {dogPlan.alternative}</p> : null}
-                  <div className={`dog-paw paw-${dogPlan.paw.level}`}>
-                    <span aria-hidden="true">
-                      {dogPlan.paw.level === "danger" ? "🚨" : dogPlan.paw.level === "caution" ? "⚠️" : "🐾"}
-                    </span>
-                    <div>
-                      <b>{dogPlan.paw.title}</b>
-                      <p>{dogPlan.paw.detail}</p>
-                    </div>
-                  </div>
-                  <p className="dog-care">🧴 {dogPlan.careTip}</p>
-                  <ul className="dog-check">
-                    {dogPlan.checklist.map((c) => (
-                      <li key={c}>{c}</li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              {/* 등산 전용 — 하산 마감·일출·안전 신호·조망·준비물 */}
-              {hikePlan ? (
-                <section className="hike-plan" aria-label="등산 안내">
-                  {hikePlan.descentDeadline ? (
-                    <div className="hike-descent">
-                      <span aria-hidden="true">🌄</span>
-                      <div>
-                        <b>{hikePlan.sunsetText} · 하산 여유 확인</b>
-                        <p>
-                          {hikePlan.descentDeadline}. {hikePlan.summitNote}
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-                  {hikePlan.sunrisePlan ? <p className="hike-sunrise">🌅 {hikePlan.sunrisePlan}</p> : null}
-                  {hikePlan.signals.length > 0 ? (
-                    <ul className="hike-signals">
-                      {hikePlan.signals.map((s) => (
-                        <li key={s.text} className={`hs-${s.level}`}>
-                          <span aria-hidden="true">{s.emoji}</span> {s.text}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  <p className="hike-view">👁️ {hikePlan.view}</p>
-                  <ul className="hike-check">
-                    {hikePlan.checklist.map((c) => (
-                      <li key={c}>{c}</li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              {/* 자전거 — 강풍 위험 안내 */}
-              {bikeWind ? (
-                <section className={`advisory advisory-${bikeWind.level}`} aria-label="바람 안내">
-                  <span className="advisory-emoji" aria-hidden="true">
-                    💨
-                  </span>
-                  <div className="advisory-body">
-                    <strong>{bikeWind.level === "danger" ? "강풍 주의" : "바람 주의"}</strong>
-                    <p>{bikeWind.text}</p>
-                  </div>
-                </section>
-              ) : null}
 
                 </div>
                 <div className="col-side">
