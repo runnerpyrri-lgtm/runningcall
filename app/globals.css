@@ -587,6 +587,88 @@ button {
   white-space: nowrap;
 }
 
+/* 판정 서브행 — 조언 한 줄 + 어제 대비 델타 칩 */
+.hero-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.hero-why {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.hero-delta {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-delta.up {
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 16%, transparent);
+}
+
+.hero-delta.down {
+  color: var(--bad-deep);
+  background: color-mix(in srgb, var(--bad) 16%, transparent);
+}
+
+/* 히어로 내장 6지표 그리드 — 탭하면 상세 시트 */
+.hero-metrics {
+  width: 100%;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.hm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.hm:active {
+  transform: scale(0.97);
+}
+
+.hm-v {
+  font-size: 1.12rem;
+  font-weight: 850;
+  color: #fff;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-v em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 1px;
+}
+
+.hm-l {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
 .status-chips {
   display: flex;
   flex-wrap: wrap;
@@ -4213,32 +4295,6 @@ button {
 
 .journal-btn .act-rail-label {
   color: var(--brand-deep);
-}
-
-@media (min-width: 1200px) {
-  .dashboard-frame {
-    grid-template-columns: 218px minmax(0, 1fr);
-    max-width: 1340px;
-    column-gap: 24px;
-    align-items: start;
-  }
-
-  .activity-rail {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: sticky;
-    top: 22px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 14px 12px;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .activity-tabs {
-    display: none;
-  }
 }
 
 /* 애견 플랜 — 판정 이유·대안·케어팁 (v0.4.2) */

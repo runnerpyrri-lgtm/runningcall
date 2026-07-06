@@ -1,8 +1,30 @@
-# v0.8.0 "출발선" 컨텍스트 노트
+# 러닝콜 컨텍스트 노트
 
 작업 중 내린 결정과 이유. 다음 세션이 재추론 없이 이어가기 위한 기록.
 
-## 2026-07-06
+## 2026-07-06 — v0.9.0 "판단에 집중"
+
+- **기록 기능 전면 삭제(사용자 요청)**: 운동 일지·도전과제·기록 탭·좌측 드로어·PC
+  레일 모두 제거. page.tsx에서 관련 상태/이펙트/컴포넌트 삭제, lib 파일
+  `journal`·`achievements`·`activity-record`·`record`·`guide` 삭제(+해당 테스트 3개).
+  롤백은 v0.8 태그/브랜치 또는 git 히스토리로. **재도입 요청 시** 저 lib들을 히스토리에서
+  되살리면 됨.
+- **어제 델타는 발명하지 않음**: `view.delta`(=`compareWithYesterday(current, forecast.yesterday)`)가
+  이미 실제 어제 데이터를 쓰고 있어서 그대로 히어로 칩에 노출. `delta===0`이거나 null이면 칩 숨김.
+  → 별도 로컬 히스토리 저장 불필요.
+- **6지표 그리드는 다이얼과 같은 ref 사용**: `metricRef = isTomorrow ? view.best : view.reference`.
+  기존 reasonRows가 항상 reference를 쓰던 것을 metricRef로 교체(내일 탭 일관성).
+- **미세먼지 셀만 등급어(보통/나쁨)** 표시, 나머지는 수치+단위(사진 무드 반영).
+- **데스크탑 그리드 함정**: 레일 제거 후 `@media(min-width:1200px)`의
+  `grid-template-columns:218px minmax(0,1fr)` + `.activity-tabs{display:none}`가
+  남아 있어 앱이 218px로 짜부되고 탭이 사라졌음 → 그 블록 통째로 삭제해야 정상.
+- **현재위치 폴백**: 1차 고정밀(timeout 9s) 실패 시 2차 저정밀(enableHighAccuracy:false,
+  timeout 15s)로 재시도. PERMISSION_DENIED는 즉시 에러. 실내 GPS 타임아웃이 "갑자기
+  인식 못 함"의 흔한 원인이라 이걸로 완화.
+- **launch.json 경합**: 워크스페이스 루트 `.claude/launch.json`을 척이 세션과 공유 →
+  덮어쓰지 말고 configurations에 `runningcall-dev`(포트 3456) 추가하는 식으로.
+
+## 2026-07-06 — v0.8.0 "출발선"
 
 - **방향 확정 경위**: 시안 3라운드(4+4+변주) 끝에 "출발선(Start Signal)" 확정.
   아스팔트 네이비(#0E1420) + 신호등 시그널 컬러. 점수는 /100 없이 큰 신호
