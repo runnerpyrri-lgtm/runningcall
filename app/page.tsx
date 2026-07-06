@@ -796,6 +796,109 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
   );
 }
 
+// 시간당 강수량(mm) → 알아듣기 쉬운 한글 (시각을 누르면 위에 표시)
+function rainInfo(mm: number): { label: string; desc: string } {
+  if (mm <= 0) return { label: "비 없음", desc: "비 소식 없어요" };
+  if (mm < 1) return { label: "이슬비", desc: "아주 약해요 · 우산 없어도 괜찮아요" };
+  if (mm < 3) return { label: "약한 비", desc: "우산 챙기면 좋아요" };
+  if (mm < 7) return { label: "보통 비", desc: "우산 꼭 챙기세요" };
+  if (mm < 15) return { label: "꽤 오는 비", desc: "옷 많이 젖어요 · 실내가 나아요" };
+  if (mm < 30) return { label: "강한 비", desc: "야외 활동은 힘들어요" };
+  return { label: "폭우", desc: "오늘은 실내에서 쉬어요" };
+}
+
+// 비 타임라인 — 오늘(남은)·내일을 시간별 막대로. 막대=강수량, 진하기=확률, 탭하면 위에 쉬운 설명
+function RainTimeline({ today, tomorrow }: { today: RunningSlot[]; tomorrow: RunningSlot[] }) {
+  const rows = [
+    { key: "today", label: "오늘", slots: today },
+    { key: "tomorrow", label: "내일", slots: tomorrow }
+  ].filter((r) => r.slots.length > 0);
+
+  // 기본 선택 = 강수량이 가장 큰 시각(오늘 우선), 비 없으면 첫 시각
+  const [sel, setSel] = useState(() => {
+    for (let r = 0; r < rows.length; r++) {
+      let bi = -1;
+      let bm = 0;
+      rows[r].slots.forEach((s, i) => {
+        if (s.precipitation > bm) {
+          bm = s.precipitation;
+          bi = i;
+        }
+      });
+      if (bi >= 0) return { row: r, i: bi };
+    }
+    return { row: 0, i: 0 };
+  });
+
+  const maxMm = Math.max(3, ...today.concat(tomorrow).map((s) => s.precipitation));
+  const selSlot = rows[sel.row]?.slots[sel.i] ?? null;
+  const selInfo = selSlot ? rainInfo(selSlot.precipitation) : null;
+
+  const firstRain = (slots: RunningSlot[]) => slots.find((s) => s.precipitation >= 0.1) ?? null;
+  const tRain = firstRain(today);
+  const mRain = firstRain(tomorrow);
+  const summary =
+    !tRain && !mRain
+      ? "오늘·내일 비 소식 없어요"
+      : [tRain ? `오늘 ${fmtAmPm(tRain.hour)}부터 비` : "오늘 비 없음", mRain ? `내일 ${fmtAmPm(mRain.hour)}부터 비` : null]
+          .filter(Boolean)
+          .join(" · ");
+
+  return (
+    <section className="rain" aria-label="비 예보">
+      <div className="rain-head">
+        <span className="rain-title">☔ 비 예보</span>
+        <span className="rain-sum">{summary}</span>
+      </div>
+
+      {selSlot && selInfo ? (
+        <div className={`rain-detail ${selSlot.precipitation > 0 ? "wet" : "dry"}`}>
+          <b>{fmtAmPm(selSlot.hour)}</b>
+          <span className="rd-mm">{selSlot.precipitation > 0 ? `${selSlot.precipitation.toFixed(1)}mm` : "0mm"}</span>
+          {selSlot.precipitation > 0 ? (
+            <span className="rd-prob">확률 {Math.round(selSlot.precipitationProbability)}%</span>
+          ) : null}
+          <span className="rd-desc">{selInfo.desc}</span>
+        </div>
+      ) : null}
+
+      {rows.map((row, r) => {
+        const step = Math.max(1, Math.ceil(row.slots.length / 6));
+        return (
+          <div className="rain-row" key={row.key}>
+            <span className="rain-lab">{row.label}</span>
+            <div className="rain-bars">
+              {row.slots.map((s, i) => {
+                const wet = s.precipitation > 0;
+                const h = wet ? Math.max(22, (s.precipitation / maxMm) * 100) : 6;
+                const op = wet ? 0.42 + (s.precipitationProbability / 100) * 0.58 : 1;
+                const isSel = r === sel.row && i === sel.i;
+                const showLab = i % step === 0 || isSel;
+                const hour24 = ((s.hour % 24) + 24) % 24;
+                return (
+                  <button
+                    key={s.time}
+                    type="button"
+                    className={`rb${wet ? " wet" : ""}${isSel ? " sel" : ""}`}
+                    onClick={() => setSel({ row: r, i })}
+                    aria-label={`${fmtAmPm(s.hour)} ${wet ? `${s.precipitation.toFixed(1)}mm` : "비 없음"}`}
+                  >
+                    <span className="rb-mm">{wet ? s.precipitation.toFixed(s.precipitation < 1 ? 1 : 0) : ""}</span>
+                    <span className="rb-track">
+                      <span className="rb-fill" style={{ height: `${h}%`, opacity: op }} />
+                    </span>
+                    <span className="rb-h">{showLab ? `${hour24}시` : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export default function Home() {
   const [location, setLocation] = useState<LocationPoint>(DEFAULT_LOCATION);
   const [rawForecast, setRawForecast] = useState<RawForecast | null>(null);
@@ -1649,6 +1752,15 @@ export default function Home() {
                   </div>
                 </div>
               </section>
+
+              {/* 비 예보 — 오늘(남은)·내일 시간별 강수 타임라인 (히어로 바로 밑, 비는 중요하니까) */}
+              {forecast ? (
+                <RainTimeline
+                  key={location.name}
+                  today={forecast.slots.filter((s) => s.hour >= (nowHour >= 0 ? nowHour : 0))}
+                  tomorrow={forecast.tomorrow}
+                />
+              ) : null}
 
                 </div>
                 <div className="col-side">

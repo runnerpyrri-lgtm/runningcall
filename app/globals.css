@@ -2227,6 +2227,165 @@ button {
   }
 }
 
+/* ---------- 비 예보 타임라인 ---------- */
+.rain {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.rain-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.rain-title {
+  font-size: 0.98rem;
+  font-weight: 850;
+}
+
+.rain-sum {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: right;
+  word-break: keep-all;
+}
+
+.rain-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 13px;
+  border-radius: 13px;
+  margin-bottom: 13px;
+  font-size: 0.85rem;
+  background: rgba(61, 155, 255, 0.1);
+  border: 1px solid rgba(61, 155, 255, 0.28);
+}
+
+.rain-detail.dry {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.rain-detail b {
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: #fff;
+}
+
+.rd-mm {
+  font-weight: 800;
+  color: #7cc0ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.rain-detail.dry .rd-mm {
+  color: var(--muted);
+}
+
+.rd-prob {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-desc {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+.rain-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rain-lab {
+  width: 26px;
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--muted);
+  padding-bottom: 20px;
+}
+
+.rain-bars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.rb {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.rb-mm {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #7cc0ff;
+  height: 11px;
+  line-height: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-track {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: box-shadow 0.14s ease;
+}
+
+.rb-fill {
+  width: 100%;
+  background: #2a3648;
+  border-radius: 4px 4px 0 0;
+}
+
+.rb.wet .rb-fill {
+  background: #3d9bff;
+}
+
+.rb.sel .rb-track {
+  box-shadow: inset 0 0 0 1.5px rgba(124, 192, 255, 0.85);
+}
+
+.rb-h {
+  font-size: 8.5px;
+  color: var(--muted);
+  height: 11px;
+  line-height: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb.sel .rb-h {
+  color: #7cc0ff;
+  font-weight: 800;
+}
+
 /* ---------- 준비물 버튼 (탭 대신 시트 진입) ---------- */
 .prep-btn {
   display: flex;
