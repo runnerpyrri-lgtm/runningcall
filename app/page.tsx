@@ -5,15 +5,12 @@ import {
   AlertCircle,
   BellRing,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Clock,
   CloudRain,
-  CloudSun,
   Droplets,
   Haze,
   LocateFixed,
-  Menu,
   Plus,
   RefreshCw,
   Search,
@@ -29,18 +26,14 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CITY_PRESETS, DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
-import { GUIDE_TOPICS, type GuideTopic } from "@/lib/guide";
 import { getOutfit, getOutfitPlan } from "@/lib/outfit";
-import { buildMonthGrid, currentStreak, fmtDate, monthCount, weekCount } from "@/lib/record";
 import {
   composeOneLiner,
-  getConditionChips,
   getRankedWindows,
   getDayParts,
   getMetricDetail,
   heroHeadline,
   heroSubline,
-  type ConditionChip,
   type MetricKey as DetailKey
 } from "@/lib/insights";
 import {
@@ -52,49 +45,10 @@ import {
   type RawForecast
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, getDogPlan, getHikePlan, type ActivityKey } from "@/lib/activity";
-import {
-  DEFAULT_GOALS,
-  emptyLog,
-  loadGoals,
-  loadLog,
-  recordButtonLabel,
-  saveGoals,
-  saveLog,
-  toggleDay,
-  type ActivityGoal,
-  type ActivityLog
-} from "@/lib/activity-record";
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
-import {
-  BADGES_SEEN_KEY,
-  GROUP_ORDER,
-  computeStats,
-  evaluateBadges,
-  evaluateSeries,
-  loadSeen,
-  newlyEarned,
-  saveSeen,
-  type Badge,
-  type SeriesProgress
-} from "@/lib/achievements";
-import {
-  ACTIVITY_JOURNAL_FIELDS,
-  MOODS,
-  deleteEntry,
-  emptyEntry,
-  emptyJournal,
-  isEntryEmpty,
-  loadJournal,
-  saveJournal,
-  setEntry,
-  type ActivityRecord,
-  type Journal,
-  type JournalEntry,
-  type MoodKey
-} from "@/lib/journal";
 
-// 활동 내부 탭 (판단 / 준비 / 기록 / 가이드)
-type InnerTab = "today" | "prep" | "record" | "guide";
+// 활동 내부 탭 (판단 / 준비 / 가이드)
+type InnerTab = "today" | "prep" | "guide";
 import {
   gradeHumidity,
   gradePm25,
@@ -102,7 +56,6 @@ import {
   gradeTemperature,
   gradeUv,
   gradeWind,
-  type MetricGrade,
   type RunningSlot
 } from "@/lib/scoring";
 
@@ -118,23 +71,6 @@ const DEFAULT_LOCATION: LocationPoint = {
   longitude: DEFAULT_CITY.longitude,
   source: "city"
 };
-
-const CHIP_ICONS: Record<ConditionChip["key"], React.ReactNode> = {
-  precip: <CloudRain size={15} />,
-  dust: <Haze size={15} />,
-  temp: <Thermometer size={15} />,
-  uv: <Sun size={15} />,
-  wind: <Wind size={15} />,
-  humidity: <Droplets size={15} />
-};
-
-// 조건칩 아이콘 — 비는 상태에 맞게(비 없으면 맑음 아이콘)
-function chipIcon(chip: ConditionChip) {
-  if (chip.key === "precip") {
-    return chip.tone === "good" ? <CloudSun size={15} /> : <CloudRain size={15} />;
-  }
-  return CHIP_ICONS[chip.key];
-}
 
 // read: 차트에 표시할 실제 값 / score: 러닝 관점 점수(0~100, 높을수록 러닝에 좋음)
 const METRICS: Array<{
@@ -373,10 +309,6 @@ function dustEmoji(label: string) {
 
 function windEmoji(label: string) {
   return label === "약함" ? "🍃" : "💨";
-}
-
-function toneBadge(grade: MetricGrade) {
-  return `pill pill-${grade.tone}`;
 }
 
 function TimelineChart({
@@ -804,163 +736,6 @@ function GuideView({ activity, slot }: { activity: ActivityKey; slot: RunningSlo
   );
 }
 
-function GuideSheet({ topic, onClose }: { topic: GuideTopic; onClose: () => void }) {
-  return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={topic.title} onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-topbar">
-          <div className="sheet-grip" aria-hidden="true" />
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="sheet-head">
-          <p className="sheet-title">
-            {topic.emoji} {topic.tagline}
-          </p>
-          <div className="sheet-value-row">
-            <p className="sheet-value guide-title">{topic.title}</p>
-          </div>
-        </div>
-
-        <div className="guide-body">
-          {topic.sections.map((section, index) => (
-            <div className="guide-section" key={index}>
-              {section.heading ? <h3>{section.heading}</h3> : null}
-              {section.body ? <p>{section.body}</p> : null}
-              {section.list ? (
-                <ul>
-                  {section.list.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 활동별 기록 (내부 "기록" 탭에 인라인) — 오늘 체크·연속일·목표·달력
-function RecordView({
-  activity,
-  daySet,
-  goal,
-  onToggle,
-  onSetGoal
-}: {
-  activity: ActivityKey;
-  daySet: Set<string>;
-  goal: ActivityGoal;
-  onToggle: (dateStr: string) => void;
-  onSetGoal: (goal: ActivityGoal) => void;
-}) {
-  const today = new Date();
-  const todayS = fmtDate(today);
-  const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const grid = buildMonthGrid(ym.y, ym.m);
-  const streak = currentStreak(daySet, today);
-  const wk = weekCount(daySet, today);
-  const mo = monthCount(daySet, ym.y, ym.m);
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-  const doneNow = goal.period === "month" ? monthCount(daySet, today.getFullYear(), today.getMonth()) : wk;
-  const goalOptions = goal.period === "month" ? [1, 2, 3, 4] : [2, 3, 4, 5, 6, 7];
-  const periodLabel = goal.period === "month" ? "이번 달" : "이번 주";
-  const todayDone = daySet.has(todayS);
-
-  const shift = (delta: number) => {
-    const d = new Date(ym.y, ym.m + delta, 1);
-    setYm({ y: d.getFullYear(), m: d.getMonth() });
-  };
-
-  return (
-    <section className="record-view" aria-label={`${ACTIVITIES[activity].label} 기록`}>
-      <button
-        type="button"
-        className={`record-toggle ${todayDone ? "done" : ""}`}
-        onClick={() => onToggle(todayS)}
-      >
-        {todayDone ? "오늘 완료! 🎉 (취소하려면 다시)" : recordButtonLabel(activity)}
-      </button>
-
-      <div className="rec-stats">
-        <div className="rs-item rs-fire">
-          <strong>{streak}</strong>
-          <small>연속 일 🔥</small>
-        </div>
-        <div className="rs-item">
-          <strong>
-            {doneNow}
-            <span>/{goal.count}</span>
-          </strong>
-          <small>{periodLabel} 목표</small>
-        </div>
-        <div className="rs-item">
-          <strong>{mo}</strong>
-          <small>이번 달 누적</small>
-        </div>
-      </div>
-
-      <p className="rec-goal-label">{ACTIVITIES[activity].label} 목표 ({goal.period === "month" ? "월간" : "주간"})</p>
-      <div className="rec-goals">
-        {goalOptions.map((g) => (
-          <button
-            key={g}
-            type="button"
-            className={`rec-goal ${goal.count === g ? "on" : ""}`}
-            onClick={() => onSetGoal({ count: g, period: goal.period })}
-          >
-            {goal.period === "month" ? "월" : "주"} {g}회
-          </button>
-        ))}
-      </div>
-
-      <div className="cal-nav">
-        <button type="button" onClick={() => shift(-1)} aria-label="이전 달">
-          <ChevronLeft size={18} />
-        </button>
-        <strong>
-          {ym.y}년 {ym.m + 1}월
-        </strong>
-        <button type="button" onClick={() => shift(1)} aria-label="다음 달">
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      <div className="cal-grid">
-        {weekdays.map((w) => (
-          <span className={`cal-wd ${w === "일" ? "sun" : w === "토" ? "sat" : ""}`} key={w}>
-            {w}
-          </span>
-        ))}
-        {grid.map((cell, i) => {
-          if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
-          const ds = fmtDate(cell);
-          const isDone = daySet.has(ds);
-          const isToday = ds === todayS;
-          const isFuture = ds > todayS;
-          return (
-            <button
-              type="button"
-              key={ds}
-              disabled={isFuture}
-              onClick={() => onToggle(ds)}
-              className={`cal-cell ${isDone ? "is-run" : ""} ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""}`}
-            >
-              {cell.getDate()}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="cal-hint">날짜를 눌러 기록을 표시하거나 지울 수 있어요. 활동별로 따로 저장돼요.</p>
-    </section>
-  );
-}
-
 // 활동별 실전 준비·가이드 블록 렌더
 function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[] }) {
   return (
@@ -975,493 +750,6 @@ function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[
           </ul>
         </div>
       ))}
-    </div>
-  );
-}
-
-// 편집 중 숫자 필드는 문자열로 보관(소수점 입력 보존), 저장 시 숫자로 변환
-type DraftActivity = { key: ActivityKey; distanceKm?: string; durationMin?: string; place?: string };
-type JournalDraft = { activities: DraftActivity[]; mood?: MoodKey; note: string };
-
-const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
-
-function prettyDate(ds: string): string {
-  const [y, m, d] = ds.split("-").map(Number);
-  const wd = WEEKDAY_KO[new Date(y, m - 1, d).getDay()];
-  return `${m}월 ${d}일 ${wd}요일`;
-}
-
-function toDraft(entry: JournalEntry): JournalDraft {
-  return {
-    activities: entry.activities.map((a) => ({
-      key: a.key,
-      distanceKm: a.distanceKm?.toString(),
-      durationMin: a.durationMin?.toString(),
-      place: a.place
-    })),
-    mood: entry.mood,
-    note: entry.note
-  };
-}
-
-function fromDraft(draft: JournalDraft): JournalEntry {
-  const activities: ActivityRecord[] = draft.activities.map((a) => {
-    const rec: ActivityRecord = { key: a.key };
-    const d = a.distanceKm != null && a.distanceKm !== "" ? Number(a.distanceKm) : NaN;
-    const t = a.durationMin != null && a.durationMin !== "" ? Number(a.durationMin) : NaN;
-    if (Number.isFinite(d) && d >= 0) rec.distanceKm = d;
-    if (Number.isFinite(t) && t >= 0) rec.durationMin = t;
-    if (a.place && a.place.trim()) rec.place = a.place.trim();
-    return rec;
-  });
-  return { activities, mood: draft.mood, note: draft.note };
-}
-
-// 전체 운동 일지 — 월 캘린더(활동 이모지) ↔ 날짜별 다이어리 편집기(기분·활동 기록·일기)
-function JournalView({
-  journal,
-  ym,
-  onShiftMonth,
-  selectedDate,
-  onSelectDate,
-  onSaveEntry,
-  onDeleteEntry,
-  onClose
-}: {
-  journal: Journal;
-  ym: { y: number; m: number };
-  onShiftMonth: (delta: number) => void;
-  selectedDate: string | null;
-  onSelectDate: (date: string | null) => void;
-  onSaveEntry: (date: string, entry: JournalEntry) => void;
-  onDeleteEntry: (date: string) => void;
-  onClose: () => void;
-}) {
-  const grid = buildMonthGrid(ym.y, ym.m);
-  const todayS = fmtDate(new Date());
-  const [draft, setDraft] = useState<JournalDraft>({ activities: [], note: "" });
-  const [savedFlash, setSavedFlash] = useState(false);
-  const [editing, setEditing] = useState(false);
-
-  // 날짜를 새로 열 때만 원본에서 draft 초기화 (편집 중엔 draft 독립).
-  // 기록이 있으면 요약(editing=false), 없으면 바로 편집기(editing=true)
-  useEffect(() => {
-    if (selectedDate) {
-      const e = journal[selectedDate];
-      setDraft(toDraft(e ?? emptyEntry()));
-      setEditing(!e || isEntryEmpty(e));
-    }
-    // journal은 의도적으로 의존성 제외 — 저장 시 draft가 리셋되지 않게
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
-
-  const selectedEntry = selectedDate ? journal[selectedDate] : undefined;
-
-  // 편집기에서 나가기 — 저장된 기록이 있으면 요약으로, 없으면 캘린더로
-  function exitEditor() {
-    if (selectedEntry && !isEntryEmpty(selectedEntry)) setEditing(false);
-    else onSelectDate(null);
-  }
-
-  const monthPrefix = `${ym.y}-${String(ym.m + 1).padStart(2, "0")}`;
-  const recordedDays = Object.entries(journal).filter(
-    ([d, e]) => d.startsWith(monthPrefix) && !isEntryEmpty(e)
-  ).length;
-
-  function toggleAct(key: ActivityKey) {
-    setDraft((d) => {
-      const has = d.activities.some((a) => a.key === key);
-      return {
-        ...d,
-        activities: has ? d.activities.filter((a) => a.key !== key) : [...d.activities, { key }]
-      };
-    });
-  }
-
-  function setField(key: ActivityKey, field: "distanceKm" | "durationMin" | "place", value: string) {
-    setDraft((d) => ({
-      ...d,
-      activities: d.activities.map((a) => (a.key === key ? { ...a, [field]: value } : a))
-    }));
-  }
-
-  function handleSave() {
-    if (!selectedDate) return;
-    const entry = fromDraft(draft);
-    const empty = isEntryEmpty(entry);
-    if (empty) onDeleteEntry(selectedDate);
-    else onSaveEntry(selectedDate, entry);
-    setSavedFlash(true);
-    window.setTimeout(() => {
-      setSavedFlash(false);
-      if (empty) onSelectDate(null);
-      else setEditing(false); // 저장 후 그날 성과 요약으로
-    }, 700);
-  }
-
-  return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="운동 일지" onClick={onClose}>
-      <div className="sheet journal-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-topbar">
-          <div className="sheet-grip" aria-hidden="true" />
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
-            <X size={18} />
-          </button>
-        </div>
-
-        {!editing ? (
-          <>
-            <div className="sheet-head journal-cal-head">
-              <p className="sheet-title">📔 나의 운동 일지</p>
-              <span className="journal-month-count">이번 달 {recordedDays}일 기록</span>
-            </div>
-
-            <div className="cal-nav">
-              <button type="button" onClick={() => onShiftMonth(-1)} aria-label="이전 달">
-                <ChevronLeft size={18} />
-              </button>
-              <strong>
-                {ym.y}년 {ym.m + 1}월
-              </strong>
-              <button type="button" onClick={() => onShiftMonth(1)} aria-label="다음 달">
-                <ChevronRight size={18} />
-              </button>
-            </div>
-
-            <div className="cal-grid journal-grid">
-              {WEEKDAY_KO.map((w) => (
-                <span className={`cal-wd ${w === "일" ? "sun" : w === "토" ? "sat" : ""}`} key={w}>
-                  {w}
-                </span>
-              ))}
-              {grid.map((cell, i) => {
-                if (!cell) return <span className="cal-cell empty" key={`e${i}`} />;
-                const ds = fmtDate(cell);
-                const dayEntry = journal[ds];
-                const hasRecord = dayEntry && !isEntryEmpty(dayEntry);
-                const isToday = ds === todayS;
-                const isFuture = ds > todayS;
-                const isSelected = ds === selectedDate;
-                return (
-                  <button
-                    type="button"
-                    key={ds}
-                    disabled={isFuture}
-                    onClick={() => onSelectDate(ds)}
-                    className={`cal-cell journal-cell ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""} ${
-                      hasRecord ? "has-record" : ""
-                    } ${isSelected ? "is-picked" : ""}`}
-                  >
-                    <span className="jc-date">{cell.getDate()}</span>
-                    {dayEntry && dayEntry.activities.length > 0 ? (
-                      <span className="jc-icons">
-                        {dayEntry.activities.slice(0, 2).map((a) => (
-                          <span key={a.key} aria-hidden="true">
-                            {ACTIVITIES[a.key].emoji}
-                          </span>
-                        ))}
-                        {dayEntry.activities.length > 2 ? (
-                          <span className="jc-more">+{dayEntry.activities.length - 2}</span>
-                        ) : null}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedDate && selectedEntry && !isEntryEmpty(selectedEntry) ? (
-              <div className="journal-summary">
-                <div className="js-head">
-                  <p className="js-date">{prettyDate(selectedDate)}</p>
-                  {selectedEntry.mood ? (
-                    <span className="js-mood" aria-hidden="true">
-                      {MOODS.find((m) => m.key === selectedEntry.mood)?.emoji}
-                    </span>
-                  ) : null}
-                </div>
-                {selectedEntry.activities.length > 0 ? (
-                  <ul className="js-acts">
-                    {selectedEntry.activities.map((a) => {
-                      const detail = [
-                        a.place,
-                        typeof a.distanceKm === "number" ? `${a.distanceKm}km` : null,
-                        typeof a.durationMin === "number" ? `${a.durationMin}분` : null
-                      ]
-                        .filter(Boolean)
-                        .join(" · ");
-                      return (
-                        <li key={a.key}>
-                          <span aria-hidden="true">{ACTIVITIES[a.key].emoji}</span>
-                          <b>{ACTIVITIES[a.key].label}</b>
-                          {detail ? <span className="js-detail">{detail}</span> : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-                {selectedEntry.note.trim() ? <p className="js-note">{selectedEntry.note}</p> : null}
-                <div className="js-actions">
-                  <button type="button" className="js-close" onClick={() => onSelectDate(null)}>
-                    닫기
-                  </button>
-                  <button type="button" className="js-edit" onClick={() => setEditing(true)}>
-                    ✏️ 편집
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="journal-hint">날짜를 눌러 그날의 운동과 기분, 일기를 남겨보세요.</p>
-            )}
-          </>
-        ) : (
-          <div className="journal-editor">
-            <div className="journal-editor-top">
-              <button type="button" className="journal-back" onClick={exitEditor}>
-                <ChevronLeft size={16} /> 달력
-              </button>
-              <p className="journal-editor-date">{selectedDate ? prettyDate(selectedDate) : ""}</p>
-            </div>
-
-            <p className="journal-section-label">오늘 기분</p>
-            <div className="journal-moods">
-              {MOODS.map((mood) => (
-                <button
-                  key={mood.key}
-                  type="button"
-                  className={`journal-mood${draft.mood === mood.key ? " on" : ""}`}
-                  aria-pressed={draft.mood === mood.key}
-                  onClick={() => setDraft((d) => ({ ...d, mood: d.mood === mood.key ? undefined : mood.key }))}
-                >
-                  <span className="jm-emoji" aria-hidden="true">
-                    {mood.emoji}
-                  </span>
-                  <small>{mood.label}</small>
-                </button>
-              ))}
-            </div>
-
-            <p className="journal-section-label">무슨 운동을 했나요?</p>
-            <div className="journal-activity-picks">
-              {ACTIVITY_ORDER.map((key) => {
-                const rec = draft.activities.find((a) => a.key === key);
-                const on = Boolean(rec);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`journal-pick${on ? " on" : ""}`}
-                    onClick={() => toggleAct(key)}
-                  >
-                    <span className="jp-emoji" aria-hidden="true">
-                      {ACTIVITIES[key].emoji}
-                    </span>
-                    {ACTIVITIES[key].label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {draft.activities.length > 0 ? (
-              <div className="journal-fields">
-                {ACTIVITY_ORDER.filter((k) => draft.activities.some((a) => a.key === k)).map((key) => {
-                  const rec = draft.activities.find((a) => a.key === key)!;
-                  return (
-                    <div className="jf-row" key={key}>
-                      <span className="jf-act">
-                        <span aria-hidden="true">{ACTIVITIES[key].emoji}</span> {ACTIVITIES[key].label}
-                      </span>
-                      <div className="jf-inputs">
-                        {ACTIVITY_JOURNAL_FIELDS[key].map((f) => (
-                          <label className="jf-field" key={f.key}>
-                            <span className="jf-label">{f.label}</span>
-                            <span className="jf-input">
-                              <input
-                                type="text"
-                                inputMode={f.kind === "number" ? "decimal" : "text"}
-                                value={rec[f.key] ?? ""}
-                                placeholder={f.placeholder ?? ""}
-                                onChange={(e) => setField(key, f.key, e.target.value)}
-                              />
-                              {f.unit ? <em>{f.unit}</em> : null}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            <p className="journal-section-label">오늘의 일기</p>
-            <textarea
-              className="journal-note"
-              placeholder="오늘 어땠나요? 코스·컨디션·느낀 점을 남겨보세요."
-              value={draft.note}
-              maxLength={500}
-              onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-            />
-
-            <div className="journal-footer">
-              <button type="button" className="journal-cancel" onClick={() => onSelectDate(null)}>
-                취소
-              </button>
-              <button type="button" className="journal-save" onClick={handleSave}>
-                {savedFlash ? "저장됨 ✓" : "저장"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// 도전과제 — 시리즈 컬렉션(카드 + 아코디언 사다리·NEW), 소급 달성
-function AchievementsView({
-  series,
-  seen,
-  onClose
-}: {
-  series: SeriesProgress[];
-  seen: string[];
-  onClose: () => void;
-}) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const seenSet = new Set(seen);
-  const total = series.reduce((sum, s) => sum + s.total, 0);
-  const earned = series.reduce((sum, s) => sum + s.level, 0);
-  const pct = total ? Math.round((earned / total) * 100) : 0;
-  const byGroup = GROUP_ORDER.map((group) => ({
-    group,
-    items: series.filter((s) => s.series.group === group)
-  })).filter((g) => g.items.length > 0);
-
-  return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="도전과제" onClick={onClose}>
-      <div className="sheet achievements-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-topbar">
-          <div className="sheet-grip" aria-hidden="true" />
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="sheet-head">
-          <p className="sheet-title">🏅 도전과제</p>
-          <div className="ach-hero">
-            <div className="ach-ring" style={{ "--pct": `${pct}` } as React.CSSProperties}>
-              <span className="ach-ring-num">{pct}%</span>
-            </div>
-            <div className="ach-hero-text">
-              <strong>
-                {earned.toLocaleString()} <em>/ {total.toLocaleString()}</em>
-              </strong>
-              <span>달성한 뱃지</span>
-            </div>
-          </div>
-        </div>
-
-        {byGroup.map((g) => (
-          <section className="ach-group" key={g.group}>
-            <p className="ach-group-label">{g.group}</p>
-            <div className="ach-series-list">
-              {g.items.map((sp) => {
-                const isOpen = expanded === sp.series.id;
-                const done = sp.nextThreshold === null;
-                const barPct = Math.round((sp.level / sp.total) * 100);
-                return (
-                  <div className={`ach-series${isOpen ? " open" : ""}`} key={sp.series.id}>
-                    <button
-                      type="button"
-                      className="ach-series-head"
-                      onClick={() => setExpanded(isOpen ? null : sp.series.id)}
-                    >
-                      <span className="ach-series-emoji" aria-hidden="true">
-                        {sp.series.emoji}
-                      </span>
-                      <span className="ach-series-main">
-                        <span className="ach-series-top">
-                          <b>{sp.series.name}</b>
-                          <span className="ach-series-lv">Lv {sp.level}</span>
-                        </span>
-                        <span className="ach-series-bar">
-                          <span className="ach-series-fill" style={{ width: `${barPct}%` }} />
-                        </span>
-                        <span className="ach-series-sub">
-                          {done ? (
-                            <span className="ach-series-done">완주 ✓</span>
-                          ) : (
-                            <>
-                              다음: {sp.nextThreshold}
-                              {sp.series.unit}
-                            </>
-                          )}
-                          <span className="ach-series-count">
-                            {sp.level} / {sp.total}
-                          </span>
-                        </span>
-                      </span>
-                      <ChevronRight size={17} className={`ach-series-arrow${isOpen ? " open" : ""}`} />
-                    </button>
-
-                    {isOpen ? (
-                      <div className="ach-ladder">
-                        {sp.series.thresholds.map((t) => {
-                          const id = `${sp.series.id}@${t}`;
-                          const got = sp.value >= t;
-                          const isNext = t === sp.nextThreshold;
-                          const isNew = got && !seenSet.has(id);
-                          return (
-                            <div
-                              key={id}
-                              className={`ach-step${got ? " got" : ""}${isNext ? " next" : ""}`}
-                            >
-                              {isNew ? <span className="ach-new">NEW</span> : null}
-                              <span className="ach-step-emoji" aria-hidden="true">
-                                {sp.series.emoji}
-                              </span>
-                              <span className="ach-step-title">{sp.series.titleFor(t)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// 뱃지 획득 축하 팝업 — 다수 달성 시 상위 몇 개 + "외 N개"
-function CelebrationModal({ badges, onClose }: { badges: Badge[]; onClose: () => void }) {
-  const shown = badges.slice(0, 4);
-  const rest = badges.length - shown.length;
-  return (
-    <div className="celebrate-backdrop" role="dialog" aria-modal="true" aria-label="뱃지 획득" onClick={onClose}>
-      <div className="celebrate-card" onClick={(event) => event.stopPropagation()}>
-        <p className="celebrate-title">🎉 뱃지 {badges.length}개 획득!</p>
-        <div className="celebrate-badges">
-          {shown.map((b) => (
-            <div className={`celebrate-badge tier-${b.tier}`} key={b.id}>
-              <span className="celebrate-emoji" aria-hidden="true">
-                {b.emoji}
-              </span>
-              <strong>{b.title}</strong>
-            </div>
-          ))}
-        </div>
-        {rest > 0 ? <p className="celebrate-rest">외 {rest}개 달성!</p> : null}
-        <button type="button" className="celebrate-ok" onClick={onClose}>
-          확인
-        </button>
-      </div>
     </div>
   );
 }
@@ -1557,21 +845,10 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
 }
 
 // 활동 선택 — 데스크탑 좌측 레일(rail, 큰 글자) / 모바일 상단 탭(tabs)
-function ActivityRail({
-  activity,
-  onChange,
-  variant,
-  onOpenJournal,
-  onOpenAchievements
-}: {
-  activity: ActivityKey;
-  onChange: (next: ActivityKey) => void;
-  variant: "rail" | "tabs";
-  onOpenJournal?: () => void;
-  onOpenAchievements?: () => void;
-}) {
+// 활동 선택 pill 탭 (걷기·애견산책·러닝·등산·자전거)
+function ActivityRail({ activity, onChange }: { activity: ActivityKey; onChange: (next: ActivityKey) => void }) {
   return (
-    <nav className={variant === "rail" ? "activity-rail" : "activity-tabs"} aria-label="활동 선택">
+    <nav className="activity-tabs" aria-label="활동 선택">
       {ACTIVITY_ORDER.map((key) => {
         const item = ACTIVITIES[key];
         const on = key === activity;
@@ -1584,33 +861,10 @@ function ActivityRail({
             onClick={() => onChange(key)}
           >
             <ActivityPictogram activity={key} className="act-picto" />
-            {variant === "rail" ? (
-              <span className="act-rail-label">{item.label}</span>
-            ) : (
-              <span className="act-label">{item.short}</span>
-            )}
+            <span className="act-label">{item.short}</span>
           </button>
         );
       })}
-      {variant === "rail" && onOpenJournal ? (
-        <>
-          <div className="rail-sep" aria-hidden="true" />
-          <button type="button" className="act-item journal-btn" onClick={onOpenJournal}>
-            <span className="act-emoji" aria-hidden="true">
-              📔
-            </span>
-            <span className="act-rail-label">운동 일지</span>
-          </button>
-          {onOpenAchievements ? (
-            <button type="button" className="act-item journal-btn" onClick={onOpenAchievements}>
-              <span className="act-emoji" aria-hidden="true">
-                🏅
-              </span>
-              <span className="act-rail-label">도전과제</span>
-            </button>
-          ) : null}
-        </>
-      ) : null}
     </nav>
   );
 }
@@ -1626,8 +880,6 @@ export default function Home() {
   const [dayMode, setDayMode] = useState<DayMode>("today");
   const [sheetKey, setSheetKey] = useState<DetailKey | null>(null);
   const [isOutfitOpen, setIsOutfitOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [guideTopic, setGuideTopic] = useState<GuideTopic | null>(null);
   const [toast, setToast] = useState("");
   const [alarms, setAlarms] = useState<AlarmConfig[]>([]);
   const [alarmTarget, setAlarmTarget] = useState<{ id: string; label: string; timeLabel: string; targetMs: number } | null>(
@@ -1644,26 +896,8 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchNote, setSearchNote] = useState("");
   const [saved, setSaved] = useState<SavedLocation[]>([]);
-  const [activityLog, setActivityLog] = useState<ActivityLog>(emptyLog);
-  const [goals, setGoals] = useState(DEFAULT_GOALS);
-  const [isRecordRestored, setIsRecordRestored] = useState(false);
   const [innerTab, setInnerTab] = useState<InnerTab>("today");
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
-  const [journal, setJournalState] = useState<Journal>(emptyJournal);
-  const [isJournalRestored, setIsJournalRestored] = useState(false);
-  const [isJournalOpen, setIsJournalOpen] = useState(false);
-  const [journalYm, setJournalYm] = useState(() => {
-    const d = new Date();
-    return { y: d.getFullYear(), m: d.getMonth() };
-  });
-  const [journalSelectedDate, setJournalSelectedDate] = useState<string | null>(null);
-  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
-  const [badgesSeen, setBadgesSeen] = useState<string[]>([]);
-  const [celebration, setCelebration] = useState<Badge[]>([]);
-
-  const badgeStats = useMemo(() => computeStats(journal, activityLog), [journal, activityLog]);
-  const evaluatedBadges = useMemo(() => evaluateBadges(badgeStats), [badgeStats]);
-  const seriesProgress = useMemo(() => evaluateSeries(badgeStats), [badgeStats]);
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
     setIsLoading(true);
@@ -1771,13 +1005,6 @@ export default function Home() {
     }
   }, [saved]);
 
-  // 활동별 기록 복원 (신규 키 없으면 기존 runlog에서 1회 마이그레이션) — 마운트 시 1회
-  useEffect(() => {
-    setActivityLog(loadLog());
-    setGoals(loadGoals());
-    setIsRecordRestored(true);
-  }, []);
-
   // 활동별 마지막 위치 복원
   useEffect(() => {
     try {
@@ -1795,73 +1022,6 @@ export default function Home() {
       // 무시
     }
   }, [activityLocations]);
-
-  // 운동 일지 복원·저장
-  useEffect(() => {
-    setJournalState(loadJournal());
-    setIsJournalRestored(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isJournalRestored) return;
-    saveJournal(journal);
-  }, [journal, isJournalRestored]);
-
-  // 도전과제 — seen 복원 + 신규 달성 감지(최초 실행은 조용히 baseline)
-  const badgesInitRef = useRef(false);
-  const seenRef = useRef<string[]>([]);
-  useEffect(() => {
-    if (!isJournalRestored || !isRecordRestored) return;
-    if (!badgesInitRef.current) {
-      badgesInitRef.current = true;
-      const raw = window.localStorage.getItem(BADGES_SEEN_KEY);
-      if (raw === null) {
-        // 최초: 지금까지 달성한 뱃지를 baseline으로 조용히 저장(팝업 없음)
-        const ids = evaluatedBadges.filter((e) => e.earned).map((e) => e.badge.id);
-        seenRef.current = ids;
-        setBadgesSeen(ids);
-        saveSeen(ids);
-        return;
-      }
-      const seen = loadSeen();
-      const fresh = newlyEarned(evaluatedBadges, seen);
-      const merged = fresh.length ? [...seen, ...fresh.map((b) => b.id)] : seen;
-      seenRef.current = merged;
-      setBadgesSeen(merged);
-      if (fresh.length) {
-        saveSeen(merged);
-        setCelebration(fresh);
-      }
-      return;
-    }
-    // 이후: 저장 등으로 달성 상태가 바뀌면 새 뱃지 축하
-    const fresh = newlyEarned(evaluatedBadges, seenRef.current);
-    if (fresh.length) {
-      const merged = [...seenRef.current, ...fresh.map((b) => b.id)];
-      seenRef.current = merged;
-      setBadgesSeen(merged);
-      saveSeen(merged);
-      setCelebration((q) => [...q, ...fresh]);
-    }
-  }, [evaluatedBadges, isJournalRestored, isRecordRestored]);
-
-  // 복원 완료 후에만 저장 (초기 빈 값이 기존 기록을 덮어쓰지 않게)
-  useEffect(() => {
-    if (!isRecordRestored) return;
-    saveLog(activityLog);
-  }, [activityLog, isRecordRestored]);
-
-  useEffect(() => {
-    if (!isRecordRestored) return;
-    saveGoals(goals);
-  }, [goals, isRecordRestored]);
-
-  // 현재 선택 활동의 기록 Set
-  const runSet = useMemo(() => new Set(activityLog[activity]), [activityLog, activity]);
-
-  function toggleRunDay(dateStr: string) {
-    setActivityLog((prev) => toggleDay(prev, activity, dateStr));
-  }
 
   // 활동 선택 복원·저장
   useEffect(() => {
@@ -1972,10 +1132,6 @@ export default function Home() {
   }, [forecast, isTomorrow, nowHour, activity]);
 
   const outfit = useMemo(() => (view ? getOutfit(view.reference, activity) : null), [view, activity]);
-  const chips = useMemo(
-    () => (view ? getConditionChips(isTomorrow ? view.best : view.reference).slice(0, 2) : []),
-    [view, isTomorrow]
-  );
   const oneLiner = useMemo(
     () => (view ? composeOneLiner(isTomorrow ? view.best : view.reference, isTomorrow, activity) : ""),
     [view, isTomorrow, activity]
@@ -2119,26 +1275,44 @@ export default function Home() {
     }
 
     setLocationStep("gps");
+
+    const onSuccess = async (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      setLocationStep("address");
+      const name = await fetchLocationName(latitude, longitude).catch(() => "현재 위치 근처");
+      setLocationStep("weather");
+      chooseLocation({ name, latitude, longitude, source: "gps" });
+      setIsLocating(false);
+      setLocationStep("idle");
+    };
+
+    const onError = (failure: GeolocationPositionError) => {
+      setLocationStep(failure.code === failure.PERMISSION_DENIED ? "blocked" : "idle");
+      setError(
+        failure.code === failure.PERMISSION_DENIED
+          ? "위치 권한이 거부됐어요. 주소창 왼쪽 사이트 설정에서 위치를 허용한 뒤 다시 눌러주세요."
+          : "현재 위치를 찾지 못했어요. 검색이나 도시 선택으로도 점수를 볼 수 있어요."
+      );
+      setIsLocating(false);
+    };
+
+    // 1차 고정밀(GPS). 타임아웃·불가면 2차로 저정밀(와이파이·기지국) 재시도 —
+    // "갑자기 인식 못 함"의 흔한 원인(실내 GPS 타임아웃)을 완화한다.
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setLocationStep("address");
-        const name = await fetchLocationName(latitude, longitude).catch(() => "현재 위치 근처");
-        setLocationStep("weather");
-        chooseLocation({ name, latitude, longitude, source: "gps" });
-        setIsLocating(false);
-        setLocationStep("idle");
-      },
+      onSuccess,
       (failure) => {
-        setLocationStep(failure.code === failure.PERMISSION_DENIED ? "blocked" : "idle");
-        setError(
-          failure.code === failure.PERMISSION_DENIED
-            ? "위치 권한이 거부됐어요. 주소창 왼쪽 사이트 설정에서 위치를 허용한 뒤 다시 눌러주세요."
-            : "현재 위치를 찾지 못했어요. 검색이나 도시 선택으로도 점수를 볼 수 있어요."
-        );
-        setIsLocating(false);
+        if (failure.code === failure.PERMISSION_DENIED) {
+          onError(failure);
+          return;
+        }
+        setLocationStep("gps");
+        navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+          enableHighAccuracy: false,
+          timeout: 15000,
+          maximumAge: 1000 * 60 * 30
+        });
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 1000 * 60 * 10 }
+      { enableHighAccuracy: true, timeout: 9000, maximumAge: 1000 * 60 * 5 }
     );
   }
 
@@ -2234,16 +1408,21 @@ export default function Home() {
     setToast("알림을 껐어요");
   }
 
+  // 지표 그리드는 다이얼과 같은 기준(오늘=현재 / 내일=베스트)을 쓴다
+  const metricRef = view ? (isTomorrow ? view.best : view.reference) : null;
+  // 어제 대비 점수 변화 (없으면 null → 칩 숨김)
+  const scoreDelta = view ? view.delta : null;
+  const deltaWord = view ? view.deltaLabel.replace("보다", "") : "";
   const reasonRows =
-    view !== null
+    metricRef
       ? [
           {
             key: "feel" as DetailKey,
             icon: <Thermometer size={19} />,
-            label: "체감온도",
-            value: view.reference.apparentTemperature.toFixed(1),
-            unit: "°C",
-            grade: gradeTemperature(view.reference.apparentTemperature),
+            label: "체감",
+            value: `${Math.round(metricRef.apparentTemperature)}`,
+            unit: "°",
+            grade: gradeTemperature(metricRef.apparentTemperature),
             iconClass: "ci-blue"
           },
           {
@@ -2251,47 +1430,47 @@ export default function Home() {
             icon: <CloudRain size={19} />,
             label: "강수",
             value:
-              view.reference.precipitation >= 0.1
-                ? view.reference.precipitation.toFixed(1)
-                : `${Math.round(view.reference.precipitationProbability)}`,
-            unit: view.reference.precipitation >= 0.1 ? "mm" : "%",
-            grade: gradePrecipitation(view.reference.precipitation, view.reference.precipitationProbability),
+              metricRef.precipitation >= 0.1
+                ? metricRef.precipitation.toFixed(1)
+                : `${Math.round(metricRef.precipitationProbability)}`,
+            unit: metricRef.precipitation >= 0.1 ? "mm" : "%",
+            grade: gradePrecipitation(metricRef.precipitation, metricRef.precipitationProbability),
             iconClass: "ci-teal"
           },
           {
             key: "dust" as DetailKey,
             icon: <Haze size={19} />,
             label: "미세먼지",
-            value: view.reference.pm25.toFixed(0),
-            unit: "㎍/m³",
-            grade: gradePm25(view.reference.pm25),
+            value: gradePm25(metricRef.pm25).label,
+            unit: "",
+            grade: gradePm25(metricRef.pm25),
             iconClass: "ci-green"
           },
           {
             key: "uv" as DetailKey,
             icon: <Sun size={19} />,
             label: "자외선",
-            value: view.reference.uvIndex.toFixed(1),
-            unit: "UVI",
-            grade: gradeUv(view.reference.uvIndex),
+            value: `${Math.round(metricRef.uvIndex)}`,
+            unit: "",
+            grade: gradeUv(metricRef.uvIndex),
             iconClass: "ci-amber"
           },
           {
             key: "wind" as DetailKey,
             icon: <Wind size={19} />,
             label: "바람",
-            value: view.reference.windSpeed.toFixed(1),
-            unit: "m/s",
-            grade: gradeWind(view.reference.windSpeed),
+            value: metricRef.windSpeed.toFixed(1),
+            unit: "㎧",
+            grade: gradeWind(metricRef.windSpeed),
             iconClass: "ci-sky"
           },
           {
             key: "humidity" as DetailKey,
             icon: <Droplets size={19} />,
             label: "습도",
-            value: `${Math.round(view.reference.humidity)}`,
+            value: `${Math.round(metricRef.humidity)}`,
             unit: "%",
-            grade: gradeHumidity(view.reference.humidity),
+            grade: gradeHumidity(metricRef.humidity),
             iconClass: "ci-indigo"
           }
         ]
@@ -2317,19 +1496,11 @@ export default function Home() {
   return (
     <main className="page">
       <div className="dashboard-frame">
-        <ActivityRail
-          activity={activity}
-          onChange={changeActivity}
-          variant="rail"
-          onOpenJournal={() => setIsJournalOpen(true)}
-          onOpenAchievements={() => setIsAchievementsOpen(true)}
-        />
-
         <section className="app-shell">
-          {/* 상단 바 — 메뉴 · 현재 위치 · 공유 · 위치 추가 */}
+          {/* 상단 바 — 새로고침 · 현재 위치 · 공유 · 위치 추가 */}
           <header className="top-header">
-            <button className="icon-button" type="button" onClick={() => setIsMenuOpen(true)} aria-label="메뉴 열기">
-              <Menu size={21} />
+            <button className="icon-button" type="button" onClick={() => loadForecast(location)} aria-label="새로고침">
+              <RefreshCw size={19} />
             </button>
             <button className="loc-center" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
               <small>{location.source === "gps" ? "현재 위치" : "선택한 위치"}</small>
@@ -2347,136 +1518,6 @@ export default function Home() {
               </button>
             </div>
           </header>
-
-          {/* 좌측 드로어 메뉴 */}
-          {isMenuOpen ? (
-            <div className="drawer-backdrop" role="dialog" aria-modal="true" aria-label="메뉴" onClick={() => setIsMenuOpen(false)}>
-              <aside className="drawer" onClick={(event) => event.stopPropagation()}>
-                <div className="drawer-head">
-                  <div className="drawer-brand">
-                    <strong>러닝콜</strong>
-                    <small>걷기·애견산책·러닝·등산·자전거, 나가기 좋은 시간</small>
-                  </div>
-                  <button className="sheet-close" type="button" onClick={() => setIsMenuOpen(false)} aria-label="닫기">
-                    <X size={18} />
-                  </button>
-                </div>
-                <nav>
-                  <p className="drawer-label">활동 선택</p>
-                  <div className="drawer-acts">
-                    {ACTIVITY_ORDER.map((key) => {
-                      const item = ACTIVITIES[key];
-                      const on = key === activity;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`drawer-act${on ? " on" : ""}`}
-                          onClick={() => {
-                            changeActivity(key);
-                            setIsMenuOpen(false);
-                          }}
-                        >
-                          <ActivityPictogram activity={key} className="act-picto da-picto" />
-                          <strong>{item.label}</strong>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="drawer-sep" aria-hidden="true" />
-
-                  <button
-                    type="button"
-                    className="drawer-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsJournalOpen(true);
-                    }}
-                  >
-                    <span className="di-emoji" aria-hidden="true">
-                      📔
-                    </span>
-                    운동 일지 전체 보기
-                    <ChevronRight size={17} className="di-arrow" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="drawer-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsAchievementsOpen(true);
-                    }}
-                  >
-                    <span className="di-emoji" aria-hidden="true">
-                      🏅
-                    </span>
-                    도전과제 보기
-                    <ChevronRight size={17} className="di-arrow" />
-                  </button>
-
-                  <div className="drawer-sep" aria-hidden="true" />
-
-                  {GUIDE_TOPICS.map((topic) => (
-                    <button
-                      key={topic.id}
-                      type="button"
-                      className="drawer-item"
-                      onClick={() => {
-                        setGuideTopic(topic);
-                        setIsMenuOpen(false);
-                      }}
-                    >
-                      <span className="di-emoji" aria-hidden="true">
-                        {topic.emoji}
-                      </span>
-                      {topic.title}
-                      <ChevronRight size={17} className="di-arrow" />
-                    </button>
-                  ))}
-
-                  <div className="drawer-sep" aria-hidden="true" />
-
-                  <button
-                    type="button"
-                    className="drawer-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      void handleShare();
-                    }}
-                  >
-                    <span className="di-emoji" aria-hidden="true">
-                      📤
-                    </span>
-                    친구에게 알려주기
-                    <ChevronRight size={17} className="di-arrow" />
-                  </button>
-                  <a className="drawer-item" href="mailto:runner.pyrri@gmail.com?subject=%EB%9F%AC%EB%8B%9D%EC%BD%9C%20%EA%B0%9C%EC%84%A0%20%EC%A0%9C%EC%95%88">
-                    <span className="di-emoji" aria-hidden="true">
-                      💬
-                    </span>
-                    개선 제안 보내기
-                    <ChevronRight size={17} className="di-arrow" />
-                  </a>
-                  <button
-                    type="button"
-                    className="drawer-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      void loadForecast(location);
-                    }}
-                  >
-                    <span className="di-emoji" aria-hidden="true">
-                      🔄
-                    </span>
-                    데이터 새로고침
-                    <ChevronRight size={17} className="di-arrow" />
-                  </button>
-                </nav>
-              </aside>
-            </div>
-          ) : null}
 
           {/* 위치 검색 모달 */}
           {isSearchOpen ? (
@@ -2631,13 +1672,12 @@ export default function Home() {
             </section>
           ) : (
             <>
-              <ActivityRail activity={activity} onChange={changeActivity} variant="tabs" />
+              <ActivityRail activity={activity} onChange={changeActivity} />
 
               <nav className="inner-tabs" aria-label="세부 보기">
                 {([
                   ["today", "오늘 판단"],
                   ["prep", "준비"],
-                  ["record", "기록"],
                   ["guide", "가이드"]
                 ] as const).map(([k, label]) => (
                   <button
@@ -2654,16 +1694,6 @@ export default function Home() {
 
               {innerTab === "prep" && view ? (
                 <PrepView slot={view.reference} slots={view.slots} activity={activity} />
-              ) : null}
-
-              {innerTab === "record" ? (
-                <RecordView
-                  activity={activity}
-                  daySet={runSet}
-                  goal={goals[activity]}
-                  onToggle={toggleRunDay}
-                  onSetGoal={(g) => setGoals((prev) => ({ ...prev, [activity]: g }))}
-                />
               ) : null}
 
               {innerTab === "guide" ? <GuideView activity={activity} slot={view?.reference ?? null} /> : null}
@@ -2734,25 +1764,25 @@ export default function Home() {
                   <FitText
                     className="hero-h1"
                     text={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
-                    maxPx={27}
-                    minPx={17}
+                    maxPx={26}
+                    minPx={16}
                   />
-                  <FitText
-                    className="hero-why"
-                    text={heroSubline(isTomorrow ? view.best : view.reference, activity)}
-                    maxPx={16}
-                    minPx={12}
-                  />
-                  <div className="status-chips">
-                    {chips.map((chip) => (
-                      <button
-                        key={chip.key}
-                        type="button"
-                        className={`status-chip status-${chip.tone}`}
-                        onClick={() => setSheetKey(chip.key === "temp" ? "feel" : chip.key)}
-                      >
-                        {chipIcon(chip)}
-                        {chip.label}
+                  <div className="hero-sub">
+                    <span className="hero-why">{heroSubline(isTomorrow ? view.best : view.reference, activity)}</span>
+                    {scoreDelta !== null && scoreDelta !== 0 ? (
+                      <span className={`hero-delta ${scoreDelta > 0 ? "up" : "down"}`}>
+                        {scoreDelta > 0 ? "▲" : "▼"} {deltaWord} {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="hero-metrics" aria-label="항목별 상태">
+                    {reasonRows.map((row) => (
+                      <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
+                        <span className="hm-v">
+                          {row.value}
+                          {row.unit ? <em>{row.unit}</em> : null}
+                        </span>
+                        <span className="hm-l">{row.label}</span>
                       </button>
                     ))}
                   </div>
@@ -2897,30 +1927,6 @@ export default function Home() {
                 </div>
                 <div className="col-side">
 
-              {/* 일출 · 일몰 — 밝은 시간대 판단용 */}
-              {sunrise && sunset ? (
-                <div className="sun-cards" aria-label="일출과 일몰">
-                  <div className="sun-card sun-rise">
-                    <span className="sun-ic" aria-hidden="true">
-                      🌅
-                    </span>
-                    <div>
-                      <small>일출</small>
-                      <strong>{sunrise}</strong>
-                    </div>
-                  </div>
-                  <div className="sun-card sun-set">
-                    <span className="sun-ic" aria-hidden="true">
-                      🌇
-                    </span>
-                    <div>
-                      <small>일몰</small>
-                      <strong>{sunset}</strong>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
               {/* 아침·낮·저녁 각 구간에서 가장 뛰기 좋은 시각 (탭 → 알림) */}
               <section className="dayparts" aria-label="아침 낮 저녁 베스트 시각">
                 <div className="section-title ranks-title">
@@ -2966,6 +1972,30 @@ export default function Home() {
                 ) : null}
               </section>
 
+              {/* 일출 · 일몰 — 밝은 시간대 판단용 */}
+              {sunrise && sunset ? (
+                <div className="sun-cards" aria-label="일출과 일몰">
+                  <div className="sun-card sun-rise">
+                    <span className="sun-ic" aria-hidden="true">
+                      🌅
+                    </span>
+                    <div>
+                      <small>일출</small>
+                      <strong>{sunrise}</strong>
+                    </div>
+                  </div>
+                  <div className="sun-card sun-set">
+                    <span className="sun-ic" aria-hidden="true">
+                      🌇
+                    </span>
+                    <div>
+                      <small>일몰</small>
+                      <strong>{sunset}</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {/* 복장 */}
               <button type="button" className="outfit-chip" onClick={() => setIsOutfitOpen(true)}>
                 <span className="ci ci-green">
@@ -2989,23 +2019,6 @@ export default function Home() {
                   </span>
                 </div>
                 <p>{oneLiner}</p>
-              </section>
-
-              {/* 항목별 상태 (2개씩 한 줄) */}
-              <section className="reasons" aria-label="항목별 상태">
-                {reasonRows.map((row) => (
-                  <button className="rc" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
-                    <div className="rc-top">
-                      <span className={`ci ${row.iconClass}`}>{row.icon}</span>
-                      <span className={toneBadge(row.grade)}>{row.grade.label}</span>
-                    </div>
-                    <p className="rc-label">{row.label}</p>
-                    <p className="rc-value">
-                      {row.value}
-                      <span>{row.unit}</span>
-                    </p>
-                  </button>
-                ))}
               </section>
 
               <AdSlot />
@@ -3034,39 +2047,6 @@ export default function Home() {
 
       {isOutfitOpen && view ? (
         <OutfitSheet slot={view.reference} slots={view.slots} activity={activity} onClose={() => setIsOutfitOpen(false)} />
-      ) : null}
-
-      {guideTopic ? <GuideSheet topic={guideTopic} onClose={() => setGuideTopic(null)} /> : null}
-
-      {isJournalOpen ? (
-        <JournalView
-          journal={journal}
-          ym={journalYm}
-          onShiftMonth={(delta) => {
-            const d = new Date(journalYm.y, journalYm.m + delta, 1);
-            setJournalYm({ y: d.getFullYear(), m: d.getMonth() });
-          }}
-          selectedDate={journalSelectedDate}
-          onSelectDate={setJournalSelectedDate}
-          onSaveEntry={(date, entry) => setJournalState((prev) => setEntry(prev, date, entry))}
-          onDeleteEntry={(date) => setJournalState((prev) => deleteEntry(prev, date))}
-          onClose={() => {
-            setIsJournalOpen(false);
-            setJournalSelectedDate(null);
-          }}
-        />
-      ) : null}
-
-      {isAchievementsOpen ? (
-        <AchievementsView
-          series={seriesProgress}
-          seen={badgesSeen}
-          onClose={() => setIsAchievementsOpen(false)}
-        />
-      ) : null}
-
-      {celebration.length > 0 ? (
-        <CelebrationModal badges={celebration} onClose={() => setCelebration([])} />
       ) : null}
 
       {alarmTarget ? (
