@@ -2117,6 +2117,156 @@ button {
   flex: none;
 }
 
+/* ---------- 활동 선택 드롭다운 (좌측 상단) ---------- */
+.activity-select-wrap {
+  position: relative;
+  flex: none;
+}
+
+.activity-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 10px 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.activity-select:hover {
+  border-color: #33415a;
+}
+
+.activity-select .as-picto {
+  width: 20px;
+  height: 20px;
+  color: var(--good);
+  flex: none;
+}
+
+.as-caret {
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.as-caret.open {
+  transform: rotate(180deg);
+}
+
+.as-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.activity-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 41;
+  min-width: 172px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: as-pop 0.16s ease;
+}
+
+@keyframes as-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.as-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.as-item:hover {
+  background: var(--surface-2);
+}
+
+.as-item .as-picto {
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  flex: none;
+}
+
+.as-item.on {
+  color: var(--good);
+  background: rgba(43, 213, 118, 0.1);
+}
+
+.as-item.on .as-picto {
+  color: var(--good);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-menu {
+    animation: none;
+  }
+}
+
+/* ---------- 준비물 버튼 (탭 대신 시트 진입) ---------- */
+.prep-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  transition: transform 0.12s ease, border-color 0.15s ease;
+}
+
+.prep-btn:hover {
+  border-color: #33415a;
+}
+
+.prep-btn:active {
+  transform: scale(0.99);
+}
+
+.prep-ic {
+  font-size: 1.2rem;
+  flex: none;
+}
+
+.prep-tx {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.prep-arrow {
+  color: var(--muted);
+  flex: none;
+}
+
 /* ---------- sun row ---------- */
 /* ---------- 일출·일몰 카드 ---------- */
 /* 일출·일몰 — 부차 정보라 슬림 한 줄, 숫자 위주 */

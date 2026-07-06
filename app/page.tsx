@@ -45,7 +45,6 @@ import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
-type InnerTab = "today" | "prep" | "guide";
 import {
   gradeHumidity,
   gradePm25,
@@ -689,53 +688,6 @@ function PrepView({ slot, slots, activity }: { slot: RunningSlot; slots: Running
   );
 }
 
-function OutfitSheet({
-  slot,
-  slots,
-  activity,
-  onClose
-}: {
-  slot: RunningSlot;
-  slots: RunningSlot[];
-  activity: ActivityKey;
-  onClose: () => void;
-}) {
-  const plan = getOutfitPlan(slots, slot, activity);
-
-  return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="복장 상세" onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-topbar">
-          <div className="sheet-grip" aria-hidden="true" />
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="sheet-head">
-          <p className="sheet-title">지금 {ACTIVITIES[activity].terms.outfitTitle} · 체감 {plan.feels.toFixed(0)}°C</p>
-          <div className="sheet-value-row">
-            <p className="sheet-value outfit-main">{plan.main}</p>
-          </div>
-        </div>
-
-        <OutfitPlanBody plan={plan} />
-      </div>
-    </div>
-  );
-}
-
-// 가이드 탭 — 오늘 조건 맞춤 동적 블록 + 활동별 실전 팁
-function GuideView({ activity, slot }: { activity: ActivityKey; slot: RunningSlot | null }) {
-  const dynamicBlock = slot ? getDynamicGuideBlock(activity, slot) : null;
-  return (
-    <section className="guide-view" aria-label={`${ACTIVITIES[activity].label} 가이드`}>
-      {dynamicBlock ? <GuideBlocks blocks={[dynamicBlock]} /> : null}
-      <GuideBlocks blocks={ACTIVITY_GUIDE[activity].guide} />
-    </section>
-  );
-}
-
 // 활동별 실전 준비·가이드 블록 렌더
 function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[] }) {
   return (
@@ -844,31 +796,6 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
   );
 }
 
-// 활동 선택 — 데스크탑 좌측 레일(rail, 큰 글자) / 모바일 상단 탭(tabs)
-// 활동 선택 pill 탭 (걷기·애견산책·러닝·등산·자전거)
-function ActivityRail({ activity, onChange }: { activity: ActivityKey; onChange: (next: ActivityKey) => void }) {
-  return (
-    <nav className="activity-tabs" aria-label="활동 선택">
-      {ACTIVITY_ORDER.map((key) => {
-        const item = ACTIVITIES[key];
-        const on = key === activity;
-        return (
-          <button
-            key={key}
-            type="button"
-            className={`act-item${on ? " on" : ""}`}
-            aria-pressed={on}
-            onClick={() => onChange(key)}
-          >
-            <ActivityPictogram activity={key} className="act-picto" />
-            <span className="act-label">{item.short}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
 export default function Home() {
   const [location, setLocation] = useState<LocationPoint>(DEFAULT_LOCATION);
   const [rawForecast, setRawForecast] = useState<RawForecast | null>(null);
@@ -879,7 +806,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [dayMode, setDayMode] = useState<DayMode>("today");
   const [sheetKey, setSheetKey] = useState<DetailKey | null>(null);
-  const [isOutfitOpen, setIsOutfitOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [alarms, setAlarms] = useState<AlarmConfig[]>([]);
   const [alarmTarget, setAlarmTarget] = useState<{ id: string; label: string; timeLabel: string; targetMs: number } | null>(
@@ -896,7 +822,8 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchNote, setSearchNote] = useState("");
   const [saved, setSaved] = useState<SavedLocation[]>([]);
-  const [innerTab, setInnerTab] = useState<InnerTab>("today");
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [isPrepOpen, setIsPrepOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
@@ -1047,8 +974,8 @@ export default function Home() {
   const changeActivity = useCallback(
     (next: ActivityKey) => {
       setSheetKey(null);
-      setIsOutfitOpen(false);
-      setInnerTab("today");
+      setIsPrepOpen(false);
+      setDayMode("today");
       setActivity(next);
       const remembered = activityLocations[next];
       if (remembered) setLocation(remembered);
@@ -1427,11 +1354,44 @@ export default function Home() {
     <main className="page">
       <div className="dashboard-frame">
         <section className="app-shell">
-          {/* 상단 바 — 새로고침 · 현재 위치 · 공유 · 위치 추가 */}
+          {/* 상단 바 — 활동 선택(좌) · 현재 위치(중) · 공유·추가(우) */}
           <header className="top-header">
-            <button className="icon-button" type="button" onClick={() => loadForecast(location)} aria-label="새로고침">
-              <RefreshCw size={19} />
-            </button>
+            <div className="activity-select-wrap">
+              <button
+                className="activity-select"
+                type="button"
+                onClick={() => setIsActivityOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={isActivityOpen}
+                aria-label="활동 선택"
+              >
+                <ActivityPictogram activity={activity} className="as-picto" />
+                <span>{profile.label}</span>
+                <ChevronDown size={15} className={`as-caret${isActivityOpen ? " open" : ""}`} />
+              </button>
+              {isActivityOpen ? (
+                <>
+                  <div className="as-backdrop" onClick={() => setIsActivityOpen(false)} aria-hidden="true" />
+                  <div className="activity-menu" role="menu">
+                    {ACTIVITY_ORDER.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="menuitem"
+                        className={`as-item${key === activity ? " on" : ""}`}
+                        onClick={() => {
+                          changeActivity(key);
+                          setIsActivityOpen(false);
+                        }}
+                      >
+                        <ActivityPictogram activity={key} className="as-picto" />
+                        <span>{ACTIVITIES[key].label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
             <button className="loc-center" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
               <small>{location.source === "gps" ? "현재 위치" : "선택한 위치"}</small>
               <strong>
@@ -1602,35 +1562,6 @@ export default function Home() {
             </section>
           ) : (
             <>
-              <ActivityRail activity={activity} onChange={changeActivity} />
-
-              <nav className="inner-tabs" aria-label="세부 보기">
-                {([
-                  ["today", "오늘 판단"],
-                  ["prep", "준비"],
-                  ["guide", "가이드"]
-                ] as const).map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={`inner-tab${innerTab === k ? " on" : ""}`}
-                    aria-pressed={innerTab === k}
-                    onClick={() => setInnerTab(k)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-
-              {innerTab === "prep" && view ? (
-                <PrepView slot={view.reference} slots={view.slots} activity={activity} />
-              ) : null}
-
-              {innerTab === "guide" ? <GuideView activity={activity} slot={view?.reference ?? null} /> : null}
-
-              {innerTab === "today" ? (
-                <>
-
               <div className="day-toggle" role="tablist" aria-label="날짜 선택">
                 <button
                   type="button"
@@ -1818,12 +1749,19 @@ export default function Home() {
                 </div>
               ) : null}
 
+              {/* 준비물 · 복장 — 탭 대신 슬림 버튼 → 시트로 (필요할 때만) */}
+              <button type="button" className="prep-btn" onClick={() => setIsPrepOpen(true)}>
+                <span className="prep-ic" aria-hidden="true">
+                  🎒
+                </span>
+                <span className="prep-tx">오늘 준비물 · 복장</span>
+                <ChevronRight size={18} className="prep-arrow" />
+              </button>
+
               <AdSlot />
 
                 </div>
               </div>
-                </>
-              ) : null}
             </>
           )}
         </section>
@@ -1842,8 +1780,24 @@ export default function Home() {
         />
       ) : null}
 
-      {isOutfitOpen && view ? (
-        <OutfitSheet slot={view.reference} slots={view.slots} activity={activity} onClose={() => setIsOutfitOpen(false)} />
+      {isPrepOpen && view ? (
+        <div
+          className="sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="준비물"
+          onClick={() => setIsPrepOpen(false)}
+        >
+          <div className="sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-topbar">
+              <div className="sheet-grip" aria-hidden="true" />
+              <button className="sheet-close" type="button" onClick={() => setIsPrepOpen(false)} aria-label="닫기">
+                <X size={18} />
+              </button>
+            </div>
+            <PrepView slot={view.reference} slots={view.slots} activity={activity} />
+          </div>
+        </div>
       ) : null}
 
       {alarmTarget ? (
