@@ -471,7 +471,7 @@ function MetricSheet({
   const daySlots = slots.filter((slot) => slot.time.slice(0, 10) === reference.time.slice(0, 10));
   const sheetSlots = daySlots.length > 0 ? daySlots : slots;
   const chart = windowSlots(sheetSlots, currentTime);
-  const rainChart = sheetKey === "precip" ? rainWindowSlots(sheetSlots, currentTime) : chart;
+  const rainChart = sheetKey === "precip" ? sheetSlots : chart;
   const activeSlots = sheetKey === "precip" ? rainChart : chart;
 
   // 그래프에서 선택한 시각 (기본 = 지금). 탭하면 그 시각 값·등급·바가 바뀜.
@@ -1121,13 +1121,13 @@ function RainDetailPanel({
   const selectedDecision = rainDecision(selected);
   const dayLabel = currentTime ? "오늘" : "내일";
   const flow = rainFlowSummary(slots);
-  const flowSlots = slots.slice(0, 10);
+  const flowSlots = slots.slice(0, 24);
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{dayLabel} 비 흐름</b>
-        <small>지금과 남은 시간만 크게 봐요</small>
+        <b>{dayLabel} 하루 강수</b>
+        <small>0시부터 24시까지 한 번에 봐요</small>
       </p>
 
       <div className={`rain-now-card tone-${selectedDecision.tone}`}>
@@ -2055,12 +2055,9 @@ export default function Home() {
                       <div className="gbtnwrap">
                         <div className="gbtn-aura" aria-hidden="true" />
                         <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
-                          <span className="gsheen" aria-hidden="true" />
-                          <span className="gspk a" aria-hidden="true">✦</span>
-                          <span className="gspk b" aria-hidden="true">✦</span>
                           <span className="gb-main">
                             <span className="slot7" aria-hidden="true">🎰</span>
-                            <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 시간대 뽑기</span>
+                            <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
                           </span>
                         </button>
                       </div>
@@ -2077,7 +2074,7 @@ export default function Home() {
                     )}
                     <TimeReel
                       open={isReelOpen && reelRanks.length > 0}
-                      title={`${isTomorrow ? "내일" : "오늘"}의 ${profile.label} 시간대`}
+                      title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
                       ranks={reelRanks}
                       pool={reelPool}
                       onClose={() => setIsReelOpen(false)}
