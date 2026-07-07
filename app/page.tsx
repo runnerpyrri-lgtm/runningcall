@@ -1072,6 +1072,40 @@ function rainSignalPercent(slot: RunningSlot) {
   return Math.round(Math.max(8, Math.min(100, Math.max(byAmount, byProb))));
 }
 
+function rainNowTitle(slot: RunningSlot) {
+  const prob = Math.round(slot.precipitationProbability);
+  if (slot.precipitation >= 3) return "지금 꽤 와요";
+  if (slot.precipitation >= 1) return "지금 비 와요";
+  if (slot.precipitation >= 0.1) return "약하게 내려요";
+  if (prob >= 70) return "곧 올 수 있어요";
+  if (prob >= 45) return "하늘 확인";
+  return "비 걱정 낮음";
+}
+
+function rainFlowSummary(slots: RunningSlot[]) {
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
+  const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+  const focus = peak.precipitation >= 0.1 ? peak : probable;
+  const decision = rainDecision(focus);
+
+  if (wet.length === 0) {
+    return {
+      title: "남은 시간 뚜렷한 비 없음",
+      body: `최대 가능성 ${Math.round(probable.precipitationProbability)}%. 우산 없이 봐도 괜찮아요.`,
+      decision,
+      focus
+    };
+  }
+
+  return {
+    title: `${timeRangeText(wet[0], wet[wet.length - 1])} 비 신호`,
+    body: `${fmtAmPm(focus.hour)} 전후가 제일 신경 쓸 시간이에요. ${decision.action}.`,
+    decision,
+    focus
+  };
+}
+
 function RainDetailPanel({
   slots,
   selectedTime,
@@ -1084,63 +1118,59 @@ function RainDetailPanel({
   currentTime: string | null;
 }) {
   const selected = slots.find((slot) => slot.time === selectedTime) ?? slots[0];
-  const selectedInfo = rainInfo(selected.precipitation);
   const selectedDecision = rainDecision(selected);
   const dayLabel = currentTime ? "오늘" : "내일";
-  const overview = buildRainOverview(slots, dayLabel);
-  const periodCards = buildRainDayBoards(slots, currentTime)[0]?.cells ?? [];
-  const selectedInfoLine = `${rainAmountText(selected.precipitation)} · 가능성 ${Math.round(selected.precipitationProbability)}%`;
+  const flow = rainFlowSummary(slots);
+  const flowSlots = slots.slice(0, 10);
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{dayLabel} 강수 판단</b>
-        <small>우산·시간대만 빠르게</small>
+        <b>{dayLabel} 비 흐름</b>
+        <small>지금과 남은 시간만 크게 봐요</small>
       </p>
 
-      <div className={`rain-decision-card tone-${overview.tone}`}>
+      <div className={`rain-now-card tone-${selectedDecision.tone}`}>
         <div>
-          <span>{overview.time}</span>
-          <b>{overview.title}</b>
-          <small>{overview.body}</small>
+          <span>{currentTime ? "지금 상태" : `${dayLabel} 선택 시간`}</span>
+          <b>{rainNowTitle(selected)}</b>
+          <small>{currentTime ? "현재 기준" : fmtAmPm(selected.hour)} · {rainAmountText(selected.precipitation)}</small>
         </div>
-        <div className="rain-decision-stats">
-          <em>최대 {overview.amount}</em>
-          <em>확률 {overview.prob}</em>
-        </div>
+        <strong>{Math.round(selected.precipitationProbability)}%</strong>
       </div>
 
-      <div className="rain-timeline-cards" aria-label={`${dayLabel} 시간대별 강수`}>
-        {periodCards.map((cell) => {
-          const active = cell.focus.time === selected.time;
+      <div className={`rain-flow-summary tone-${flow.decision.tone}`}>
+        <b>{flow.title}</b>
+        <span>{flow.body}</span>
+      </div>
+
+      <div className="rain-hour-flow" aria-label={`${dayLabel} 시간별 비 흐름`}>
+        {flowSlots.map((slot) => {
+          const decision = rainDecision(slot);
+          const active = slot.time === selected.time;
           return (
             <button
               type="button"
-              key={cell.key}
-              className={`rain-time-card tone-${cell.decision.tone}${active ? " active" : ""}`}
-              style={{ "--rain-signal": `${rainSignalPercent(cell.focus)}%` } as React.CSSProperties}
-              onClick={() => onSelectTime(cell.focus.time)}
+              key={slot.time}
+              className={`rain-hour tone-${decision.tone}${active ? " active" : ""}`}
+              style={{ "--rain-signal": `${rainSignalPercent(slot)}%` } as React.CSSProperties}
+              onClick={() => onSelectTime(slot.time)}
             >
-              <span className="rtc-top">
-                <b>{cell.label}</b>
-                <em>{cell.range}</em>
-              </span>
-              <strong>{cell.decision.action}</strong>
-              <small>
-                {cell.amount} · 가능성 {cell.prob}%
-              </small>
+              <span>{fmtAmPm(slot.hour)}</span>
               <i aria-hidden="true" />
+              <b>{Math.round(slot.precipitationProbability)}%</b>
+              <small>{rainAmountText(slot.precipitation)}</small>
             </button>
           );
         })}
       </div>
 
       <div className={`rain-selected-note tone-${selectedDecision.tone}`}>
-        <span>{fmtAmPm(selected.hour)}</span>
-        <b>{selectedDecision.action}</b>
-        <small>
-          {selectedInfo.label} · {selectedInfoLine}
-        </small>
+        <div>
+          <span>{fmtAmPm(selected.hour)}</span>
+          <b>{selectedDecision.action}</b>
+        </div>
+        <small>{selectedDecision.body}</small>
       </div>
     </div>
   );
@@ -2036,9 +2066,6 @@ export default function Home() {
                       </div>
                     ) : (
                       <div className="gclosed">
-                        <span className="gclosed-badge">
-                          {isTomorrow ? "내일 추천 없음" : hasUpcoming ? "추천 시간대 없음" : "오늘 마감"}
-                        </span>
                         <p className="gclosed-title">
                           {isTomorrow
                             ? `내일은 ${profile.label} 좋은 시간대가 없어요`
@@ -2046,16 +2073,6 @@ export default function Home() {
                             ? `남은 시간엔 ${profile.label} 좋은 때가 없어요`
                             : `오늘 ${profile.label} 추천 시간대는 마감됐어요`}
                         </p>
-                        <p className="gclosed-sub">
-                          {isTomorrow
-                            ? "다른 활동이나 위치를 골라보는 건 어때요?"
-                            : "내일 카드를 미리 뽑아 좋은 시간을 예약해두세요."}
-                        </p>
-                        {!isTomorrow && hasTomorrow ? (
-                          <button type="button" className="gclosed-btn" onClick={() => setDayMode("tomorrow")}>
-                            🎰 내일 시간대 뽑기 <ChevronRight size={16} />
-                          </button>
-                        ) : null}
                       </div>
                     )}
                     <TimeReel

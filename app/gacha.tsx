@@ -689,7 +689,7 @@ type RevealState = {
   sky: SkySet;
 };
 
-const REVEAL_AT = 2160;
+const REVEAL_AT = 2380;
 
 export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow }: GachaHeroProps) {
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
