@@ -1,7 +1,7 @@
 "use client";
 
 // 가챠 카드 히어로 + 추천 시간대 슬롯 릴 — v0.13 리디자인 표현 계층 (점수 로직 lib 불변)
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { RunningSlot } from "@/lib/scoring";
 
 /* ================= 티어 (80+ 골드 / 10점 간격 / ≤20 재난) ================= */
@@ -101,9 +101,9 @@ export function weatherFxFrom(slot: RunningSlot): CardWeatherFx {
   const mode: CardWeatherFx["mode"] = snow ? "snow" : wet ? "rain" : "none";
   const count =
     mode === "rain"
-      ? Math.round(Math.min(150, 55 + slot.precipitation * 30 + slot.precipitationProbability * 0.45))
+      ? Math.round(Math.min(64, 28 + slot.precipitation * 12 + slot.precipitationProbability * 0.18))
       : mode === "snow"
-      ? Math.round(Math.min(110, 60 + snowAmount * 110))
+      ? Math.round(Math.min(54, 24 + snowAmount * 45))
       : 0;
   const cloud = mode !== "none" || slot.precipitationProbability >= 25 || (slot.cloudCover ?? 0) >= 55;
   const sun = mode === "none" && slot.precipitationProbability < 30 && (slot.cloudCover ?? 0) < 70;
@@ -146,7 +146,7 @@ type BoomPart = {
   rot?: number; vr?: number; w?: number; h?: number;
 };
 
-const DPR = () => Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 1.5);
+const DPR = () => Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 1.25);
 
 const FX = {
   root: null as HTMLDivElement | null,
@@ -257,7 +257,7 @@ const FX = {
 
   // 파티클 상한 — 저사양 기기에서도 프레임 유지
   cap(add: number) {
-    const MAX = 260;
+    const MAX = 120;
     const room = MAX - this.parts.length;
     return Math.max(0, Math.min(add, room));
   },
@@ -497,16 +497,13 @@ function preSpinFx(tier: GachaTier, card: HTMLElement | null, timers: number[]) 
   const c = () => cardCenter(card);
   if (tier.cls === "t9") {
     FX.predark(true);
-    timers.push(window.setTimeout(() => { const p = c(); FX.strike(p.x, p.y, false, GOLD_STRIKE[0], GOLD_STRIKE[1]); }, 950));
-    timers.push(window.setTimeout(() => { const p = c(); FX.strike(p.x, p.y, false, GOLD_STRIKE[0], GOLD_STRIKE[1]); }, 1380));
-    timers.push(window.setTimeout(() => { const p = c(); FX.strike(p.x, p.y, true, "#fff8dc", GOLD_STRIKE[1]); }, 1780));
+    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, GOLD_STRIKE[0], 0.95); }, 1200));
   } else if (tier.cls === "t8") {
-    timers.push(window.setTimeout(() => { FX.meteor(12, PURP); FX.flashMini(); }, 1300));
-    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, "#b06aff", 1); }, 1720));
+    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, "#b06aff", 0.85); }, 1300));
   } else if (tier.cls === "t7") {
-    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, "#55e6d0", 1.05); FX.flashMini(); }, 1600));
+    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, "#55e6d0", 0.85); }, 1400));
   } else if (tier.cls === "t0") {
-    timers.push(window.setTimeout(() => { const p = c(); FX.strike(p.x, p.y, false, DOOM_STRIKE[0], DOOM_STRIKE[1]); }, 1450));
+    timers.push(window.setTimeout(() => { const p = c(); FX.ring(p.x, p.y, DOOM_STRIKE[0], 0.8); }, 1400));
   }
 }
 
@@ -519,52 +516,37 @@ function revealFx(tier: GachaTier, card: HTMLElement | null, isSnow: boolean, qu
   switch (tier.cls) {
     case "t9":
       if (!quick) {
-        FX.flashBig(); FX.shake("sh-lg");
-        FX.stamp("LEGENDARY", "#ffce4a");
-        FX.ring(x, y, "#ffce4a", 1.7);
-        setTimeout(() => FX.ring(x, y, "#ffce4a", 2.1), 240);
-        FX.burst(x, y, 90, colors || GOLD, 9.5, 0.16);
-        setTimeout(() => {
-          FX.fountain(window.innerWidth * 0.12, 42, colors || GOLD);
-          FX.fountain(window.innerWidth * 0.88, 42, colors || GOLD);
-        }, 360);
-        setTimeout(() => FX.shootStars(14, colors || GOLD), 500);
-        FX.confetti(54);
-        FX.edge("#ffce4a");
+        FX.flashMini();
+        FX.ring(x, y, "#ffce4a", 1.35);
+        FX.burst(x, y, 34, colors || GOLD, 6.2, 0.12);
+        FX.confetti(18);
       } else {
         FX.ring(x, y, "#ffce4a", 1.1);
-        FX.burst(x, y, 40, colors || GOLD, 6, 0.15);
-        FX.confetti(18);
+        FX.burst(x, y, 18, colors || GOLD, 4.8, 0.12);
+        FX.confetti(8);
       }
       break;
     case "t8":
-      FX.flashBig("#e8d8ff"); FX.shake(quick ? "sh-sm" : "sh-lg");
+      FX.flashMini();
       FX.aurora("rgba(176,106,255,.32)", "rgba(255,140,220,.2)");
-      FX.ring(x, y, "#b06aff", 1.4 * scale);
-      FX.meteor(Math.round(34 * scale), colors || PURP);
-      FX.burst(x, y, Math.round(85 * scale), colors || PURP, 7.5, 0.15);
+      FX.ring(x, y, "#b06aff", 1.05 * scale);
+      FX.burst(x, y, Math.round(28 * scale), colors || PURP, 5.5, 0.12);
       if (!quick) {
-        setTimeout(() => FX.meteor(20, colors || PURP), 420);
-        FX.confetti(32, ["#d0a8ff", "#b06aff", "#fff", "#8a4ae0", "#ffa9ec"]);
+        FX.confetti(12, ["#d0a8ff", "#b06aff", "#fff", "#8a4ae0", "#ffa9ec"]);
       }
-      FX.edge("#b06aff");
       break;
     case "t7":
-      if (!quick) FX.flashBig();
-      FX.shake("sh-sm");
+      if (!quick) FX.flashMini();
       FX.aurora("rgba(85,230,208,.32)", "rgba(120,180,255,.22)");
-      FX.ring(x, y, "#55e6d0", 1.25 * scale);
-      FX.bubbles(x, y + 80, Math.round(40 * scale), colors || TEAL);
-      FX.burst(x, y, Math.round(55 * scale), colors || TEAL, 6, 0.15);
-      if (!quick) FX.confetti(18, ["#7df5df", "#3ddfc0", "#fff"]);
-      FX.edge("#55e6d0");
+      FX.ring(x, y, "#55e6d0", 1 * scale);
+      FX.bubbles(x, y + 80, Math.round(18 * scale), colors || TEAL);
+      FX.burst(x, y, Math.round(22 * scale), colors || TEAL, 4.8, 0.12);
+      if (!quick) FX.confetti(8, ["#7df5df", "#3ddfc0", "#fff"]);
       break;
     case "t6":
-      FX.flashMini(); FX.shake("sh-sm");
-      FX.shootStars(Math.round(16 * scale), colors || BLUE);
+      FX.flashMini();
       FX.ring(x, y, "#5aa8ff", 1.1 * scale);
-      FX.burst(x, y, Math.round(40 * scale), colors || BLUE, 5, 0.14);
-      FX.edge("#5aa8ff");
+      FX.burst(x, y, Math.round(18 * scale), colors || BLUE, 4.2, 0.12);
       break;
     case "t5":
       FX.flashMini();
@@ -577,18 +559,11 @@ function revealFx(tier: GachaTier, card: HTMLElement | null, isSnow: boolean, qu
       FX.burst(x, y, Math.round(10 * scale), colors || GREY, 3, 0.12);
       break;
     case "t3":
-      FX.shake("sh-sm");
       FX.dustFall(x, y + 30, Math.round(16 * scale), GREY);
       break;
     case "t0":
-      FX.shake("sh-lg");
-      FX.ring(x, y, "#ff5a5f", 1.35 * scale);
-      FX.edge("#ff3a3f");
-      if (!quick) {
-        setTimeout(() => FX.strike(x, y, true, DOOM_STRIKE[0], DOOM_STRIKE[1]), 300);
-        setTimeout(() => FX.strike(x, y, false, DOOM_STRIKE[0], DOOM_STRIKE[1]), 750);
-      }
-      FX.dustFall(x, y + 30, Math.round(30 * scale), REDG);
+      FX.ring(x, y, "#ff5a5f", 1.1 * scale);
+      FX.dustFall(x, y + 30, Math.round(18 * scale), REDG);
       break;
   }
   if (isSnow && tier.cls !== "t9" && tier.cls !== "t8") {
@@ -699,8 +674,8 @@ function CardWeather({ fx }: { fx: CardWeatherFx }) {
 
 export type GachaHeroProps = {
   score: number;
+  metrics?: ReactNode;
   headline: string;
-  subline: string;
   slot: RunningSlot;
   place: string;
   actLabel: string;
@@ -717,7 +692,7 @@ type RevealState = {
 
 const REVEAL_AT = 2200;
 
-export function GachaHero({ score, headline, subline, slot, place, actLabel, isTomorrow }: GachaHeroProps) {
+export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow, metrics }: GachaHeroProps) {
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
   const [reveal, setReveal] = useState<RevealState | null>(null);
   const [popTick, setPopTick] = useState(0);
@@ -728,8 +703,8 @@ export function GachaHero({ score, headline, subline, slot, place, actLabel, isT
   phaseRef.current = phase;
 
   // 최신 props를 개봉 시점에 읽기 위한 ref (스핀 2.2초 사이 변경 대응)
-  const latest = useRef({ score, headline, subline, slot, place, actLabel, isTomorrow });
-  latest.current = { score, headline, subline, slot, place, actLabel, isTomorrow };
+  const latest = useRef({ score, headline, slot, place, actLabel, isTomorrow });
+  latest.current = { score, headline, slot, place, actLabel, isTomorrow };
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((t) => window.clearTimeout(t));
@@ -807,11 +782,17 @@ export function GachaHero({ score, headline, subline, slot, place, actLabel, isT
         <div className="grays r2" aria-hidden="true" />
         <div className="ghalo" aria-hidden="true" />
         <div className="gaura" aria-hidden="true" />
-        <button
-          type="button"
+        <div
           className="gcard-tap"
+          role="button"
+          tabIndex={0}
           aria-label="오늘의 날씨 카드 다시 개봉"
           onClick={() => { if (phase === "revealed") setDrawSeq((v) => v + 1); }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            if (phase === "revealed") setDrawSeq((v) => v + 1);
+          }}
         >
           <div ref={cardRef} className={`gcard ${phase === "spinning" ? "spinning" : "spun"}`}>
             <div className="gface gback">
@@ -852,6 +833,15 @@ export function GachaHero({ score, headline, subline, slot, place, actLabel, isT
                   <small>점</small>
                 </div>
                 <div className="gc-verdict">{revealed ? headline : ""}</div>
+                {metrics ? (
+                  <div
+                    className="gc-metrics"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    {metrics}
+                  </div>
+                ) : null}
                 <div className="gc-serial">
                   <span>NO.{String(dayOfYear).padStart(3, "0")}</span>
                   <span className="stamp-ic">✦</span>
@@ -861,11 +851,9 @@ export function GachaHero({ score, headline, subline, slot, place, actLabel, isT
               <div className="gfoil" aria-hidden="true" />
             </div>
           </div>
-        </button>
+        </div>
       </div>
       <div className="gsay" aria-live="polite">{revealed ? reveal?.say : "오늘의 날씨 카드를 개봉하는 중…"}</div>
-      <div className="gsub">{revealed ? subline : ""}</div>
-      <div className="gsub2">{revealed ? reveal?.sub : ""}</div>
     </div>
   );
 }
@@ -972,7 +960,7 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
         FX.clearParts();
         const bc = bandCenter();
         FX.flashMini();
-        FX.burst(bc.x, bc.y, 40, GOLD, 7, 0.14);
+        FX.burst(bc.x, bc.y, 18, GOLD, 5, 0.12);
       }
       setShown(ranks.length - 1);
       doneRef.current = true;
@@ -1008,23 +996,17 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
         if (band) { band.classList.remove("hit"); void band.offsetWidth; band.classList.add("hit"); }
         const bc = bandCenter();
         if (i === 0) {
-          FX.flashBig();
-          FX.shake("sh-lg", overlayRef.current);
-          FX.ring(bc.x, bc.y, "#ffce4a", 1.4);
-          FX.burst(bc.x, bc.y, 70, GOLD, 9, 0.16);
-          FX.fountain(window.innerWidth * 0.12, 40, GOLD);
-          FX.fountain(window.innerWidth * 0.88, 40, GOLD);
-          FX.confetti(40);
-          FX.edge("#ffce4a");
+          FX.flashMini();
+          FX.ring(bc.x, bc.y, "#ffce4a", 1.05);
+          FX.burst(bc.x, bc.y, 24, GOLD, 5.5, 0.12);
+          FX.confetti(10);
         } else if (i === 1) {
           FX.flashMini();
-          FX.shake("sh-sm", overlayRef.current);
           FX.ring(bc.x, bc.y, "#ccd6e0", 1.1);
-          FX.burst(bc.x, bc.y, 44, SILVER, 6, 0.16);
+          FX.burst(bc.x, bc.y, 16, SILVER, 4.5, 0.12);
         } else {
-          FX.shake("sh-sm", overlayRef.current);
           FX.ring(bc.x, bc.y, "#d09055", 1);
-          FX.burst(bc.x, bc.y, 34, BRONZE, 5, 0.16);
+          FX.burst(bc.x, bc.y, 12, BRONZE, 4, 0.12);
         }
         setBigHint(true);
         setHint(`✦ ${MEDAL_LABEL[i]} ✦`);
@@ -1071,13 +1053,16 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
             type="button"
             key={rank.key}
             className={`gpod r${index + 1} ${shown >= index ? "show" : ""}`}
-            onClick={() => onPick(rank)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPick(rank);
+            }}
           >
             <div className={`gmedal ${MEDAL_CLS[index]}`}>{index + 1}</div>
             <div className="gpod-mid">
               <div className="gpod-time">
                 {rank.time}
-                {index === 0 ? <em>👑 오늘 베스트</em> : null}
+                {index === 0 ? <em>{rank.label === "내일" ? "👑 내일 베스트" : "👑 오늘 베스트"}</em> : null}
                 <span className="gpod-part">{rank.label}</span>
               </div>
               <div className="gpod-stats">

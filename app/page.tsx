@@ -28,8 +28,8 @@ import { getOutfitPlan } from "@/lib/outfit";
 import {
   getDayParts,
   getMetricDetail,
+  getRankedWindows,
   heroHeadline,
-  heroSubline,
   type MetricKey as DetailKey
 } from "@/lib/insights";
 import {
@@ -265,6 +265,14 @@ function formatHour(slot: RunningSlot) {
   return `${String(slot.hour).padStart(2, "0")}:00`;
 }
 
+function formatHourNum(hour: number) {
+  return `${String(((hour % 24) + 24) % 24).padStart(2, "0")}:00`;
+}
+
+function formatTwoHourWindow(startHour: number) {
+  return `${formatHourNum(startHour)}~${formatHourNum(startHour + 2)}`;
+}
+
 function bestOf(slots: RunningSlot[]) {
   return slots.reduce((prev, slot) => (slot.totalScore > prev.totalScore ? slot : prev), slots[0]);
 }
@@ -279,22 +287,6 @@ function windowSlots(timeline: RunningSlot[], currentTime: string | null) {
   const start = idx < 0 ? 0 : idx;
   const win = timeline.slice(start, start + 13);
   return win.length >= 6 ? win : timeline.slice(Math.max(0, timeline.length - 13));
-}
-
-const RECO_MIN = 55;
-
-// 슬롯 릴 순위 카드용 핵심 지표 칩 3개 — 강수는 항상 포함
-function rankChips(slot: RunningSlot) {
-  const chips = [
-    `💧 강수 ${Math.round(slot.precipitationProbability)}%`,
-    `🌡 체감 ${Math.round(slot.apparentTemperature)}°`
-  ];
-  const dust = gradePm25(slot.pm25);
-  const wind = gradeWind(slot.windSpeed);
-  if (dust.label === "좋음") chips.push("😷 미세 좋음");
-  else if (wind.label === "약함") chips.push("💨 바람 약함");
-  else chips.push(`😷 미세 ${dust.label}`);
-  return chips;
 }
 
 function TimelineChart({
@@ -1582,12 +1574,12 @@ export default function Home() {
 
   const canNotify = typeof window !== "undefined" && "Notification" in window;
 
-  function openAlarm(part: { label: string; best: RunningSlot | null }) {
+  function openAlarm(part: { label: string; best: RunningSlot | null; timeLabel?: string }) {
     if (!part.best) return;
     setAlarmTarget({
       id: part.best.time,
       label: `${part.label} ${profile.label}`,
-      timeLabel: formatHour(part.best),
+      timeLabel: part.timeLabel ?? formatHour(part.best),
       targetMs: slotToMs(part.best.time)
     });
   }
@@ -1636,9 +1628,6 @@ export default function Home() {
 
   // 지표 그리드는 다이얼과 같은 기준(오늘=현재 / 내일=베스트)을 쓴다
   const metricRef = view ? (isTomorrow ? view.best : view.reference) : null;
-  // 어제 대비 점수 변화 (없으면 null → 칩 숨김)
-  const scoreDelta = view ? view.delta : null;
-  const deltaWord = view ? view.deltaLabel.replace("보다", "") : "";
   const reasonRows =
     metricRef
       ? [
@@ -1983,32 +1972,24 @@ export default function Home() {
                 <GachaHero
                   score={isTomorrow ? view.best.totalScore : view.reference.totalScore}
                   headline={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
-                  subline={heroSubline(isTomorrow ? view.best : view.reference, activity)}
                   slot={isTomorrow ? view.best : view.reference}
                   place={displayLocationName(location.name)}
                   actLabel={profile.label}
                   isTomorrow={isTomorrow}
-                />
-                <div className="hero-copy">
-                  {scoreDelta !== null && scoreDelta !== 0 ? (
-                    <div className="hero-sub">
-                      <span className={`hero-delta ${scoreDelta > 0 ? "up" : "down"}`}>
-                        {scoreDelta > 0 ? "▲" : "▼"} {deltaWord} {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
-                      </span>
+                  metrics={
+                    <div className="hero-metrics" aria-label="항목별 상태">
+                      {reasonRows.map((row) => (
+                        <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
+                          <span className="hm-v">
+                            {row.value}
+                            {row.unit ? <em>{row.unit}</em> : null}
+                          </span>
+                          <span className="hm-l">{row.label}</span>
+                        </button>
+                      ))}
                     </div>
-                  ) : null}
-                  <div className="hero-metrics" aria-label="항목별 상태">
-                    {reasonRows.map((row) => (
-                      <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
-                        <span className="hm-v">
-                          {row.value}
-                          {row.unit ? <em>{row.unit}</em> : null}
-                        </span>
-                        <span className="hm-l">{row.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  }
+                />
               </section>
 
                 </div>
@@ -2016,22 +1997,30 @@ export default function Home() {
 
               {/* 추천 시간대 — 잭팟 버튼 → 슬롯 릴로 금·은·동 순위 공개 (pod 탭 = 알림) */}
               {(() => {
-                const goodParts = view.parts.filter((p) => !p.past && p.best && p.best.totalScore >= RECO_MIN);
                 const hasUpcoming = view.parts.some((p) => !p.past);
-                const ranked = goodParts
-                  .slice()
-                  .sort((a, b) => b.best!.totalScore - a.best!.totalScore)
-                  .slice(0, 3);
-                const reelRanks: ReelRank[] = ranked.map((part) => ({
-                  key: part.key,
-                  label: part.label,
-                  time: formatHour(part.best!),
-                  score: part.best!.totalScore,
-                  chips: rankChips(part.best!)
+                const rankedWindows = getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity);
+                const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
+                const ranked = rankedWindows
+                  .map((win, index) => {
+                    const start = byHour.get(win.startHour);
+                    if (!start) return null;
+                    const label = isTomorrow ? "내일" : index === 0 ? "베스트" : "추천";
+                    return { win, start, label };
+                  })
+                  .filter((item): item is { win: (typeof rankedWindows)[number]; start: RunningSlot; label: string } => item !== null);
+                const reelRanks: ReelRank[] = ranked.map(({ win, start, label }) => ({
+                  key: `${win.startHour}`,
+                  label,
+                  time: formatTwoHourWindow(win.startHour),
+                  score: win.score,
+                  chips: [
+                    `🌡️ 체감 ${win.feel}°`,
+                    `🌧️ 강수 ${win.precipProb}%`,
+                    `🙂 미세 ${win.dustLabel}`,
+                    `🍃 바람 ${win.windLabel}`
+                  ]
                 }));
-                const reelPool = view.slots
-                  .filter((s) => (view.currentTime ? s.time >= view.currentTime : true))
-                  .map((s) => ({ time: formatHour(s), score: s.totalScore }));
+                const reelPool = ranked.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }));
                 return (
                   <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
                     {reelRanks.length > 0 ? (
@@ -2078,8 +2067,14 @@ export default function Home() {
                       pool={reelPool}
                       onClose={() => setIsReelOpen(false)}
                       onPick={(rank) => {
-                        const part = ranked.find((p) => p.key === rank.key);
-                        if (part) openAlarm(part);
+                        const target = ranked.find((item) => `${item.win.startHour}` === rank.key);
+                        if (!target) return;
+                        setIsReelOpen(false);
+                        openAlarm({
+                          label: rank.label,
+                          best: target.start,
+                          timeLabel: rank.time
+                        });
                       }}
                     />
                   </section>

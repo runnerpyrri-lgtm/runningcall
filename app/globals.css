@@ -6051,19 +6051,20 @@ button {
 /* 카드 */
 .gcard {
   position: relative;
-  width: clamp(224px, 62vw, 258px);
+  width: clamp(252px, 72vw, 306px);
   aspect-ratio: 232 / 346;
   transform-style: preserve-3d;
   transform: rotateY(180deg);
+  contain: layout paint style;
 }
 
 .gcard.spinning {
-  animation: g-card-spin 2.25s cubic-bezier(0.16, 0.62, 0.24, 1) forwards;
+  animation: g-card-spin 2.05s cubic-bezier(0.18, 0.7, 0.2, 1) forwards;
   will-change: transform;
 }
 
 .gcard.spun {
-  transform: rotateY(1800deg);
+  transform: rotateY(1080deg);
 }
 
 @keyframes g-card-spin {
@@ -6071,13 +6072,13 @@ button {
     transform: rotateY(180deg) scale(0.88);
   }
   55% {
-    transform: rotateY(1320deg) scale(1.12);
+    transform: rotateY(600deg) scale(1.04);
   }
   82% {
-    transform: rotateY(1692deg) scale(1.04);
+    transform: rotateY(930deg) scale(1.015);
   }
   100% {
-    transform: rotateY(1800deg) scale(1);
+    transform: rotateY(1080deg) scale(1);
   }
 }
 
@@ -6301,7 +6302,7 @@ button {
 }
 
 .glight-in.strike {
-  animation: g-strike-in 5s linear infinite;
+  animation: g-strike-in 8s linear infinite;
 }
 
 @keyframes g-strike-in {
@@ -6311,13 +6312,13 @@ button {
     opacity: 0;
   }
   93% {
-    opacity: 0.85;
+    opacity: 0.5;
   }
   94% {
     opacity: 0.1;
   }
   95% {
-    opacity: 0.7;
+    opacity: 0.34;
   }
   96% {
     opacity: 0;
@@ -6391,7 +6392,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 15px 14px;
+  padding: 14px 13px;
   color: #fff;
   text-align: center;
 }
@@ -6438,7 +6439,7 @@ button {
 }
 
 .gc-grade {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.26em;
   text-indent: 0.26em;
@@ -6450,8 +6451,8 @@ button {
 }
 
 .gc-odds {
-  margin-top: 7px;
-  font-size: 9.5px;
+  margin-top: 6px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.12em;
   color: #fff;
@@ -6462,7 +6463,7 @@ button {
 }
 
 .gc-stars {
-  margin-top: 8px;
+  margin-top: 7px;
   font-size: 13px;
   letter-spacing: 3px;
   text-shadow: 0 1px 6px rgba(0, 20, 40, 0.5);
@@ -6480,18 +6481,18 @@ button {
 }
 
 .gc-score {
-  font-size: clamp(66px, 19vw, 82px);
+  font-size: clamp(92px, 26vw, 118px);
   font-weight: 900;
-  line-height: 0.92;
-  letter-spacing: -0.05em;
-  margin-top: auto;
+  line-height: 0.84;
+  letter-spacing: -0.07em;
+  margin-top: 12px;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 3px 24px rgba(0, 25, 55, 0.55);
   animation: g-score-pop 0.7s cubic-bezier(0.2, 1.4, 0.35, 1);
 }
 
 .gc-score small {
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 800;
   opacity: 0.85;
 }
@@ -6522,13 +6523,40 @@ button {
 }
 
 .gc-verdict {
-  font-size: 12.5px;
+  font-size: clamp(16px, 4.3vw, 19px);
   font-weight: 800;
-  line-height: 1.42;
-  margin-top: 5px;
+  line-height: 1.15;
+  margin-top: 8px;
   text-shadow: 0 1px 8px rgba(0, 20, 40, 0.65);
-  min-height: 35px;
+  min-height: 42px;
   word-break: keep-all;
+}
+
+.gc-metrics {
+  width: 100%;
+  margin-top: 11px;
+}
+
+.gc-metrics .hero-metrics {
+  margin-top: 0;
+  gap: 5px;
+}
+
+.gc-metrics .hm {
+  min-height: 50px;
+  padding: 7px 3px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.gc-metrics .hm-v {
+  font-size: clamp(0.92rem, 3.5vw, 1.18rem);
+}
+
+.gc-metrics .hm-l {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .gc-serial {
@@ -6672,8 +6700,8 @@ button {
 
 /* 카드 아래 멘트 */
 .gsay {
-  margin-top: 16px;
-  font-size: 17px;
+  margin-top: 12px;
+  font-size: 18px;
   font-weight: 900;
   color: #fff;
   text-align: center;
@@ -6683,6 +6711,7 @@ button {
 }
 
 .gsub {
+  display: none;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--ink-2);
@@ -6692,6 +6721,7 @@ button {
 }
 
 .gsub2 {
+  display: none;
   font-size: 11.5px;
   font-weight: 700;
   color: var(--muted);
