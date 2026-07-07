@@ -499,13 +499,7 @@ function MetricSheet({
   const selSlot = activeSlots.find((s) => s.time === selTime) ?? reference;
   const isNowSel = currentTime != null && selTime === currentTime;
   const detail = getMetricDetail(sheetKey, selSlot, activity);
-
-  // 러닝 관점 최고/최저 시각 (지표 점수 기준)
-  const bestSlot = chart.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a), chart[0]);
-  const worstSlot = chart.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a), chart[0]);
-  const spread = metric.score(bestSlot) - metric.score(worstSlot);
-  const bestTime = spread >= 8 ? bestSlot.time : null;
-  const worstTime = spread >= 8 && worstSlot.time !== bestSlot.time ? worstSlot.time : null;
+  const selectedRainDecision = sheetKey === "precip" ? rainDecision(selSlot) : null;
   const metricSummary = summarizeMetric(activeSlots, metric, activity);
 
   return (
@@ -525,8 +519,8 @@ function MetricSheet({
           </p>
           <div className="sheet-value-row">
             <p className="sheet-value">
-              {detail.valueText}
-              <span>{detail.unit}</span>
+              {selectedRainDecision ? selectedRainDecision.action : detail.valueText}
+              <span>{selectedRainDecision ? "" : detail.unit}</span>
             </p>
             <span className={`pill pill-${detail.grade.tone} sheet-grade`}>{detail.grade.label}</span>
           </div>
@@ -564,34 +558,14 @@ function MetricSheet({
         {sheetKey === "precip" ? (
           <RainDetailPanel slots={rainChart} selectedTime={selTime} onSelectTime={setSelTime} currentTime={currentTime} />
         ) : (
-          <>
-            <p className="sheet-graph-label">
-              <b>{currentTime ? "앞으로 12시간" : "내일"} {metric.label} 흐름</b>
-              <small>시간을 눌러보세요</small>
-            </p>
-            <TimelineChart
-              slots={chart}
-              metric={metric}
-              currentTime={currentTime}
-              bestTime={bestTime}
-              worstTime={worstTime}
-              selectedTime={selTime}
-              onSelectTime={setSelTime}
-            />
-            {bestTime || worstTime ? (
-              <div className="chart-legend">
-                {bestTime ? (
-                  <span className="cl-best">🟢 {ACTIVITIES[activity].label} 좋은 {String(bestSlot.hour).padStart(2, "0")}시</span>
-                ) : null}
-                {worstTime ? (
-                  <span className="cl-worst">🔴 피할 {String(worstSlot.hour).padStart(2, "0")}시</span>
-                ) : null}
-                {currentTime ? <span className="cl-now">🔵 지금</span> : null}
-              </div>
-            ) : (
-              <p className="chart-hint">시간대에 따라 크게 달라지지 않아요.</p>
-            )}
-          </>
+          <MetricPeriodPanel
+            slots={chart}
+            metric={metric}
+            activity={activity}
+            selectedTime={selTime}
+            onSelectTime={setSelTime}
+            currentTime={currentTime}
+          />
         )}
       </div>
     </div>
@@ -815,44 +789,94 @@ function AdSlot({ side }: { side?: "left" | "right" }) {
   );
 }
 
-// 시간당 강수량(mm) → 알아듣기 쉬운 한글 (시각을 누르면 위에 표시)
-function rainInfo(mm: number): { label: string; desc: string } {
-  if (mm <= 0) return { label: "비 없음", desc: "비 소식 없어요" };
-  if (mm < 1) return { label: "이슬비", desc: "아주 약해요 · 우산 없어도 괜찮아요" };
-  if (mm < 3) return { label: "약한 비", desc: "우산 챙기면 좋아요" };
-  if (mm < 7) return { label: "보통 비", desc: "우산 꼭 챙기세요" };
-  if (mm < 15) return { label: "꽤 오는 비", desc: "옷 많이 젖어요 · 실내가 나아요" };
-  if (mm < 30) return { label: "강한 비", desc: "야외 활동은 힘들어요" };
-  return { label: "폭우", desc: "오늘은 실내에서 쉬어요" };
+type PanelTone = "good" | "normal" | "caution" | "bad";
+
+const PERIOD_DEFS = [
+  { key: "dawn", label: "새벽", from: 0, to: 5 },
+  { key: "morning", label: "오전", from: 6, to: 11 },
+  { key: "afternoon", label: "오후", from: 12, to: 17 },
+  { key: "evening", label: "저녁", from: 18, to: 23 }
+];
+
+// 기상청 강수 강도 표현을 사용자 행동 문장으로 다시 풀어낸다.
+function rainInfo(mm: number): { label: string; desc: string; tone: PanelTone } {
+  if (mm <= 0) return { label: "비 양은 0mm", desc: "확률만 높을 수 있어요. 아래 우산 판단을 보세요.", tone: "good" };
+  if (mm < 0.1) return { label: "빗방울", desc: "공식 예보상 비로 잡히기 전, 살짝 떨어지는 정도예요.", tone: "normal" };
+  if (mm < 1) return { label: "흩뿌림", desc: "바닥이 살짝 젖는 정도. 짧은 이동은 가능해요.", tone: "normal" };
+  if (mm < 3) return { label: "약한 비", desc: "우산이 있으면 편하고, 없으면 조금 젖어요.", tone: "caution" };
+  if (mm < 15) return { label: "보통 비", desc: "우산 없이는 꽤 젖어요. 야외 활동은 줄이는 편이 좋아요.", tone: "bad" };
+  if (mm < 30) return { label: "강한 비", desc: "짧은 외출도 불편해요. 실내 대안을 보세요.", tone: "bad" };
+  return { label: "매우 강한 비", desc: "외출보다 안전이 먼저예요.", tone: "bad" };
 }
 
 function rainAmountText(mm: number) {
   if (mm <= 0) return "0mm";
-  return `${mm.toFixed(mm < 1 ? 1 : 1)}mm`;
+  return `${mm.toFixed(1)}mm`;
 }
 
-function rainHourLabel(slot: RunningSlot) {
-  return `${fmtAmPm(slot.hour)} · ${rainAmountText(slot.precipitation)} · ${Math.round(slot.precipitationProbability)}%`;
+function rainDecision(slot: RunningSlot): { action: string; short: string; body: string; tone: PanelTone } {
+  const mm = slot.precipitation;
+  const prob = Math.round(slot.precipitationProbability);
+  const info = rainInfo(mm);
+
+  if (mm >= 3) {
+    return { action: "우산 꼭 필요", short: "우산", body: `${info.label}예요. ${fmtAmPm(slot.hour)} 전후 야외 일정은 줄이세요.`, tone: "bad" };
+  }
+  if (mm >= 1 || prob >= 75) {
+    return {
+      action: "우산 챙기기",
+      short: "우산",
+      body: mm >= 1 ? `${info.label}가 잡혔어요. 우산 없이는 젖을 수 있어요.` : `비가 올 가능성이 높아요. 아직 양이 작아도 우산을 챙기는 쪽이 안전해요.`,
+      tone: "caution"
+    };
+  }
+  if (mm >= 0.1 || prob >= 55) {
+    return {
+      action: "접이식 우산",
+      short: "접이식",
+      body: mm >= 0.1 ? `${info.label} 수준이에요. 오래 걷는다면 접이식 우산이 편해요.` : `비 가능성이 있어요. 긴 외출이면 작은 우산을 넣어두세요.`,
+      tone: "normal"
+    };
+  }
+  if (prob >= 35) {
+    return { action: "하늘 확인", short: "확인", body: "비 신호가 약해요. 나가기 직전 하늘만 한번 확인하면 충분해요.", tone: "normal" };
+  }
+  return { action: "우산 불필요", short: "없음", body: "비 가능성이 낮아요. 비 때문에 일정을 바꿀 정도는 아니에요.", tone: "good" };
+}
+
+function rainActionText(slot: RunningSlot) {
+  return rainDecision(slot).action;
 }
 
 function rainDayLabel(hasToday: boolean, groupIndex: number) {
   if (hasToday) {
-    return groupIndex === 0 ? "오늘 남은 시간" : groupIndex === 1 ? "내일" : "다음날";
+    return groupIndex === 0 ? "오늘" : groupIndex === 1 ? "내일" : "다음날";
   }
 
   return groupIndex === 0 ? "내일" : "다음날";
 }
 
+function timeRangeText(first: RunningSlot, last: RunningSlot) {
+  const endHour = (last.hour + 1) % 24;
+  if (first.time === last.time) return `${fmtAmPm(first.hour)} 전후`;
+  return `${fmtAmPm(first.hour)}-${fmtAmPm(endHour)}`;
+}
+
 function summarizeRain(slots: RunningSlot[]) {
   const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
   if (wet.length === 0) {
-    return { title: "비 걱정 거의 없어요", body: "선택한 시간 범위에는 뚜렷한 비 구간이 없어요." };
+    return { title: "비 때문에 바꿀 일정은 거의 없어요", body: "뚜렷한 비 구간이 없고, 우산은 대체로 필요하지 않아요." };
   }
   const first = wet[0];
+  const last = wet[wet.length - 1];
   const peak = wet.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), wet[0]);
+  const probable = wet.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), wet[0]);
+  const focus = peak.precipitation >= 0.1 ? peak : probable;
+  const decision = rainDecision(focus);
+  const strength = focus.precipitation >= 0.1 ? rainInfo(focus.precipitation).label : "아직 양은 작지만 가능성 높은";
   return {
-    title: `${fmtAmPm(first.hour)}부터 비 신호`,
-    body: `가장 강한 시간은 ${fmtAmPm(peak.hour)}, ${rainAmountText(peak.precipitation)} 정도예요.`
+    title: `${timeRangeText(first, last)} 비 신호`,
+    body: `${decision.action}. 기준 시간은 ${fmtAmPm(focus.hour)}이고 ${strength} 신호예요.`
   };
 }
 
@@ -872,11 +896,15 @@ function summarizeMetric(slots: RunningSlot[], metric: (typeof METRICS)[number],
   if (metric.key === "precip") {
     const rain = summarizeRain(slots);
     const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
-    const risky = slots.filter((s) => s.precipitation >= 0.5 || s.precipitationProbability >= 60).length;
+    const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+    const focus = peak.precipitation >= 0.1 ? peak : probable;
+    const risky = slots.filter((s) => s.precipitation >= 0.1 || s.precipitationProbability >= 55).length;
+    const decision = rainDecision(focus);
+    const strength = focus.precipitation >= 0.1 ? rainInfo(focus.precipitation).label : "확률 높음";
     return [
       { label: "요약", value: rain.title, note: rain.body },
-      { label: "최대 강수", value: rainAmountText(peak.precipitation), note: `${fmtAmPm(peak.hour)} · 확률 ${Math.round(peak.precipitationProbability)}%` },
-      { label: "비 신호", value: risky > 0 ? `${risky}시간` : "없음", note: risky > 0 ? "우산 판단이 필요한 시간" : "활동하기 편한 흐름" }
+      { label: "기준 시간", value: `${fmtAmPm(focus.hour)} · ${strength}`, note: `${rainAmountText(focus.precipitation)} · ${decision.action}` },
+      { label: "우산 판단", value: risky > 0 ? decision.action : "우산 불필요", note: risky > 0 ? `${risky}시간 정도 비 신호가 있어요` : "비 때문에 챙길 물건은 거의 없어요" }
     ];
   }
 
@@ -885,6 +913,193 @@ function summarizeMetric(slots: RunningSlot[], metric: (typeof METRICS)[number],
     { label: "주의할 때", value: `${fmtAmPm(worst.hour)}`, note: `${metric.label}이 가장 부담되는 시간` },
     { label: "평균 흐름", value: `${fmt(avg)}${unit}`, note: "선택한 시간 범위 평균값" }
   ];
+}
+
+function relativeDayLabel(slot: RunningSlot, slots: RunningSlot[], currentTime: string | null) {
+  const days = Array.from(new Set(slots.map((s) => s.time.slice(0, 10))));
+  const index = Math.max(0, days.indexOf(slot.time.slice(0, 10)));
+  return rainDayLabel(Boolean(currentTime), index);
+}
+
+function windHuman(ms: number) {
+  if (ms < 4) return "약한 바람";
+  if (ms < 9) return "조금 강한 바람";
+  if (ms < 14) return "강한 바람";
+  return "매우 강한 바람";
+}
+
+function humidityHuman(value: number) {
+  if (value < 35) return { label: "건조", tone: "caution" as PanelTone, note: "목이 마르기 쉬워요. 물을 챙기세요." };
+  if (value <= 60) return { label: "쾌적", tone: "good" as PanelTone, note: "땀이 마르기 쉬운 편이에요." };
+  if (value <= 75) return { label: "습함", tone: "normal" as PanelTone, note: "천천히 움직이면 부담이 덜해요." };
+  return { label: "끈적함", tone: "caution" as PanelTone, note: "체감이 답답할 수 있어요. 강도는 낮추세요." };
+}
+
+function metricPeriodSummary(metric: (typeof METRICS)[number], group: RunningSlot[], activity: ActivityKey) {
+  const best = group.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a), group[0]);
+  const worst = group.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a), group[0]);
+  const avg = group.reduce((sum, slot) => sum + metric.read(slot), 0) / Math.max(group.length, 1);
+  const focus = worst;
+
+  if (metric.key === "feel") {
+    const hot = Math.max(...group.map((s) => s.apparentTemperature));
+    const cold = Math.min(...group.map((s) => s.apparentTemperature));
+    const tone: PanelTone = hot >= 30 || cold <= 0 ? "caution" : hot >= 27 || cold <= 5 ? "normal" : "good";
+    const label = hot >= 30 ? "더위 부담" : cold <= 0 ? "매서움" : cold <= 5 ? "쌀쌀함" : "움직이기 편함";
+    const note = hot >= 30 ? "물과 그늘을 먼저 보세요." : cold <= 5 ? "초반 보온이 중요해요." : `${ACTIVITIES[activity].label}하기 무난해요.`;
+    return { primary: label, value: `${Math.round(cold)}°-${Math.round(hot)}°`, note, tone, focus };
+  }
+
+  if (metric.key === "dust") {
+    const worstDust = group.reduce((a, b) => (b.pm25 > a.pm25 ? b : a), group[0]);
+    const grade = gradePm25(worstDust.pm25);
+    const tone: PanelTone = grade.label === "좋음" ? "good" : grade.label === "보통" ? "normal" : grade.label === "나쁨" ? "caution" : "bad";
+    const note = grade.label === "좋음" ? "호흡 부담이 낮아요." : grade.label === "보통" ? "민감하면 강도만 살짝 낮추세요." : "오래 뛰기보다 짧게 움직이세요.";
+    return { primary: `미세 ${grade.label}`, value: `${Math.round(worstDust.pm25)}㎍`, note, tone, focus: worstDust };
+  }
+
+  if (metric.key === "uv") {
+    const peak = group.reduce((a, b) => (b.uvIndex > a.uvIndex ? b : a), group[0]);
+    const grade = gradeUv(peak.uvIndex);
+    const tone: PanelTone = peak.uvIndex >= 8 ? "bad" : peak.uvIndex >= 6 ? "caution" : peak.uvIndex >= 3 ? "normal" : "good";
+    const note = peak.uvIndex >= 8 ? "10-15시는 그늘과 차단제를 우선하세요." : peak.uvIndex >= 6 ? "모자와 선크림이 있으면 좋아요." : "자외선 부담이 낮아요.";
+    return { primary: `자외선 ${grade.label}`, value: `${Math.round(peak.uvIndex)}`, note, tone, focus: peak };
+  }
+
+  if (metric.key === "wind") {
+    const peak = group.reduce((a, b) => (b.windSpeed > a.windSpeed ? b : a), group[0]);
+    const tone: PanelTone = peak.windSpeed >= 9 ? "bad" : peak.windSpeed >= 4 ? "normal" : "good";
+    const note = peak.windSpeed >= 9 ? "맞바람과 체온 저하를 조심하세요." : peak.windSpeed >= 4 ? "가벼운 겉옷이 도움이 돼요." : "바람 부담이 작아요.";
+    return { primary: windHuman(peak.windSpeed), value: `${peak.windSpeed.toFixed(1)}㎧`, note, tone, focus: peak };
+  }
+
+  const hum = humidityHuman(avg);
+  return { primary: hum.label, value: `${Math.round(avg)}%`, note: hum.note, tone: hum.tone, focus: best };
+}
+
+function buildMetricPeriodCards(slots: RunningSlot[], metric: (typeof METRICS)[number], activity: ActivityKey, currentTime: string | null) {
+  return PERIOD_DEFS.flatMap((period) => {
+    const groups = slots.filter((slot) => slot.hour >= period.from && slot.hour <= period.to);
+    if (groups.length === 0) return [];
+    const byDay = groups.reduce<Array<RunningSlot[]>>((acc, slot) => {
+      const last = acc[acc.length - 1];
+      if (last?.[0]?.time.slice(0, 10) === slot.time.slice(0, 10)) {
+        last.push(slot);
+      } else {
+        acc.push([slot]);
+      }
+      return acc;
+    }, []);
+
+    return byDay.map((group) => {
+      const first = group[0];
+      const last = group[group.length - 1];
+      const summary = metricPeriodSummary(metric, group, activity);
+      return {
+        key: `${period.key}-${first.time}`,
+        label: `${relativeDayLabel(first, slots, currentTime)} ${period.label}`,
+        range: timeRangeText(first, last),
+        slots: group,
+        ...summary
+      };
+    });
+  }).slice(0, 6);
+}
+
+function MetricPeriodPanel({
+  slots,
+  metric,
+  activity,
+  selectedTime,
+  onSelectTime,
+  currentTime
+}: {
+  slots: RunningSlot[];
+  metric: (typeof METRICS)[number];
+  activity: ActivityKey;
+  selectedTime: string;
+  onSelectTime: (time: string) => void;
+  currentTime: string | null;
+}) {
+  const cards = buildMetricPeriodCards(slots, metric, activity, currentTime);
+
+  return (
+    <div className="metric-period-panel">
+      <p className="sheet-graph-label">
+        <b>{currentTime ? "앞으로 12시간" : "내일"} {metric.label} 핵심</b>
+        <small>시간대를 누르면 위 설명이 바뀌어요</small>
+      </p>
+      <div className="metric-period-grid">
+        {cards.map((card) => {
+          const active = card.slots.some((slot) => slot.time === selectedTime);
+          return (
+            <button
+              type="button"
+              key={card.key}
+              className={`metric-period-card tone-${card.tone}${active ? " active" : ""}`}
+              onClick={() => onSelectTime(card.focus.time)}
+            >
+              <span>{card.label}</span>
+              <b>{card.primary}</b>
+              <strong>{card.value}</strong>
+              <small>{card.range} · {card.note}</small>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function buildRainEvents(slots: RunningSlot[]) {
+  const events: RunningSlot[][] = [];
+  slots.forEach((slot) => {
+    const signal = slot.precipitation >= 0.1 || slot.precipitationProbability >= 55;
+    if (!signal) return;
+    const last = events[events.length - 1];
+    const previous = last?.[last.length - 1];
+    const connected = previous && previous.time.slice(0, 10) === slot.time.slice(0, 10) && slot.hour - previous.hour <= 1;
+    if (last && connected) {
+      last.push(slot);
+    } else {
+      events.push([slot]);
+    }
+  });
+  return events;
+}
+
+function buildRainPeriodCards(slots: RunningSlot[], currentTime: string | null) {
+  return PERIOD_DEFS.flatMap((period) => {
+    const group = slots.filter((slot) => slot.hour >= period.from && slot.hour <= period.to);
+    if (group.length === 0) return [];
+    const byDay = group.reduce<Array<RunningSlot[]>>((acc, slot) => {
+      const last = acc[acc.length - 1];
+      if (last?.[0]?.time.slice(0, 10) === slot.time.slice(0, 10)) {
+        last.push(slot);
+      } else {
+        acc.push([slot]);
+      }
+      return acc;
+    }, []);
+
+    return byDay.map((dayGroup) => {
+      const first = dayGroup[0];
+      const last = dayGroup[dayGroup.length - 1];
+      const peak = dayGroup.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), dayGroup[0]);
+      const probable = dayGroup.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), dayGroup[0]);
+      const focus = peak.precipitation >= 0.1 ? peak : probable;
+      const decision = rainDecision(focus);
+      return {
+        key: `rain-${period.key}-${first.time}`,
+        label: `${relativeDayLabel(first, slots, currentTime)} ${period.label}`,
+        range: timeRangeText(first, last),
+        amount: rainAmountText(peak.precipitation),
+        prob: Math.round(probable.precipitationProbability),
+        decision,
+        focus
+      };
+    });
+  }).slice(0, 8);
 }
 
 function RainDetailPanel({
@@ -900,84 +1115,85 @@ function RainDetailPanel({
 }) {
   const selected = slots.find((slot) => slot.time === selectedTime) ?? slots[0];
   const selectedInfo = rainInfo(selected.precipitation);
-  const maxMm = Math.max(1, ...slots.map((slot) => slot.precipitation));
-  const wetSlots = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const selectedDecision = rainDecision(selected);
   const rainSummary = summarizeRain(slots);
-  const dayGroups = slots.reduce<Array<{ day: string; slots: RunningSlot[] }>>((groups, slot) => {
-    const day = slot.time.slice(0, 10);
-    const last = groups[groups.length - 1];
-    if (last?.day === day) {
-      last.slots.push(slot);
-    } else {
-      groups.push({ day, slots: [slot] });
-    }
-    return groups;
-  }, []);
+  const rainEvents = buildRainEvents(slots);
+  const periodCards = buildRainPeriodCards(slots, currentTime);
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{currentTime ? "오늘·내일 강수 흐름" : "내일 강수 흐름"}</b>
-        <small>막대=비 양, 진하기=확률</small>
+        <b>{currentTime ? "오늘·내일 비 오는 시간" : "내일 비 오는 시간"}</b>
+        <small>확률보다 먼저 우산 판단을 보여줘요</small>
       </p>
 
-      <div className={`rain-focus ${selected.precipitation > 0 ? "wet" : "dry"}`}>
+      <div className={`rain-focus tone-${selectedDecision.tone}`}>
         <div>
           <span>{fmtAmPm(selected.hour)}</span>
-          <b>{selectedInfo.label}</b>
-          <small>{selectedInfo.desc}</small>
+          <b>{selectedDecision.action}</b>
+          <small>{selectedDecision.body}</small>
         </div>
-        <strong>{rainAmountText(selected.precipitation)}</strong>
-        <em>확률 {Math.round(selected.precipitationProbability)}%</em>
+        <strong>{selectedInfo.label}</strong>
+        <em>{rainAmountText(selected.precipitation)} · 가능성 {Math.round(selected.precipitationProbability)}%</em>
       </div>
 
-      <div className="rain-days" aria-label={rainSummary.title}>
-        {dayGroups.map((group, groupIndex) => (
-          <div className="rain-day" key={group.day}>
-            <div className="rain-day-label">
-              <b>{rainDayLabel(Boolean(currentTime), groupIndex)}</b>
-              <span>{group.slots.length}시간 보기</span>
-            </div>
-            <div className="rain-wide-bars" role="list">
-              {group.slots.map((slot) => {
-                const wet = slot.precipitation >= 0.1 || slot.precipitationProbability >= 55;
-                const active = slot.time === selected.time;
-                const height = wet ? Math.max(16, (slot.precipitation / maxMm) * 96) : 8;
-                const opacity = wet ? 0.35 + (slot.precipitationProbability / 100) * 0.65 : 0.18;
-                return (
-                  <button
-                    type="button"
-                    role="listitem"
-                    key={slot.time}
-                    className={`rain-wide-bar${wet ? " wet" : ""}${active ? " active" : ""}`}
-                    onClick={() => onSelectTime(slot.time)}
-                    aria-label={rainHourLabel(slot)}
-                  >
-                    <span className="rwb-mm">{slot.precipitation >= 0.1 ? rainAmountText(slot.precipitation) : ""}</span>
-                    <span className="rwb-track">
-                      <span className="rwb-fill" style={{ height: `${height}%`, opacity }} />
-                    </span>
-                    <span className="rwb-hour">{String(slot.hour).padStart(2, "0")}</span>
-                  </button>
-                );
-              })}
-            </div>
+      <div className="rain-events" aria-label={rainSummary.title}>
+        <div className="rain-events-head">
+          <b>{rainSummary.title}</b>
+          <span>{rainSummary.body}</span>
+        </div>
+        {rainEvents.length > 0 ? (
+          rainEvents.map((event) => {
+            const first = event[0];
+            const last = event[event.length - 1];
+            const peak = event.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), event[0]);
+            const probable = event.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), event[0]);
+            const focus = peak.precipitation >= 0.1 ? peak : probable;
+            const info = rainInfo(peak.precipitation);
+            const decision = rainDecision(focus);
+            const total = event.reduce((sum, slot) => sum + slot.precipitation, 0);
+            const active = event.some((slot) => slot.time === selected.time);
+            return (
+              <button
+                type="button"
+                key={first.time}
+                className={`rain-event tone-${decision.tone}${active ? " active" : ""}`}
+                onClick={() => onSelectTime(focus.time)}
+              >
+                <span>{relativeDayLabel(first, slots, currentTime)} · {timeRangeText(first, last)}</span>
+                <b>{decision.action}</b>
+                <strong>{info.label}</strong>
+                <small>가장 강할 때 {rainAmountText(peak.precipitation)} · 구간 합계 {rainAmountText(total)} · 가능성 최대 {Math.round(probable.precipitationProbability)}%</small>
+              </button>
+            );
+          })
+        ) : (
+          <div className="rain-empty">
+            <b>뚜렷한 비 구간 없음</b>
+            <span>비 때문에 우산이나 일정 변경을 먼저 고민할 상황은 아니에요.</span>
           </div>
-        ))}
+        )}
       </div>
 
       <div className="rain-periods">
-        <b>{rainSummary.title}</b>
-        <span>{rainSummary.body}</span>
-        {wetSlots.length > 0 ? (
-          <div className="rain-chip-row">
-            {wetSlots.slice(0, 6).map((slot) => (
-              <button type="button" key={slot.time} className="rain-chip" onClick={() => onSelectTime(slot.time)}>
-                {fmtAmPm(slot.hour)} {rainAmountText(slot.precipitation)}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="rain-periods-head">
+          <b>시간대별 판단</b>
+          <span>작은 숫자 대신 행동 기준으로 봐요.</span>
+        </div>
+        <div className="rain-period-grid">
+          {periodCards.map((card) => (
+            <button
+              type="button"
+              key={card.key}
+              className={`rain-period-card tone-${card.decision.tone}${card.focus.time === selected.time ? " active" : ""}`}
+              onClick={() => onSelectTime(card.focus.time)}
+            >
+              <span>{card.label}</span>
+              <b>{card.decision.action}</b>
+              <small>{card.range} · 최대 {card.amount} · 가능성 {card.prob}%</small>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1476,11 +1692,8 @@ export default function Home() {
             key: "precip" as DetailKey,
             icon: <CloudRain size={19} />,
             label: "강수",
-            value:
-              metricRef.precipitation >= 0.1
-                ? metricRef.precipitation.toFixed(1)
-                : `${Math.round(metricRef.precipitationProbability)}`,
-            unit: metricRef.precipitation >= 0.1 ? "mm" : "%",
+            value: rainDecision(metricRef).short,
+            unit: "",
             grade: gradePrecipitation(metricRef.precipitation, metricRef.precipitationProbability),
             iconClass: "ci-teal"
           },
@@ -1879,10 +2092,7 @@ export default function Home() {
                                 </p>
                                 <div className="rank-metrics">
                                   <span>🌡️ 체감 {Math.round(best.apparentTemperature)}°</span>
-                                  <span>
-                                    {precipEmoji(best.precipitationProbability)} 강수{" "}
-                                    {Math.round(best.precipitationProbability)}%
-                                  </span>
+                                  <span>{precipEmoji(best.precipitationProbability)} {rainActionText(best)}</span>
                                   <span>
                                     {dustEmoji(gradePm25(best.pm25).label)} 미세 {gradePm25(best.pm25).label}
                                   </span>

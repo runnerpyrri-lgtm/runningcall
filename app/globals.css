@@ -2469,8 +2469,203 @@ button {
   font-weight: 800;
 }
 
+.metric-period-panel {
+  margin-top: 18px;
+}
+
+.metric-period-grid,
+.rain-period-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.metric-period-card,
+.rain-period-card,
+.rain-event {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 14px;
+  border-radius: 15px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-align: left;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.metric-period-card:active,
+.rain-period-card:active,
+.rain-event:active {
+  transform: scale(0.99);
+}
+
+.metric-period-card.active,
+.rain-period-card.active,
+.rain-event.active {
+  border-color: rgba(95, 176, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(95, 176, 255, 0.14);
+}
+
+.metric-period-card span,
+.rain-period-card span,
+.rain-event span {
+  display: block;
+  font-size: 0.73rem;
+  font-weight: 850;
+  color: var(--muted);
+}
+
+.metric-period-card b,
+.rain-period-card b,
+.rain-event b {
+  display: block;
+  margin-top: 5px;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.metric-period-card strong,
+.rain-event strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.24rem;
+  font-weight: 950;
+  color: #7cc0ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-period-card small,
+.rain-period-card small,
+.rain-event small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.metric-period-card.tone-good,
+.rain-period-card.tone-good,
+.rain-event.tone-good,
+.rain-focus.tone-good {
+  border-color: rgba(43, 213, 118, 0.28);
+  background: rgba(43, 213, 118, 0.08);
+}
+
+.metric-period-card.tone-normal,
+.rain-period-card.tone-normal,
+.rain-event.tone-normal,
+.rain-focus.tone-normal {
+  border-color: rgba(95, 176, 255, 0.28);
+  background: rgba(61, 155, 255, 0.1);
+}
+
+.metric-period-card.tone-caution,
+.rain-period-card.tone-caution,
+.rain-event.tone-caution,
+.rain-focus.tone-caution {
+  border-color: rgba(255, 176, 32, 0.34);
+  background: rgba(255, 176, 32, 0.1);
+}
+
+.metric-period-card.tone-bad,
+.rain-period-card.tone-bad,
+.rain-event.tone-bad,
+.rain-focus.tone-bad {
+  border-color: rgba(255, 90, 95, 0.36);
+  background: rgba(255, 90, 95, 0.1);
+}
+
+.rain-events {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rain-events-head,
+.rain-periods-head {
+  padding: 2px 2px 0;
+}
+
+.rain-events-head b,
+.rain-periods-head b {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 950;
+  color: var(--ink);
+}
+
+.rain-events-head span,
+.rain-periods-head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.rain-empty {
+  padding: 14px;
+  border-radius: 15px;
+  background: rgba(43, 213, 118, 0.08);
+  border: 1px solid rgba(43, 213, 118, 0.25);
+}
+
+.rain-empty b,
+.rain-empty span {
+  display: block;
+}
+
+.rain-empty b {
+  font-size: 0.98rem;
+  font-weight: 950;
+  color: var(--ink);
+}
+
+.rain-empty span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.rain-focus.tone-good strong {
+  color: var(--good);
+}
+
+.rain-focus strong {
+  max-width: 132px;
+  text-align: right;
+  white-space: normal;
+  line-height: 1.18;
+  font-size: 1.12rem;
+}
+
+.rain-focus.tone-normal strong {
+  color: #7cc0ff;
+}
+
+.rain-focus.tone-caution strong {
+  color: var(--warn);
+}
+
+.rain-focus.tone-bad strong {
+  color: var(--bad);
+}
+
 @media (max-width: 520px) {
   .metric-brief {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-period-grid,
+  .rain-period-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2482,6 +2677,11 @@ button {
   .rain-focus em {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .rain-focus strong {
+    max-width: none;
+    text-align: left;
   }
 
   .rwb-track {
