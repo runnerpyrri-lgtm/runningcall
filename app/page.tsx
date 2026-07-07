@@ -835,6 +835,14 @@ function rainHourLabel(slot: RunningSlot) {
   return `${fmtAmPm(slot.hour)} · ${rainAmountText(slot.precipitation)} · ${Math.round(slot.precipitationProbability)}%`;
 }
 
+function rainDayLabel(hasToday: boolean, groupIndex: number) {
+  if (hasToday) {
+    return groupIndex === 0 ? "오늘 남은 시간" : groupIndex === 1 ? "내일" : "다음날";
+  }
+
+  return groupIndex === 0 ? "내일" : "다음날";
+}
+
 function summarizeRain(slots: RunningSlot[]) {
   const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
   if (wet.length === 0) {
@@ -927,7 +935,7 @@ function RainDetailPanel({
         {dayGroups.map((group, groupIndex) => (
           <div className="rain-day" key={group.day}>
             <div className="rain-day-label">
-              <b>{currentTime && groupIndex === 0 ? "오늘 남은 시간" : groupIndex === 0 ? "내일" : "다음날"}</b>
+              <b>{rainDayLabel(Boolean(currentTime), groupIndex)}</b>
               <span>{group.slots.length}시간 보기</span>
             </div>
             <div className="rain-wide-bars" role="list">
