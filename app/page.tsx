@@ -6,6 +6,7 @@ import {
   Backpack,
   BellRing,
   ChevronDown,
+  ChevronRight,
   Clock,
   CloudRain,
   Droplets,
@@ -40,7 +41,7 @@ import {
   type RawForecast
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
-import { ACTIVITY_GUIDE, getDynamicGuideBlock } from "@/lib/activity-guide";
+import { getDynamicGuideBlock } from "@/lib/activity-guide";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
 import {
@@ -276,6 +277,10 @@ function formatClock(value: string | null) {
   return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
+function formatHour(slot: RunningSlot) {
+  return `${String(slot.hour).padStart(2, "0")}:00`;
+}
+
 function bestOf(slots: RunningSlot[]) {
   return slots.reduce((prev, slot) => (slot.totalScore > prev.totalScore ? slot : prev), slots[0]);
 }
@@ -305,6 +310,26 @@ function gradeLabel(score: number) {
   if (score >= 55) return "보통";
   if (score >= 38) return "주의";
   return "나쁨";
+}
+
+const RECO_MIN = 55;
+
+function precipEmoji(probability: number) {
+  if (probability >= 75) return "☔";
+  if (probability >= 45) return "🌦";
+  return "맑음";
+}
+
+function dustEmoji(label: string) {
+  if (label.includes("나쁨")) return "먼지";
+  if (label.includes("보통")) return "보통";
+  return "깨끗";
+}
+
+function windEmoji(label: string) {
+  if (label.includes("강")) return "강풍";
+  if (label.includes("약")) return "잔잔";
+  return "바람";
 }
 
 function TimelineChart({
@@ -570,132 +595,69 @@ function MetricSheet({
 }
 
 // 복장 플랜 본문 — OutfitSheet(모달)과 준비 탭(인라인)에서 공유
-function OutfitPlanBody({ plan }: { plan: ReturnType<typeof getOutfitPlan> }) {
-  return (
-    <>
-      <p className="sheet-meaning">{plan.headline}</p>
-
-      {/* 오늘 날씨 변화 (비·자외선·기온) */}
-      {plan.changes.length > 0 ? (
-        <div className="outfit-changes">
-          {plan.changes.map((c, i) => (
-            <div key={i} className={`ofc ofc-${c.tone}`}>
-              <span aria-hidden="true">{c.emoji}</span>
-              <p>{c.text}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {/* 카테고리별 복장 */}
-      <p className="outfit-section">기본 복장</p>
-      <ul className="outfit-cats">
-        {plan.categories.map((c, i) => (
-          <li key={`${c.label}-${i}`}>
-            <span className="oc-emoji" aria-hidden="true">
-              {c.emoji}
-            </span>
-            <div className="oc-body">
-              <strong>
-                <span className="oc-label">{c.label}</span>
-                {c.value}
-              </strong>
-              <small>{c.reason}</small>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* 햇빛·자외선 */}
-      {plan.sun ? (
-        <>
-          <p className="outfit-section outfit-sun-head">
-            ☀️ 햇빛·자외선 <em>{plan.sun.level}</em>
-          </p>
-          <ul className="outfit-cats sun-cats">
-            {plan.sun.items.map((item, i) => (
-              <li key={`${item.label}-${i}`}>
-                <span className="oc-emoji" aria-hidden="true">
-                  {item.emoji}
-                </span>
-                <div className="oc-body">
-                  <strong>{item.label}</strong>
-                  <small>{item.reason}</small>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      {/* 시간대별 옷차림 */}
-      {plan.byTime.length > 0 ? (
-        <>
-          <p className="outfit-section">시간대별 옷차림</p>
-          <ul className="outfit-times">
-            {plan.byTime.map((p) => (
-              <li key={p.label}>
-                <span className="ot-when">
-                  <span aria-hidden="true">{p.emoji}</span>
-                  {p.label} · {p.feel}°
-                </span>
-                <span className="ot-wear">
-                  {p.main}
-                  {p.note ? <small> · {p.note}</small> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-    </>
-  );
-}
-
 // 준비 탭 — 복장 상세 + 활동별 준비/주의 콘텐츠
 function PrepView({ slot, slots, activity }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey }) {
   const plan = getOutfitPlan(slots, slot, activity);
   const keyBlock = getDynamicGuideBlock(activity, slot);
+  const essentials = plan.categories.slice(0, 4);
+  const keyItems = keyBlock?.items.slice(0, 2) ?? [];
+  const change = plan.changes[0];
+  const times = plan.byTime.slice(0, 3);
+
   return (
-    <section className="prep-view" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
-      <p className="prep-head">
-        {ACTIVITIES[activity].terms.outfitTitle} · 체감 {plan.feels.toFixed(0)}°C
-      </p>
-      <p className="prep-main">{plan.main}</p>
-      {keyBlock ? (
-        <div className="prep-key" role="note">
-          <p className="prep-key-head">🔑 오늘 준비 핵심</p>
-          <ul>
-            {keyBlock.items.map((it) => (
-              <li key={it}>{it}</li>
-            ))}
-          </ul>
+    <section className="prep-view prep-lite" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
+      <div className="prep-lite-head">
+        <span>
+          <Backpack size={18} />
+          오늘 준비
+        </span>
+        <b>{plan.main}</b>
+        <small>
+          체감 {plan.feels.toFixed(0)}° · {plan.headline}
+        </small>
+      </div>
+
+      {keyItems.length > 0 ? (
+        <div className="prep-lite-alert" role="note">
+          <strong>{keyBlock?.heading ?? "오늘 체크"}</strong>
+          {keyItems.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
         </div>
       ) : null}
-      <OutfitPlanBody plan={plan} />
-      <GuideBlocks blocks={ACTIVITY_GUIDE[activity].prep} />
+
+      <div className="prep-lite-grid" aria-label="핵심 준비물">
+        {essentials.map((item) => (
+          <div className="prep-lite-card" key={item.label}>
+            <span aria-hidden="true">{item.emoji}</span>
+            <b>{item.value}</b>
+            <small>{item.label}</small>
+          </div>
+        ))}
+      </div>
+
+      {change ? (
+        <div className={`prep-lite-note tone-${change.tone}`}>
+          <span aria-hidden="true">{change.emoji}</span>
+          <b>{change.text}</b>
+        </div>
+      ) : null}
+
+      {times.length > 0 ? (
+        <div className="prep-lite-times">
+          {times.map((time) => (
+            <span key={time.label}>
+              <b>{time.label}</b>
+              {time.main}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
 
 // 활동별 실전 준비·가이드 블록 렌더
-function GuideBlocks({ blocks }: { blocks: { heading: string; items: string[] }[] }) {
-  return (
-    <div className="guide-blocks">
-      {blocks.map((b) => (
-        <div className="guide-block" key={b.heading}>
-          <p className="gb-head">{b.heading}</p>
-          <ul>
-            {b.items.map((it) => (
-              <li key={it}>{it}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function AlarmSheet({
   target,
   existing,
@@ -839,6 +801,10 @@ function rainDecision(slot: RunningSlot): { action: string; short: string; body:
     return { action: "하늘 확인", short: "확인", body: "비 신호가 약해요. 나가기 직전 하늘만 한번 확인하면 충분해요.", tone: "normal" };
   }
   return { action: "우산 불필요", short: "없음", body: "비 가능성이 낮아요. 비 때문에 일정을 바꿀 정도는 아니에요.", tone: "good" };
+}
+
+function rainActionText(slot: RunningSlot) {
+  return rainDecision(slot).action;
 }
 
 function rainDayLabel(hasToday: boolean, groupIndex: number) {
@@ -1144,6 +1110,24 @@ function RainDetailPanel({
         <b>{currentTime ? "오늘·내일 비 시간표" : "내일 비 시간표"}</b>
         <small>새벽·오전·오후·저녁만 보면 돼요</small>
       </p>
+
+      <div className="rain-glance" aria-label="비 한눈 요약">
+        {dayBoards.map((board) => {
+          const wetCell = board.cells.find((cell) => cell.decision.short !== "없음") ?? board.cells[0];
+          return (
+            <button
+              type="button"
+              key={board.key}
+              className={`rain-glance-card tone-${board.tone}`}
+              onClick={() => wetCell && onSelectTime(wetCell.focus.time)}
+            >
+              <span>{board.label}</span>
+              <b>{board.headline}</b>
+              <small>{board.summary}</small>
+            </button>
+          );
+        })}
+      </div>
 
       <div className={`rain-focus tone-${selectedDecision.tone}`}>
         <div>
@@ -1599,6 +1583,16 @@ export default function Home() {
 
   const canNotify = typeof window !== "undefined" && "Notification" in window;
 
+  function openAlarm(part: { label: string; best: RunningSlot | null }) {
+    if (!part.best) return;
+    setAlarmTarget({
+      id: part.best.time,
+      label: `${part.label} ${profile.label}`,
+      timeLabel: formatHour(part.best),
+      targetMs: slotToMs(part.best.time)
+    });
+  }
+
   async function saveAlarm(leadMin: number, popup: boolean) {
     if (!alarmTarget) return;
     if (popup && canNotify && Notification.permission !== "granted") {
@@ -1764,7 +1758,6 @@ export default function Home() {
               ) : null}
             </div>
             <button className="loc-center" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
-              <small>{location.source === "gps" ? "현재" : "동네"}</small>
               <strong>
                 {locationLabel}
                 <ChevronDown size={15} className="loc-caret" />
@@ -2011,6 +2004,81 @@ export default function Home() {
 
                 </div>
                 <div className="col-side">
+
+              {/* 추천 시간대는 6개 지표 아래에서 바로 확인할 수 있게 유지 */}
+              {(() => {
+                const goodParts = view.parts.filter((p) => !p.past && p.best && p.best.totalScore >= RECO_MIN);
+                const hasUpcoming = view.parts.some((p) => !p.past);
+                return (
+                  <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
+                    <div className="section-title ranks-title">
+                      <b>
+                        {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
+                      </b>
+                    </div>
+                    {goodParts.length > 0 ? (
+                      <div className="rank-list">
+                        {goodParts.map((part) => {
+                          const best = part.best!;
+                          const isNow = !isTomorrow && nowHour >= part.range[0] && nowHour <= part.range[1];
+                          const isBest = best.time === view.best.time;
+                          const hasAlarm = alarms.some((a) => a.id === best.time);
+                          return (
+                            <button
+                              type="button"
+                              key={part.key}
+                              className={`rank-card daypart-card ${isBest ? "is-best" : ""} ${isNow ? "is-now" : ""}`}
+                              onClick={() => openAlarm(part)}
+                            >
+                              <span className="rank-badge daypart-badge">{part.label}</span>
+                              <div className="rank-body">
+                                <p className="rank-time">
+                                  {formatHour(best)}
+                                  {isBest ? (
+                                    <em className="rank-now">오늘 베스트</em>
+                                  ) : isNow ? (
+                                    <em className="rank-now">지금 딱</em>
+                                  ) : null}
+                                  {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
+                                </p>
+                                <div className="rank-metrics">
+                                  <span>체감 {Math.round(best.apparentTemperature)}°</span>
+                                  <span>{precipEmoji(best.precipitationProbability)} {rainActionText(best)}</span>
+                                  <span>
+                                    {dustEmoji(gradePm25(best.pm25).label)} 미세 {gradePm25(best.pm25).label}
+                                  </span>
+                                  <span>
+                                    {windEmoji(gradeWind(best.windSpeed).label)} 바람 {gradeWind(best.windSpeed).label}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="rank-score" style={{ color: ringColor(best.totalScore) }}>
+                                {best.totalScore}
+                                <small>점</small>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rec-empty-body">
+                        <p className="rec-none">
+                          {isTomorrow
+                            ? `내일은 ${profile.label}하기 좋은 시간대가 없어요.`
+                            : hasUpcoming
+                            ? `오늘은 남은 시간 중 ${profile.label}하기 좋은 때가 없어요.`
+                            : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
+                        </p>
+                        {!isTomorrow && hasTomorrow ? (
+                          <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
+                            내일 시간대 보기 <ChevronRight size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                  </section>
+                );
+              })()}
 
               {/* 일출 · 일몰 — 슬림 한 줄(숫자 위주) */}
               {sunrise && sunset ? (
