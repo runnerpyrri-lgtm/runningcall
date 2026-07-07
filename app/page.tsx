@@ -1126,10 +1126,10 @@ function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
   };
 }
 
-function rainBarHeight(slot: RunningSlot) {
-  const byAmount = Math.min(100, slot.precipitation * 26);
-  const byProb = Math.min(100, slot.precipitationProbability);
-  return Math.max(8, Math.min(100, Math.max(byAmount, byProb * 0.74)));
+function rainSignalPercent(slot: RunningSlot) {
+  const byAmount = Math.min(100, slot.precipitation * 24);
+  const byProb = Math.min(100, slot.precipitationProbability * 0.86);
+  return Math.round(Math.max(8, Math.min(100, Math.max(byAmount, byProb))));
 }
 
 function RainDetailPanel({
@@ -1149,68 +1149,58 @@ function RainDetailPanel({
   const dayLabel = currentTime ? "오늘" : "내일";
   const overview = buildRainOverview(slots, dayLabel);
   const periodCards = buildRainDayBoards(slots, currentTime)[0]?.cells ?? [];
+  const selectedInfoLine = `${rainAmountText(selected.precipitation)} · 가능성 ${Math.round(selected.precipitationProbability)}%`;
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{dayLabel} 비 한눈에</b>
-        <small>우산 판단 먼저</small>
+        <b>{dayLabel} 강수 판단</b>
+        <small>우산·시간대만 빠르게</small>
       </p>
 
-      <div className={`rain-day-hero tone-${overview.tone}`}>
-        <span>{overview.time}</span>
-        <b>{overview.title}</b>
-        <small>{overview.body}</small>
-        <div className="rain-day-stats">
-          <em>최대 {overview.amount}</em>
-          <em>가능성 {overview.prob}</em>
-        </div>
-      </div>
-
-      <div className="rain-hour-strip" aria-label={`${dayLabel} 시간별 강수`}>
-        {slots.map((slot) => {
-          const decision = rainDecision(slot);
-          const active = slot.time === selected.time;
-          return (
-            <button
-              type="button"
-              key={slot.time}
-              className={`rain-hour tone-${decision.tone}${active ? " active" : ""}`}
-              onClick={() => onSelectTime(slot.time)}
-            >
-              <span className="rain-hour-bar" style={{ height: `${rainBarHeight(slot)}%` }} />
-              <small>{slot.hour}</small>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className={`rain-focus rain-focus-compact tone-${selectedDecision.tone}`}>
+      <div className={`rain-decision-card tone-${overview.tone}`}>
         <div>
-          <span>{fmtAmPm(selected.hour)}</span>
-          <b>{selectedDecision.action}</b>
-          <small>{selectedDecision.body}</small>
+          <span>{overview.time}</span>
+          <b>{overview.title}</b>
+          <small>{overview.body}</small>
         </div>
-        <strong>{selectedInfo.label}</strong>
-        <em>{rainAmountText(selected.precipitation)} · 가능성 {Math.round(selected.precipitationProbability)}%</em>
+        <div className="rain-decision-stats">
+          <em>최대 {overview.amount}</em>
+          <em>확률 {overview.prob}</em>
+        </div>
       </div>
 
-      <div className="rain-period-row">
+      <div className="rain-timeline-cards" aria-label={`${dayLabel} 시간대별 강수`}>
         {periodCards.map((cell) => {
           const active = cell.focus.time === selected.time;
           return (
             <button
               type="button"
               key={cell.key}
-              className={`rain-period-pill tone-${cell.decision.tone}${active ? " active" : ""}`}
+              className={`rain-time-card tone-${cell.decision.tone}${active ? " active" : ""}`}
+              style={{ "--rain-signal": `${rainSignalPercent(cell.focus)}%` } as React.CSSProperties}
               onClick={() => onSelectTime(cell.focus.time)}
             >
-              <span>{cell.label}</span>
-              <b>{cell.decision.short}</b>
-              <small>{cell.range} · {cell.amount}</small>
+              <span className="rtc-top">
+                <b>{cell.label}</b>
+                <em>{cell.range}</em>
+              </span>
+              <strong>{cell.decision.action}</strong>
+              <small>
+                {cell.amount} · 가능성 {cell.prob}%
+              </small>
+              <i aria-hidden="true" />
             </button>
           );
         })}
+      </div>
+
+      <div className={`rain-selected-note tone-${selectedDecision.tone}`}>
+        <span>{fmtAmPm(selected.hour)}</span>
+        <b>{selectedDecision.action}</b>
+        <small>
+          {selectedInfo.label} · {selectedInfoLine}
+        </small>
       </div>
     </div>
   );
