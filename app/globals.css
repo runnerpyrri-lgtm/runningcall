@@ -6059,6 +6059,7 @@ button {
 
 .gcard.spinning {
   animation: g-card-spin 2.25s cubic-bezier(0.16, 0.62, 0.24, 1) forwards;
+  will-change: transform;
 }
 
 .gcard.spun {
@@ -6168,22 +6169,6 @@ button {
     var(--fr, #8a8f98) 70%,
     color-mix(in srgb, var(--fr, #8a8f98) 70%, #fff) 100%
   );
-}
-
-.ghero.t9 .gfront,
-.ghero.t8 .gfront {
-  background-size: 220% 220%;
-  animation: g-frame-shine 3.2s ease-in-out infinite;
-}
-
-@keyframes g-frame-shine {
-  0%,
-  100% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 100% 100%;
-  }
 }
 
 .gf-in {
@@ -6470,11 +6455,10 @@ button {
   font-weight: 900;
   letter-spacing: 0.12em;
   color: #fff;
-  background: rgba(0, 0, 0, 0.34);
+  background: rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.25);
   padding: 3px 10px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 .gc-stars {
@@ -6566,39 +6550,53 @@ button {
   color: var(--fr, #ffce4a);
 }
 
-/* 홀로포일 & 광선 & 헤일로 */
+/* 홀로포일 & 광선 & 헤일로 — 모두 transform/opacity만 애니메이션(컴포지터 전용) */
 .gfoil {
   position: absolute;
   inset: 4.5px;
   border-radius: 19px;
   z-index: 5;
-  mix-blend-mode: screen;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+.gfoil::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 58%;
+  mix-blend-mode: screen;
   background: linear-gradient(
     115deg,
-    transparent 14%,
-    rgba(255, 60, 180, 0.5) 30%,
-    rgba(70, 255, 235, 0.5) 44%,
-    rgba(255, 240, 120, 0.44) 58%,
-    transparent 76%
+    transparent,
+    rgba(255, 60, 180, 0.5) 34%,
+    rgba(70, 255, 235, 0.5) 50%,
+    rgba(255, 240, 120, 0.44) 66%,
+    transparent
   );
-  background-size: 250% 250%;
-  transition: opacity 0.5s;
+  transform: translateX(-190%) skewX(-14deg);
 }
 
 .ghero.revealed .gfoil {
   opacity: var(--foilo, 0);
-  animation: g-foil-sweep 2.5s ease-in-out infinite;
 }
 
-@keyframes g-foil-sweep {
-  0%,
-  100% {
-    background-position: 0 0;
+.ghero.revealed .gfoil::before {
+  animation: g-sweep-x 2.6s ease-in-out infinite;
+}
+
+/* 대각선 하이라이트가 지나가는 공용 스윕 — foil·버튼·1위 카드 공유 */
+@keyframes g-sweep-x {
+  0% {
+    transform: translateX(-190%) skewX(-14deg);
   }
-  50% {
-    background-position: 100% 100%;
+  60%,
+  100% {
+    transform: translateX(340%) skewX(-14deg);
   }
 }
 
@@ -6606,12 +6604,13 @@ button {
   position: absolute;
   left: 50%;
   top: 44%;
-  width: 300%;
+  width: 240%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   z-index: -1;
   opacity: 0;
   pointer-events: none;
+  will-change: transform;
   background: repeating-conic-gradient(
     from 0deg,
     color-mix(in srgb, var(--rayc, #ffce4a) 20%, transparent) 0 6deg,
@@ -6624,7 +6623,7 @@ button {
 .ghero.t9 .grays,
 .ghero.t8 .grays {
   opacity: 1;
-  animation: g-ray-spin 13s linear infinite;
+  animation: g-ray-spin 15s linear infinite;
 }
 
 @keyframes g-ray-spin {
@@ -6634,7 +6633,7 @@ button {
 }
 
 .grays.r2 {
-  width: 230%;
+  width: 180%;
   background: repeating-conic-gradient(
     from 9deg,
     color-mix(in srgb, var(--rayc, #ffce4a) 14%, transparent) 0 4deg,
@@ -6644,7 +6643,7 @@ button {
 
 .ghero.t9 .grays.r2,
 .ghero.t8 .grays.r2 {
-  animation: g-ray-spin-r 9s linear infinite;
+  animation: g-ray-spin-r 11s linear infinite;
 }
 
 @keyframes g-ray-spin-r {
@@ -6862,18 +6861,6 @@ button {
   }
   100% {
     opacity: 0;
-  }
-}
-
-.gcf {
-  position: absolute;
-  top: -16px;
-  animation: g-cf-fall linear forwards;
-}
-
-@keyframes g-cf-fall {
-  to {
-    transform: translateY(110vh) rotate(680deg);
   }
 }
 
@@ -7151,15 +7138,25 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  min-height: 26px;
   font-size: 18.5px;
   font-weight: 900;
   letter-spacing: -0.02em;
+  text-align: center;
 }
 
-.gbtn .gb-main .slot7 {
+.gbtn .gb-text {
   display: inline-block;
+}
+
+/* 슬롯 이모지는 절대배치 — 라벨 텍스트가 버튼 정중앙을 유지하도록 */
+.gbtn .slot7 {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  margin-top: -13px;
   font-size: 22px;
+  pointer-events: none;
   animation: g-slot-wig 2.2s ease-in-out infinite;
 }
 
@@ -7175,21 +7172,14 @@ button {
 
 .gbtn .gsheen {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.8) 46%, transparent 58%);
-  background-size: 260% 100%;
-  animation: g-btn-sheen 2.4s ease-in-out infinite;
-}
-
-@keyframes g-btn-sheen {
-  0% {
-    background-position: 130% 0;
-  }
-  55%,
-  100% {
-    background-position: -130% 0;
-  }
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  transform: translateX(-190%) skewX(-14deg);
+  animation: g-sweep-x 2.6s ease-in-out infinite;
 }
 
 .gbtn .gspk {
@@ -7361,11 +7351,14 @@ button {
 .gpod.r1::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 38%, rgba(255, 228, 140, 0.22) 50%, transparent 62%);
-  background-size: 250% 100%;
-  animation: g-btn-sheen 3s ease-in-out infinite;
+  background: linear-gradient(100deg, transparent, rgba(255, 228, 140, 0.28), transparent);
+  transform: translateX(-190%) skewX(-14deg);
+  animation: g-sweep-x 3.4s ease-in-out infinite;
 }
 
 .gpod.r2 {
@@ -7674,10 +7667,6 @@ button {
   will-change: transform;
 }
 
-.gstrip.blur {
-  filter: blur(2.6px);
-}
-
 .grow {
   height: 64px;
   display: flex;
@@ -7740,4 +7729,181 @@ button {
   .greel-ov {
     padding-top: 48px;
   }
+}
+
+/* ---------- 골드 마감 카드 (추천 시간대 없음) ---------- */
+.gclosed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 22px 18px 20px;
+  border-radius: 20px;
+  border: 1.5px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(255, 200, 70, 0.14), transparent 60%),
+    linear-gradient(180deg, #221a10, #171326 70%);
+  box-shadow: 0 0 30px -10px rgba(255, 190, 60, 0.5), inset 0 1px 0 rgba(255, 230, 150, 0.18);
+  overflow: hidden;
+}
+
+.gclosed::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 228, 150, 0.14), transparent);
+  transform: translateX(-190%) skewX(-14deg);
+  animation: g-sweep-x 4s ease-in-out infinite;
+}
+
+.gclosed-badge {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: #241c00;
+  background: linear-gradient(180deg, #ffe6a0, var(--gold));
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gclosed-title {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #fff;
+  word-break: keep-all;
+}
+
+.gclosed-sub {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+.gclosed-btn {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 900;
+  color: #2a1a02;
+  border: 0;
+  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffe28c, #f0a318);
+  box-shadow: 0 5px 0 #7d5308, 0 12px 26px -10px rgba(255, 175, 40, 0.5);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.gclosed-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #7d5308, 0 6px 14px -10px rgba(255, 175, 40, 0.5);
+}
+
+.gclosed-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ---------- 릴 완료 패널 (뽑기 끝난 뒤 하단 교체) ---------- */
+.gdone {
+  position: relative;
+  margin-top: auto;
+  z-index: 2;
+  max-width: 430px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 22px 20px 20px;
+  border-radius: 22px;
+  border: 1.5px solid color-mix(in srgb, var(--gold) 50%, transparent);
+  background: radial-gradient(120% 100% at 50% 0%, rgba(255, 200, 70, 0.16), transparent 62%),
+    linear-gradient(180deg, #221a10, #140f22 72%);
+  box-shadow: 0 0 40px -12px rgba(255, 190, 60, 0.55), inset 0 1px 0 rgba(255, 230, 150, 0.2);
+  animation: g-done-in 0.5s cubic-bezier(0.2, 1.2, 0.35, 1);
+}
+
+@keyframes g-done-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.gdone-emoji {
+  font-size: 34px;
+  line-height: 1;
+  animation: g-done-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes g-done-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.gdone-title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #fff3c4, var(--gold) 60%, #e08a12);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gdone-sub {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+.gdone-close {
+  margin-top: 14px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 900;
+  color: #2a1a02;
+  border: 0;
+  cursor: pointer;
+  padding: 12px 34px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffe28c, #f0a318);
+  box-shadow: 0 5px 0 #7d5308, 0 12px 26px -10px rgba(255, 175, 40, 0.5);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.gdone-close:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #7d5308, 0 6px 14px -10px rgba(255, 175, 40, 0.5);
+}
+
+.gdone-close:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }

@@ -101,9 +101,9 @@ export function weatherFxFrom(slot: RunningSlot): CardWeatherFx {
   const mode: CardWeatherFx["mode"] = snow ? "snow" : wet ? "rain" : "none";
   const count =
     mode === "rain"
-      ? Math.round(Math.min(300, 70 + slot.precipitation * 45 + slot.precipitationProbability * 0.6))
+      ? Math.round(Math.min(150, 55 + slot.precipitation * 30 + slot.precipitationProbability * 0.45))
       : mode === "snow"
-      ? Math.round(Math.min(200, 90 + snowAmount * 140))
+      ? Math.round(Math.min(110, 60 + snowAmount * 110))
       : 0;
   const cloud = mode !== "none" || slot.precipitationProbability >= 25 || (slot.cloudCover ?? 0) >= 55;
   const sun = mode === "none" && slot.precipitationProbability < 30 && (slot.cloudCover ?? 0) < 70;
@@ -141,8 +141,12 @@ const DOOM_STRIKE: [string, string[]] = ["#c8a0a8", ["#8a5058", "#5a3038", "#301
 
 type BoomPart = {
   x: number; y: number; vx: number; vy: number; g: number;
-  r: number; c: string; life: number; max: number; streak: boolean;
+  r: number; c: string; life: number; max: number;
+  kind: 0 | 1 | 2; // 0 dot, 1 streak, 2 confetti
+  rot?: number; vr?: number; w?: number; h?: number;
 };
+
+const DPR = () => Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 1.5);
 
 const FX = {
   root: null as HTMLDivElement | null,
@@ -196,9 +200,9 @@ const FX = {
     this.stampEl = stamp;
 
     const resize = () => {
-      const d = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * d;
-      canvas.height = window.innerHeight * d;
+      const d = DPR();
+      canvas.width = Math.round(window.innerWidth * d);
+      canvas.height = Math.round(window.innerHeight * d);
       this.ctx?.setTransform(d, 0, 0, d, 0, 0);
       bolts.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
     };
@@ -216,14 +220,25 @@ const FX = {
       const p = this.parts[i];
       p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.985; p.life -= 1;
       const a = Math.max(0, p.life / p.max);
-      if (p.streak) {
+      if (p.kind === 1) {
         ctx.strokeStyle = p.c; ctx.globalAlpha = a; ctx.lineWidth = p.r;
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 2.6, p.y - p.vy * 2.6); ctx.stroke();
+      } else if (p.kind === 2) {
+        p.rot = (p.rot ?? 0) + (p.vr ?? 0);
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, a * 1.6);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        const hw = (p.w ?? 5) / 2;
+        const hh = (p.h ?? 8) / 2;
+        ctx.fillRect(-hw, -hh, p.w ?? 5, p.h ?? 8);
+        ctx.restore();
       } else {
         ctx.globalAlpha = a; ctx.fillStyle = p.c;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a + 0.4, 0, 6.3); ctx.fill();
       }
-      if (p.life <= 0) this.parts.splice(i, 1);
+      if (p.life <= 0 || p.y > h + 30) this.parts.splice(i, 1);
     }
     ctx.globalAlpha = 1;
     if (this.parts.length) this.raf = requestAnimationFrame(() => this.loop());
@@ -238,18 +253,25 @@ const FX = {
   clearParts() {
     this.parts.length = 0;
     this.ctx?.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    this.root?.querySelectorAll(".gcf").forEach((n) => n.remove());
+  },
+
+  // 파티클 상한 — 저사양 기기에서도 프레임 유지
+  cap(add: number) {
+    const MAX = 260;
+    const room = MAX - this.parts.length;
+    return Math.max(0, Math.min(add, room));
   },
 
   burst(x: number, y: number, n: number, colors: string[], pw: number, g: number) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283;
       const v = (0.25 + Math.random()) * pw;
       this.parts.push({
         x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - pw * 0.35, g,
         r: 1.4 + Math.random() * 2.6, c: colors[i % colors.length],
-        life: 40 + Math.random() * 36, max: 70, streak: Math.random() < 0.45
+        life: 40 + Math.random() * 36, max: 70, kind: Math.random() < 0.45 ? 1 : 0
       });
     }
     this.kick();
@@ -257,13 +279,14 @@ const FX = {
 
   meteor(n: number, colors: string[]) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     const w = window.innerWidth;
     for (let i = 0; i < n; i++) {
       this.parts.push({
         x: Math.random() * w, y: -20 - Math.random() * 80,
         vx: -(1.2 + Math.random() * 2), vy: 5.5 + Math.random() * 4, g: 0.015,
         r: 1.6 + Math.random() * 1.6, c: colors[i % colors.length],
-        life: 56 + Math.random() * 30, max: 86, streak: true
+        life: 56 + Math.random() * 30, max: 86, kind: 1
       });
     }
     this.kick();
@@ -271,6 +294,7 @@ const FX = {
 
   shootStars(n: number, colors: string[]) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     const w = window.innerWidth;
     const h = window.innerHeight;
     for (let i = 0; i < n; i++) {
@@ -279,7 +303,7 @@ const FX = {
         x: fromLeft ? -24 : w + 24, y: h * 0.1 + Math.random() * h * 0.6,
         vx: (fromLeft ? 1 : -1) * (6 + Math.random() * 5), vy: (Math.random() - 0.5) * 1.6, g: 0,
         r: 1.5 + Math.random() * 1.4, c: colors[i % colors.length],
-        life: 60 + Math.random() * 20, max: 80, streak: true
+        life: 60 + Math.random() * 20, max: 80, kind: 1
       });
     }
     this.kick();
@@ -287,13 +311,14 @@ const FX = {
 
   fountain(x: number, n: number, colors: string[]) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     const y = window.innerHeight + 4;
     for (let i = 0; i < n; i++) {
       this.parts.push({
         x: x + (Math.random() - 0.5) * 34, y,
         vx: (Math.random() - 0.5) * 3.4, vy: -(7 + Math.random() * 6), g: 0.2,
         r: 1.5 + Math.random() * 2.2, c: colors[i % colors.length],
-        life: 52 + Math.random() * 26, max: 78, streak: Math.random() < 0.6
+        life: 52 + Math.random() * 26, max: 78, kind: Math.random() < 0.6 ? 1 : 0
       });
     }
     this.kick();
@@ -301,12 +326,13 @@ const FX = {
 
   bubbles(x: number, y: number, n: number, colors: string[]) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     for (let i = 0; i < n; i++) {
       this.parts.push({
         x: x + (Math.random() - 0.5) * 180, y: y + Math.random() * 60,
         vx: (Math.random() - 0.5) * 0.8, vy: -(1.2 + Math.random() * 2), g: -0.012,
         r: 1.6 + Math.random() * 2.2, c: colors[i % colors.length],
-        life: 50 + Math.random() * 30, max: 80, streak: false
+        life: 50 + Math.random() * 30, max: 80, kind: 0
       });
     }
     this.kick();
@@ -314,12 +340,31 @@ const FX = {
 
   dustFall(x: number, y: number, n: number, colors: string[]) {
     this.ensure(); if (this.rm) return;
+    n = this.cap(n);
     for (let i = 0; i < n; i++) {
       this.parts.push({
         x: x + (Math.random() - 0.5) * 150, y,
         vx: (Math.random() - 0.5) * 1.2, vy: 0.4 + Math.random() * 1.2, g: 0.05,
         r: 1.2 + Math.random() * 1.8, c: colors[i % colors.length],
-        life: 44 + Math.random() * 24, max: 68, streak: false
+        life: 44 + Math.random() * 24, max: 68, kind: 0
+      });
+    }
+    this.kick();
+  },
+
+  // 색종이 — 캔버스 파티클(회전 낙하). DOM 노드를 만들지 않아 스폰 시 렉이 없음.
+  confetti(n: number, colors?: string[]) {
+    this.ensure(); if (this.rm) return;
+    n = this.cap(n);
+    const cs = colors || ["#ffce4a", "#ff6a5e", "#5ee0b0", "#fff", "#ffa9ec", "#7fc8ff", "#ffb52e"];
+    const w = window.innerWidth;
+    for (let i = 0; i < n; i++) {
+      this.parts.push({
+        x: Math.random() * w, y: -20 - Math.random() * 60,
+        vx: (Math.random() - 0.5) * 2.2, vy: 2.2 + Math.random() * 2.6, g: 0.05,
+        r: 0, c: cs[i % cs.length], life: 150 + Math.random() * 60, max: 210, kind: 2,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4,
+        w: 5 + Math.random() * 4, h: 8 + Math.random() * 5
       });
     }
     this.kick();
@@ -342,22 +387,6 @@ const FX = {
     el.style.setProperty("--ec", color);
     this.root.appendChild(el);
     setTimeout(() => el.remove(), 1000);
-  },
-
-  confetti(n: number, colors?: string[]) {
-    this.ensure(); if (this.rm || !this.root) return;
-    const cs = colors || ["#ffce4a", "#ff6a5e", "#5ee0b0", "#fff", "#ffa9ec", "#7fc8ff", "#ffb52e"];
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("i");
-      el.className = "gcf";
-      const w = 5 + Math.random() * 6;
-      el.style.cssText =
-        `left:${Math.random() * 100}%;width:${w}px;height:${w * 1.5}px;background:${cs[i % cs.length]};` +
-        `border-radius:${Math.random() < 0.4 ? "50%" : "2px"};` +
-        `animation-delay:${Math.random() * 0.55}s;animation-duration:${1.7 + Math.random() * 1.5}s`;
-      this.root.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
-    }
   },
 
   flashBig(color?: string) {
@@ -493,21 +522,19 @@ function revealFx(tier: GachaTier, card: HTMLElement | null, isSnow: boolean, qu
         FX.flashBig(); FX.shake("sh-lg");
         FX.stamp("LEGENDARY", "#ffce4a");
         FX.ring(x, y, "#ffce4a", 1.7);
-        setTimeout(() => FX.ring(x, y, "#fff", 1.25), 120);
-        setTimeout(() => FX.ring(x, y, "#ffce4a", 2.1), 260);
-        FX.burst(x, y, 150, colors || GOLD, 9.5, 0.16);
-        setTimeout(() => FX.burst(x, y, 70, colors || GOLD, 6, 0.15), 280);
+        setTimeout(() => FX.ring(x, y, "#ffce4a", 2.1), 240);
+        FX.burst(x, y, 90, colors || GOLD, 9.5, 0.16);
         setTimeout(() => {
-          FX.fountain(window.innerWidth * 0.12, 55, colors || GOLD);
-          FX.fountain(window.innerWidth * 0.88, 55, colors || GOLD);
-        }, 380);
-        setTimeout(() => FX.shootStars(16, colors || GOLD), 520);
-        FX.confetti(70); setTimeout(() => FX.confetti(40), 520);
+          FX.fountain(window.innerWidth * 0.12, 42, colors || GOLD);
+          FX.fountain(window.innerWidth * 0.88, 42, colors || GOLD);
+        }, 360);
+        setTimeout(() => FX.shootStars(14, colors || GOLD), 500);
+        FX.confetti(54);
         FX.edge("#ffce4a");
       } else {
         FX.ring(x, y, "#ffce4a", 1.1);
-        FX.burst(x, y, 50, colors || GOLD, 6, 0.15);
-        FX.confetti(20);
+        FX.burst(x, y, 40, colors || GOLD, 6, 0.15);
+        FX.confetti(18);
       }
       break;
     case "t8":
@@ -593,12 +620,12 @@ function CardWeather({ fx }: { fx: CardWeatherFx }) {
     let parts: WeatherPart[] = [];
 
     const resize = () => {
-      const d = Math.min(window.devicePixelRatio || 1, 2);
+      const d = DPR();
       const rect = canvas.getBoundingClientRect();
       width = rect.width;
       height = rect.height;
-      canvas.width = width * d;
-      canvas.height = height * d;
+      canvas.width = Math.round(width * d);
+      canvas.height = Math.round(height * d);
       ctx.setTransform(d, 0, 0, d, 0, 0);
     };
 
@@ -688,7 +715,6 @@ type RevealState = {
   sky: SkySet;
 };
 
-const SPIN_MS = 2250;
 const REVEAL_AT = 2200;
 
 export function GachaHero({ score, headline, subline, slot, place, actLabel, isTomorrow }: GachaHeroProps) {
@@ -878,23 +904,40 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
   const [bigHint, setBigHint] = useState(false);
   const [subText, setSubText] = useState("");
   const [spinningIdx, setSpinningIdx] = useState(-1);
+  const [done, setDone] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const runIdRef = useRef(0);
+  const doneRef = useRef(false);
+  const skipRef = useRef(false);
+  const wakeRef = useRef<null | (() => void)>(null);
+  doneRef.current = done;
 
   const bandCenter = useCallback(() => {
     const band = bandRef.current;
-    if (!band) return { x: window.innerWidth / 2, y: window.innerHeight * 0.75 };
+    if (!band) return { x: window.innerWidth / 2, y: window.innerHeight * 0.7 };
     const rect = band.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }, []);
+
+  // 스핀 중 탭 → 즉시 전체 순위 공개
+  const skip = useCallback(() => {
+    if (doneRef.current || skipRef.current) return;
+    skipRef.current = true;
+    wakeRef.current?.();
   }, []);
 
   useEffect(() => {
     if (!open || ranks.length === 0) return;
     const runId = ++runIdRef.current;
     const alive = () => runIdRef.current === runId;
-    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    // 취소 가능한 sleep — skip 시 즉시 깨어남
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const t = window.setTimeout(() => { wakeRef.current = null; resolve(); }, ms);
+        wakeRef.current = () => { window.clearTimeout(t); wakeRef.current = null; resolve(); };
+      });
 
     const buildStrip = (winner: ReelRank) => {
       const strip = stripRef.current;
@@ -918,73 +961,88 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
       if (!strip) return;
       strip.style.transition = "none";
       strip.style.transform = `translateY(${ROW_H}px)`;
-      strip.classList.add("blur");
       void strip.offsetWidth;
       strip.style.transition = "transform 2.05s cubic-bezier(.12,.7,.14,1.06)";
       strip.style.transform = `translateY(-${(WIN_ROWS - 1) * ROW_H}px)`;
     };
 
+    const finalize = (skipped: boolean) => {
+      setSpinningIdx(-1);
+      if (skipped) {
+        FX.clearParts();
+        const bc = bandCenter();
+        FX.flashMini();
+        FX.burst(bc.x, bc.y, 40, GOLD, 7, 0.14);
+      }
+      setShown(ranks.length - 1);
+      doneRef.current = true;
+      setDone(true);
+      setBigHint(false);
+      setSubText(`좋은 시간대 TOP ${ranks.length}`);
+      setHint("");
+    };
+
     (async () => {
+      skipRef.current = false;
+      setDone(false);
       setShown(-1);
       setBigHint(false);
-      setSubText("릴을 돌려 순위를 뽑는 중… (빈 곳을 탭하면 닫혀요)");
-      await sleep(460);
-      for (let i = 0; i < ranks.length && alive(); i++) {
+      setSubText("릴을 돌려 순위를 뽑는 중… (탭하면 바로 결과)");
+      await sleep(440);
+      if (!alive()) return;
+      for (let i = 0; i < ranks.length; i++) {
+        if (skipRef.current) break;
         setBigHint(false);
         setHint(`🎰 ${i + 1}순위 뽑는 중…`);
         setSpinningIdx(i);
         buildStrip(ranks[i]);
         await sleep(70);
         if (!alive()) return;
+        if (skipRef.current) break;
         spinStrip();
-        await sleep(2080);
+        await sleep(2060);
         if (!alive()) return;
-        stripRef.current?.classList.remove("blur");
+        if (skipRef.current) break;
         setSpinningIdx(-1);
         const band = bandRef.current;
-        if (band) {
-          band.classList.remove("hit");
-          void band.offsetWidth;
-          band.classList.add("hit");
-        }
+        if (band) { band.classList.remove("hit"); void band.offsetWidth; band.classList.add("hit"); }
         const bc = bandCenter();
         if (i === 0) {
           FX.flashBig();
           FX.shake("sh-lg", overlayRef.current);
           FX.ring(bc.x, bc.y, "#ffce4a", 1.4);
-          setTimeout(() => FX.ring(bc.x, bc.y, "#fff", 0.95), 140);
-          FX.burst(bc.x, bc.y, 95, GOLD, 9, 0.16);
-          FX.fountain(window.innerWidth * 0.12, 45, GOLD);
-          FX.fountain(window.innerWidth * 0.88, 45, GOLD);
-          FX.shootStars(12, GOLD);
-          FX.confetti(50);
+          FX.burst(bc.x, bc.y, 70, GOLD, 9, 0.16);
+          FX.fountain(window.innerWidth * 0.12, 40, GOLD);
+          FX.fountain(window.innerWidth * 0.88, 40, GOLD);
+          FX.confetti(40);
           FX.edge("#ffce4a");
         } else if (i === 1) {
           FX.flashMini();
           FX.shake("sh-sm", overlayRef.current);
           FX.ring(bc.x, bc.y, "#ccd6e0", 1.1);
-          FX.burst(bc.x, bc.y, 50, SILVER, 6, 0.16);
-          FX.confetti(18, SILVER);
+          FX.burst(bc.x, bc.y, 44, SILVER, 6, 0.16);
         } else {
           FX.shake("sh-sm", overlayRef.current);
           FX.ring(bc.x, bc.y, "#d09055", 1);
           FX.burst(bc.x, bc.y, 34, BRONZE, 5, 0.16);
-          FX.confetti(12, BRONZE);
         }
         setBigHint(true);
         setHint(`✦ ${MEDAL_LABEL[i]} ✦`);
-        await sleep(600);
+        await sleep(560);
         if (!alive()) return;
+        if (skipRef.current) break;
         setShown(i);
-        await sleep(700);
+        await sleep(640);
+        if (!alive()) return;
       }
       if (!alive()) return;
-      setSubText(`좋은 시간대 TOP ${ranks.length}`);
-      setBigHint(false);
-      setHint("시간대를 탭하면 알림 예약 · 빈 곳을 탭하면 닫혀요");
+      finalize(skipRef.current);
     })();
 
-    return () => { runIdRef.current++; };
+    return () => {
+      runIdRef.current++;
+      wakeRef.current?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -999,8 +1057,9 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
       aria-label={title}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest(".gpod,.greelframe,.gro-title")) return;
-        onClose();
+        if (target.closest(".gpod")) return; // 순위 카드는 알림 예약
+        if (!doneRef.current) { skip(); return; } // 진행 중이면 결과로 건너뛰기
+        onClose(); // 완료 후 아무 곳이나 탭 → 닫기
       }}
     >
       <div className="gspot s1" aria-hidden="true" /><div className="gspot s2" aria-hidden="true" />
@@ -1033,20 +1092,31 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
           </button>
         ))}
       </div>
-      <div className="greelframe">
-        <div className={`greelbox ${spinningIdx >= 0 ? "spinningR" : ""}`}>
-          <div className="gled t" aria-hidden="true">
-            {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
-          </div>
-          <div className="gspeedfx" aria-hidden="true" />
-          <div ref={bandRef} className="greel-band" aria-hidden="true" />
-          <div ref={stripRef} className="gstrip" />
-          <div className="gled b" aria-hidden="true">
-            {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
-          </div>
+      {done ? (
+        <div className="gdone">
+          <div className="gdone-emoji" aria-hidden="true">🔔</div>
+          <p className="gdone-title">시간대 뽑기 완료!</p>
+          <p className="gdone-sub">위 순위를 탭하면 그 시간에 맞춰 알림을 예약해요</p>
+          <button type="button" className="gdone-close" onClick={onClose}>닫기</button>
         </div>
-      </div>
-      <div className={`greel-hint ${bigHint ? "bighint" : ""}`}>{hint}</div>
+      ) : (
+        <>
+          <div className="greelframe">
+            <div className={`greelbox ${spinningIdx >= 0 ? "spinningR" : ""}`}>
+              <div className="gled t" aria-hidden="true">
+                {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
+              </div>
+              <div className="gspeedfx" aria-hidden="true" />
+              <div ref={bandRef} className="greel-band" aria-hidden="true" />
+              <div ref={stripRef} className="gstrip" />
+              <div className="gled b" aria-hidden="true">
+                {Array.from({ length: 12 }, (_, i) => <i key={i} />)}
+              </div>
+            </div>
+          </div>
+          <div className={`greel-hint ${bigHint ? "bighint" : ""}`}>{hint}</div>
+        </>
+      )}
     </div>
   );
 }

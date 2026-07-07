@@ -1654,9 +1654,9 @@ export default function Home() {
           {
             key: "precip" as DetailKey,
             icon: <CloudRain size={19} />,
-            label: "강수",
-            value: rainDecision(metricRef).short,
-            unit: "",
+            label: "비올확률",
+            value: `${Math.round(metricRef.precipitationProbability)}`,
+            unit: "%",
             grade: gradePrecipitation(metricRef.precipitation, metricRef.precipitationProbability),
             iconClass: "ci-teal"
           },
@@ -2043,22 +2043,30 @@ export default function Home() {
                           <span className="gspk b" aria-hidden="true">✦</span>
                           <span className="gb-main">
                             <span className="slot7" aria-hidden="true">🎰</span>
-                            {isTomorrow ? "내일" : "오늘"}의 추천 시간대 뽑기
+                            <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 시간대 뽑기</span>
                           </span>
                         </button>
                       </div>
                     ) : (
-                      <div className="rec-empty-body">
-                        <p className="rec-none">
+                      <div className="gclosed">
+                        <span className="gclosed-badge">
+                          {isTomorrow ? "내일 추천 없음" : hasUpcoming ? "추천 시간대 없음" : "오늘 마감"}
+                        </span>
+                        <p className="gclosed-title">
                           {isTomorrow
-                            ? `내일은 ${profile.label}하기 좋은 시간대가 없어요.`
+                            ? `내일은 ${profile.label} 좋은 시간대가 없어요`
                             : hasUpcoming
-                            ? `오늘은 남은 시간 중 ${profile.label}하기 좋은 때가 없어요.`
-                            : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
+                            ? `남은 시간엔 ${profile.label} 좋은 때가 없어요`
+                            : `오늘 ${profile.label} 추천 시간대는 마감됐어요`}
+                        </p>
+                        <p className="gclosed-sub">
+                          {isTomorrow
+                            ? "다른 활동이나 위치를 골라보는 건 어때요?"
+                            : "내일 카드를 미리 뽑아 좋은 시간을 예약해두세요."}
                         </p>
                         {!isTomorrow && hasTomorrow ? (
-                          <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
-                            내일 시간대 보기 <ChevronRight size={16} />
+                          <button type="button" className="gclosed-btn" onClick={() => setDayMode("tomorrow")}>
+                            🎰 내일 시간대 뽑기 <ChevronRight size={16} />
                           </button>
                         ) : null}
                       </div>
