@@ -1976,20 +1976,18 @@ export default function Home() {
                   place={displayLocationName(location.name)}
                   actLabel={profile.label}
                   isTomorrow={isTomorrow}
-                  metrics={
-                    <div className="hero-metrics" aria-label="항목별 상태">
-                      {reasonRows.map((row) => (
-                        <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
-                          <span className="hm-v">
-                            {row.value}
-                            {row.unit ? <em>{row.unit}</em> : null}
-                          </span>
-                          <span className="hm-l">{row.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  }
                 />
+                <div className="hero-metrics" aria-label="항목별 상태">
+                  {reasonRows.map((row) => (
+                    <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
+                      <span className="hm-v">
+                        {row.value}
+                        {row.unit ? <em>{row.unit}</em> : null}
+                      </span>
+                      <span className="hm-l">{row.label}</span>
+                    </button>
+                  ))}
+                </div>
               </section>
 
                 </div>

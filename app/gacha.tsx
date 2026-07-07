@@ -1,7 +1,7 @@
 "use client";
 
 // 가챠 카드 히어로 + 추천 시간대 슬롯 릴 — v0.13 리디자인 표현 계층 (점수 로직 lib 불변)
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunningSlot } from "@/lib/scoring";
 
 /* ================= 티어 (80+ 골드 / 10점 간격 / ≤20 재난) ================= */
@@ -512,7 +512,7 @@ function revealFx(tier: GachaTier, card: HTMLElement | null, isSnow: boolean, qu
   const colors = isSnow ? ICE : null;
   const scale = quick ? 0.6 : 1;
   FX.predark(false);
-  FX.mood(tier.cls === "t9" ? "gold" : tier.cls === "t3" ? "gloom2" : tier.cls === "t0" ? "gloom3" : "");
+  FX.mood("");
   switch (tier.cls) {
     case "t9":
       if (!quick) {
@@ -674,7 +674,6 @@ function CardWeather({ fx }: { fx: CardWeatherFx }) {
 
 export type GachaHeroProps = {
   score: number;
-  metrics?: ReactNode;
   headline: string;
   slot: RunningSlot;
   place: string;
@@ -690,9 +689,9 @@ type RevealState = {
   sky: SkySet;
 };
 
-const REVEAL_AT = 2200;
+const REVEAL_AT = 2160;
 
-export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow, metrics }: GachaHeroProps) {
+export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow }: GachaHeroProps) {
   const [phase, setPhase] = useState<"idle" | "spinning" | "revealed">("idle");
   const [reveal, setReveal] = useState<RevealState | null>(null);
   const [popTick, setPopTick] = useState(0);
@@ -732,7 +731,7 @@ export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow, 
       const t = window.setTimeout(() => {
         setReveal(buildReveal());
         setPhase("revealed");
-        FX.mood(next.tier.cls === "t9" ? "gold" : next.tier.cls === "t3" ? "gloom2" : next.tier.cls === "t0" ? "gloom3" : "");
+        FX.mood("");
       }, 60);
       timersRef.current.push(t);
       return clearTimers;
@@ -750,13 +749,10 @@ export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawSeq]);
 
-  // 퀵 리빌 — 활동/날짜/위치 전환 (스핀 없이 내용 갱신 + 축소 연출)
+  // 활동/날짜/위치 전환도 카드가 다시 돌아간 뒤 멈추며 공개된다
   useEffect(() => {
     if (phaseRef.current !== "revealed") return;
-    const state = buildReveal();
-    setReveal(state);
-    setPopTick((v) => v + 1);
-    revealFx(state.tier, cardRef.current, state.fx.mode === "snow", true);
+    setDrawSeq((v) => v + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [score, slot.time, actLabel, isTomorrow]);
 
@@ -833,15 +829,6 @@ export function GachaHero({ score, headline, slot, place, actLabel, isTomorrow, 
                   <small>점</small>
                 </div>
                 <div className="gc-verdict">{revealed ? headline : ""}</div>
-                {metrics ? (
-                  <div
-                    className="gc-metrics"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    {metrics}
-                  </div>
-                ) : null}
                 <div className="gc-serial">
                   <span>NO.{String(dayOfYear).padStart(3, "0")}</span>
                   <span className="stamp-ic">✦</span>
