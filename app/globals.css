@@ -2,17 +2,19 @@
 @import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap");
 
 :root {
-  /* v0.8 "출발선" — 아스팔트 네이비 + 신호등 시그널 팔레트 */
+  /* v0.13 "골든 카드" — 가챠 다크퍼플 + 골드, 신호등 시그널 유지 */
   color-scheme: dark;
-  --page: #0a0f18;
-  --card: #121a26;
-  --ink: #eaf0f6;
-  --ink-2: #c3cddb;
-  --muted: #8b95a6;
-  --line: #232e3f;
-  --brand: #3d78ff;
-  --brand-deep: #2f6bff;
-  --brand-soft: rgba(61, 120, 255, 0.14);
+  --page: #0a0812;
+  --card: #171326;
+  --ink: #eef0f6;
+  --ink-2: #c9c5da;
+  --muted: #8f88a6;
+  --line: #2a2440;
+  --brand: #a08cff;
+  --brand-deep: #8a6cf0;
+  --brand-soft: rgba(150, 120, 255, 0.16);
+  --gold: #ffce4a;
+  --gold2: #ffb52e;
   --lime: #5fd23a;
   --good: #2bd576;
   --good-deep: #35d07a;
@@ -21,8 +23,8 @@
   --bad: #ff5a5f;
   --bad-deep: #ff7a7e;
   --orange: #ff8a3d;
-  --surface: #16202e;
-  --surface-2: #1a2534;
+  --surface: #181226;
+  --surface-2: #1e1730;
   /* 층진 소프트 섀도 — 다크에선 깊은 블랙 확산 */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 16px -9px rgba(0, 0, 0, 0.45);
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 18px 46px -20px rgba(0, 0, 0, 0.55);
@@ -98,8 +100,8 @@ body {
   font-family: var(--sans);
   color: var(--ink);
   background:
-    radial-gradient(1100px 520px at 82% -12%, #13233c 0%, transparent 60%),
-    radial-gradient(900px 480px at -6% 4%, #0c2015 0%, transparent 55%),
+    radial-gradient(1100px 520px at 82% -12%, #1d1633 0%, transparent 60%),
+    radial-gradient(900px 480px at -6% 4%, #131028 0%, transparent 55%),
     var(--page);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -5982,5 +5984,1760 @@ button {
 @media (max-width: 380px) {
   .ach-ladder {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==================================================================
+   v0.13 가챠 카드 — 히어로·FX 레이어·슬롯 릴 (표현 계층 전용)
+   ================================================================== */
+
+/* ---------- 히어로 래퍼 ---------- */
+.ghero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0 2px;
+}
+
+.gslot {
+  position: relative;
+  perspective: 1150px;
+  perspective-origin: 50% 42%;
+}
+
+.gcard-tap {
+  display: block;
+  background: none;
+  padding: 0;
+  border-radius: 26px;
+}
+
+.gcard-tap:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 5px;
+}
+
+.gaura {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 150%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(140, 110, 255, 0.4) 0%, transparent 62%);
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(6px);
+}
+
+.ghero.charging .gaura {
+  opacity: 1;
+  animation: g-aura-pulse 0.8s ease-in-out infinite;
+}
+
+.ghero.t9 .gaura {
+  background: radial-gradient(circle, rgba(255, 200, 70, 0.4) 0%, transparent 62%);
+}
+
+@keyframes g-aura-pulse {
+  50% {
+    transform: translate(-50%, -50%) scale(1.16);
+    opacity: 0.8;
+  }
+}
+
+/* 카드 */
+.gcard {
+  position: relative;
+  width: clamp(224px, 62vw, 258px);
+  aspect-ratio: 232 / 346;
+  transform-style: preserve-3d;
+  transform: rotateY(180deg);
+}
+
+.gcard.spinning {
+  animation: g-card-spin 2.25s cubic-bezier(0.16, 0.62, 0.24, 1) forwards;
+}
+
+.gcard.spun {
+  transform: rotateY(1800deg);
+}
+
+@keyframes g-card-spin {
+  0% {
+    transform: rotateY(180deg) scale(0.88);
+  }
+  55% {
+    transform: rotateY(1320deg) scale(1.12);
+  }
+  82% {
+    transform: rotateY(1692deg) scale(1.04);
+  }
+  100% {
+    transform: rotateY(1800deg) scale(1);
+  }
+}
+
+.gface {
+  position: absolute;
+  inset: 0;
+  border-radius: 23px;
+  backface-visibility: hidden;
+  overflow: hidden;
+  padding: 4.5px;
+}
+
+.gback {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #8f83e8, #4a3f96 30%, #241d56 55%, #5b4fc0 80%, #8f83e8);
+}
+
+.gb-in {
+  position: relative;
+  height: 100%;
+  border-radius: 19px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(70% 46% at 50% 32%, rgba(150, 130, 255, 0.34), transparent 70%),
+    repeating-linear-gradient(45deg, #221c4e 0 16px, #1a1542 16px 32px);
+}
+
+.gb-in::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(160, 140, 255, 0.4);
+}
+
+.gb-ring {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  border: 2px solid rgba(160, 140, 255, 0.45);
+}
+
+.gb-ring.r2 {
+  width: 108px;
+  height: 108px;
+  border-style: dashed;
+  animation: g-slow-rot 14s linear infinite;
+}
+
+@keyframes g-slow-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gmark {
+  position: relative;
+  font-size: 72px;
+  font-weight: 900;
+  color: #a99cf5;
+  text-shadow: 0 0 34px rgba(140, 115, 255, 0.8);
+}
+
+.grune {
+  position: absolute;
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: #7a6cd0;
+  font-weight: 900;
+}
+
+.grune.t {
+  top: 18px;
+}
+
+.grune.b {
+  bottom: 18px;
+}
+
+.gfront {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--fr, #8a8f98) 55%, #fff) 0%,
+    var(--fr, #8a8f98) 22%,
+    color-mix(in srgb, var(--fr, #8a8f98) 55%, #000) 46%,
+    var(--fr, #8a8f98) 70%,
+    color-mix(in srgb, var(--fr, #8a8f98) 70%, #fff) 100%
+  );
+}
+
+.ghero.t9 .gfront,
+.ghero.t8 .gfront {
+  background-size: 220% 220%;
+  animation: g-frame-shine 3.2s ease-in-out infinite;
+}
+
+@keyframes g-frame-shine {
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+}
+
+.gf-in {
+  position: relative;
+  height: 100%;
+  border-radius: 19px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    var(--sk1, #3f4a5a) 0%,
+    var(--sk2, #6b7686) 62%,
+    var(--gr1, #2e4a37) 63%,
+    var(--gr2, #1d3325) 100%
+  );
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.28), inset 0 0 46px rgba(0, 0, 0, 0.38);
+}
+
+.ghero.revealed .gcard {
+  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 30px color-mix(in srgb, var(--fr, #8a8f98) calc(var(--glow, 0) * 70%), transparent));
+}
+
+.ghero.gloomcard .gcard {
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.7)) saturate(0.7) brightness(0.9);
+}
+
+.gcard-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.gsun {
+  position: absolute;
+  top: 12%;
+  right: 10%;
+  width: 26%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: 1;
+  background: radial-gradient(circle, #fffbe0 22%, #ffe066 66%, rgba(255, 210, 80, 0.2) 100%);
+  box-shadow: 0 0 46px 14px rgba(255, 224, 110, 0.62);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.gsun.on {
+  opacity: 1;
+  animation: g-sun-pulse 4s ease-in-out infinite;
+}
+
+@keyframes g-sun-pulse {
+  50% {
+    transform: scale(1.09);
+  }
+}
+
+.gcloud {
+  position: absolute;
+  border-radius: 30px;
+  background: #8ea6bb;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 1s ease;
+}
+
+.gcloud::before,
+.gcloud::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.gcloud.a {
+  top: 16%;
+  left: 8%;
+  width: 42%;
+  height: 26px;
+}
+
+.gcloud.a::before {
+  left: 14px;
+  top: -15px;
+  width: 38px;
+  height: 38px;
+}
+
+.gcloud.a::after {
+  right: 16px;
+  top: -10px;
+  width: 28px;
+  height: 28px;
+}
+
+.gcloud.b {
+  top: 32%;
+  right: 5%;
+  width: 32%;
+  height: 20px;
+}
+
+.gcloud.b::before {
+  left: 16px;
+  top: -11px;
+  width: 28px;
+  height: 28px;
+}
+
+.gcloud.on {
+  opacity: 1;
+  animation: g-cloud-drift 11s ease-in-out infinite alternate;
+}
+
+@keyframes g-cloud-drift {
+  to {
+    transform: translateX(14px);
+  }
+}
+
+.glight-in {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: linear-gradient(180deg, rgba(220, 235, 255, 0.9), transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glight-in.strike {
+  animation: g-strike-in 5s linear infinite;
+}
+
+@keyframes g-strike-in {
+  0%,
+  92%,
+  100% {
+    opacity: 0;
+  }
+  93% {
+    opacity: 0.85;
+  }
+  94% {
+    opacity: 0.1;
+  }
+  95% {
+    opacity: 0.7;
+  }
+  96% {
+    opacity: 0;
+  }
+}
+
+.gsnowpile {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  bottom: -6px;
+  height: 52px;
+  opacity: 0;
+  transition: opacity 1s ease;
+  z-index: 3;
+}
+
+.gsnowpile::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 56%;
+  height: 44px;
+  border-radius: 60px 60px 0 0;
+  background: #eef4fa;
+}
+
+.gsnowpile::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 64%;
+  height: 34px;
+  border-radius: 60px 60px 0 0;
+  background: #dde8f2;
+}
+
+.gsnowpile.on {
+  opacity: 1;
+}
+
+.gfrost {
+  position: absolute;
+  font-size: 13px;
+  color: #eaf6ff;
+  text-shadow: 0 0 8px #bfe4ff;
+  opacity: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ghero.snowmode .gfrost {
+  animation: g-frost-tw 2.6s ease-in-out infinite;
+}
+
+@keyframes g-frost-tw {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/* 카드 내용 */
+.gc-content {
+  position: absolute;
+  inset: 4.5px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px 14px;
+  color: #fff;
+  text-align: center;
+}
+
+.gcorn {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.gcorn.tl {
+  top: 12px;
+  left: 12px;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 7px 0 0 0;
+}
+
+.gcorn.tr {
+  top: 12px;
+  right: 12px;
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 7px 0 0;
+}
+
+.gcorn.bl {
+  bottom: 12px;
+  left: 12px;
+  border-right: 0;
+  border-top: 0;
+  border-radius: 0 0 0 7px;
+}
+
+.gcorn.br {
+  bottom: 12px;
+  right: 12px;
+  border-left: 0;
+  border-top: 0;
+  border-radius: 0 0 7px 0;
+}
+
+.gc-grade {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
+  color: #241c00;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fr, #8a8f98) 40%, #fff), var(--fr, #8a8f98));
+  padding: 4.5px 13px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.gc-odds {
+  margin-top: 7px;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 3px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+.gc-stars {
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-shadow: 0 1px 6px rgba(0, 20, 40, 0.5);
+}
+
+.gc-stars i {
+  opacity: 0.25;
+  font-style: normal;
+}
+
+.gc-stars i.on {
+  opacity: 1;
+  color: var(--fr, #ffce4a);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--fr, #ffce4a) 80%, transparent);
+}
+
+.gc-score {
+  font-size: clamp(66px, 19vw, 82px);
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+  margin-top: auto;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 3px 24px rgba(0, 25, 55, 0.55);
+  animation: g-score-pop 0.7s cubic-bezier(0.2, 1.4, 0.35, 1);
+}
+
+.gc-score small {
+  font-size: 19px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+@keyframes g-score-pop {
+  0% {
+    transform: scale(0.25);
+  }
+  55% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.ghero.t9 .gc-score {
+  background: linear-gradient(180deg, #fffdf2 8%, #ffe083 52%, #f0a828 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 16px rgba(255, 205, 70, 0.65)) drop-shadow(0 2px 4px rgba(90, 50, 0, 0.5));
+}
+
+.ghero.t8 .gc-score {
+  text-shadow: 0 0 22px rgba(190, 120, 255, 0.85), 0 3px 20px rgba(40, 10, 80, 0.6);
+}
+
+.gc-verdict {
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.42;
+  margin-top: 5px;
+  text-shadow: 0 1px 8px rgba(0, 20, 40, 0.65);
+  min-height: 35px;
+  word-break: keep-all;
+}
+
+.gc-serial {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 1px 4px rgba(0, 20, 40, 0.5);
+}
+
+.gc-serial .stamp-ic {
+  font-size: 11px;
+  color: var(--fr, #ffce4a);
+}
+
+/* 홀로포일 & 광선 & 헤일로 */
+.gfoil {
+  position: absolute;
+  inset: 4.5px;
+  border-radius: 19px;
+  z-index: 5;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 14%,
+    rgba(255, 60, 180, 0.5) 30%,
+    rgba(70, 255, 235, 0.5) 44%,
+    rgba(255, 240, 120, 0.44) 58%,
+    transparent 76%
+  );
+  background-size: 250% 250%;
+  transition: opacity 0.5s;
+}
+
+.ghero.revealed .gfoil {
+  opacity: var(--foilo, 0);
+  animation: g-foil-sweep 2.5s ease-in-out infinite;
+}
+
+@keyframes g-foil-sweep {
+  0%,
+  100% {
+    background-position: 0 0;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+}
+
+.grays {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 300%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--rayc, #ffce4a) 20%, transparent) 0 6deg,
+    transparent 6deg 18deg
+  );
+  -webkit-mask: radial-gradient(circle, #000 26%, transparent 64%);
+  mask: radial-gradient(circle, #000 26%, transparent 64%);
+}
+
+.ghero.t9 .grays,
+.ghero.t8 .grays {
+  opacity: 1;
+  animation: g-ray-spin 13s linear infinite;
+}
+
+@keyframes g-ray-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.grays.r2 {
+  width: 230%;
+  background: repeating-conic-gradient(
+    from 9deg,
+    color-mix(in srgb, var(--rayc, #ffce4a) 14%, transparent) 0 4deg,
+    transparent 4deg 15deg
+  );
+}
+
+.ghero.t9 .grays.r2,
+.ghero.t8 .grays.r2 {
+  animation: g-ray-spin-r 9s linear infinite;
+}
+
+@keyframes g-ray-spin-r {
+  to {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+.ghalo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 175%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--fr, #ffce4a) 46%, transparent) 0%, transparent 60%);
+  transition: opacity 0.6s;
+}
+
+.ghero.revealed .ghalo {
+  opacity: var(--glow, 0);
+}
+
+/* 카드 아래 멘트 */
+.gsay {
+  margin-top: 16px;
+  font-size: 17px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  letter-spacing: -0.01em;
+  min-height: 24px;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+.gsub {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-top: 6px;
+  min-height: 17px;
+  text-align: center;
+}
+
+.gsub2 {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 3px;
+  min-height: 16px;
+  text-align: center;
+}
+
+/* ---------- 화면 흔들림 (FX) ---------- */
+.app-shell.sh-sm,
+.greel-ov.sh-sm {
+  animation: g-sh-sm 0.32s linear;
+}
+
+.app-shell.sh-lg,
+.greel-ov.sh-lg {
+  animation: g-sh-lg 0.55s linear;
+}
+
+@keyframes g-sh-sm {
+  20% {
+    transform: translate(-3px, 2px);
+  }
+  40% {
+    transform: translate(3px, -2px);
+  }
+  60% {
+    transform: translate(-2px, -2px);
+  }
+  80% {
+    transform: translate(2px, 1px);
+  }
+}
+
+@keyframes g-sh-lg {
+  8% {
+    transform: translate(-7px, 5px) rotate(-0.5deg);
+  }
+  22% {
+    transform: translate(7px, -6px) rotate(0.5deg);
+  }
+  38% {
+    transform: translate(-6px, -4px);
+  }
+  54% {
+    transform: translate(6px, 5px) rotate(0.4deg);
+  }
+  70% {
+    transform: translate(-4px, 3px);
+  }
+  85% {
+    transform: translate(3px, -2px);
+  }
+}
+
+/* ---------- FX 고정 레이어 ---------- */
+.gfx-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 56;
+}
+
+.gfx-boom {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gfx-bolts {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gfx-bolt {
+  fill: none;
+  stroke-width: 3.4;
+  stroke-linejoin: bevel;
+  animation: g-bolt-flash 0.3s ease-out forwards;
+}
+
+.gfx-bolt.thin {
+  stroke-width: 1.6;
+  opacity: 0.8;
+}
+
+@keyframes g-bolt-flash {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.gfx-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+
+.gfx-flash.go {
+  animation: g-flash-go 0.6s ease-out;
+}
+
+.gfx-flash.mini {
+  animation: g-flash-mini 0.28s ease-out;
+}
+
+@keyframes g-flash-go {
+  0% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes g-flash-mini {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.gfx-ring {
+  position: absolute;
+  border: 3px solid var(--rc, #ffce4a);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.12);
+  animation: g-ring-out 0.85s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes g-ring-out {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.gfx-edge {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 90px var(--ec, #5aa8ff);
+  animation: g-edge-go 0.95s ease-out forwards;
+}
+
+@keyframes g-edge-go {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.gcf {
+  position: absolute;
+  top: -16px;
+  animation: g-cf-fall linear forwards;
+}
+
+@keyframes g-cf-fall {
+  to {
+    transform: translateY(110vh) rotate(680deg);
+  }
+}
+
+.gfx-stamp {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-13deg) scale(3);
+  font-size: clamp(26px, 8vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: var(--fr, #ffce4a);
+  border: 4px solid var(--fr, #ffce4a);
+  border-radius: 12px;
+  padding: 7px 18px;
+  background: rgba(15, 8, 0, 0.3);
+  backdrop-filter: blur(2px);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--fr, #ffce4a) 90%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--fr, #ffce4a) 45%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--fr, #ffce4a) 30%, transparent);
+}
+
+.gfx-stamp.slam {
+  animation: g-stamp-slam 1.6s cubic-bezier(0.2, 1.2, 0.3, 1) forwards;
+}
+
+@keyframes g-stamp-slam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-13deg) scale(3);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-13deg) scale(0.92);
+  }
+  30% {
+    transform: translate(-50%, -50%) rotate(-13deg) scale(1.06);
+  }
+  38% {
+    transform: translate(-50%, -50%) rotate(-13deg) scale(1);
+  }
+  74% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-13deg) scale(1.08);
+  }
+}
+
+/* ---------- 앰비언트 레이어 (무드) ---------- */
+.gfx-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 52;
+}
+
+.gfx-ambient > div {
+  position: absolute;
+  inset: 0;
+}
+
+.gfx-predark {
+  background: #05030a;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.gfx-ambient.predark-on .gfx-predark {
+  opacity: 0.55;
+}
+
+.gfx-vig {
+  opacity: 0;
+  transition: opacity 1s ease;
+  background: radial-gradient(115% 85% at 50% 38%, transparent 34%, rgba(2, 4, 8, 0.82) 100%);
+}
+
+.gfx-ambient.mood-gloom2 .gfx-vig,
+.gfx-ambient.mood-gloom3 .gfx-vig {
+  opacity: 1;
+}
+
+.gfx-darkveil {
+  background: #020305;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.gfx-ambient.mood-gloom3 .gfx-darkveil {
+  opacity: 0.3;
+}
+
+.gfx-dimflick {
+  background: #000;
+  opacity: 0;
+}
+
+.gfx-ambient.mood-gloom2 .gfx-dimflick,
+.gfx-ambient.mood-gloom3 .gfx-dimflick {
+  animation: g-dim-flick 7s linear infinite;
+}
+
+@keyframes g-dim-flick {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+  }
+  90% {
+    opacity: 0.16;
+  }
+  92% {
+    opacity: 0.04;
+  }
+  94% {
+    opacity: 0.12;
+  }
+  96% {
+    opacity: 0;
+  }
+}
+
+.gfx-alarm {
+  opacity: 0;
+  box-shadow: inset 0 0 90px rgba(255, 50, 50, 0.55);
+}
+
+.gfx-ambient.mood-gloom3 .gfx-alarm {
+  opacity: 1;
+  animation: g-alert-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes g-alert-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.gfx-goldveil {
+  opacity: 0;
+  transition: opacity 0.9s;
+  box-shadow: inset 0 0 130px rgba(255, 190, 60, 0.5), inset 0 0 46px rgba(255, 220, 120, 0.22);
+}
+
+.gfx-ambient.mood-gold .gfx-goldveil {
+  opacity: 1;
+}
+
+.gfx-aurora {
+  opacity: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 18%,
+    var(--au1, rgba(85, 230, 208, 0.3)) 42%,
+    var(--au2, rgba(120, 180, 255, 0.24)) 58%,
+    transparent 80%
+  );
+  background-size: 280% 280%;
+}
+
+.gfx-aurora.go {
+  animation: g-aurora-sweep 2.2s ease-out forwards;
+}
+
+@keyframes g-aurora-sweep {
+  0% {
+    opacity: 0;
+    background-position: 0% 0%;
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    background-position: 100% 100%;
+  }
+}
+
+.gfx-fog {
+  width: 120%;
+  height: 130px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  background: radial-gradient(ellipse, rgba(150, 160, 178, 0.32), transparent 70%);
+  filter: blur(16px);
+  inset: auto;
+}
+
+.gfx-ambient.mood-gloom2 .gfx-fog,
+.gfx-ambient.mood-gloom3 .gfx-fog {
+  opacity: 1;
+}
+
+.gfx-fog.gfx-f1 {
+  top: 40%;
+  left: -20%;
+  animation: g-fog-drift 11s ease-in-out infinite alternate;
+}
+
+.gfx-fog.gfx-f2 {
+  top: 58%;
+  right: -24%;
+  animation: g-fog-drift 14s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes g-fog-drift {
+  to {
+    transform: translateX(70px);
+  }
+}
+
+/* ---------- 잭팟 버튼 ---------- */
+.gbtnwrap {
+  position: relative;
+  width: 100%;
+  margin: 14px 0 4px;
+}
+
+.gbtn-aura {
+  position: absolute;
+  inset: -8px;
+  border-radius: 30px;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 100% at 50% 50%, rgba(255, 190, 60, 0.4), transparent 70%);
+  animation: g-aura-b 2s ease-in-out infinite;
+  filter: blur(9px);
+}
+
+@keyframes g-aura-b {
+  50% {
+    opacity: 0.4;
+    transform: scale(1.06);
+  }
+}
+
+.gbtn {
+  position: relative;
+  width: 100%;
+  z-index: 1;
+  border: 0;
+  cursor: pointer;
+  border-radius: 22px;
+  overflow: hidden;
+  padding: 19px 16px;
+  font-family: var(--sans);
+  color: #2a1a02;
+  text-align: center;
+  background: linear-gradient(180deg, #fff0b8 0%, #ffd257 38%, #f0a318 78%, #ffca4d 100%);
+  box-shadow: 0 10px 0 #7d5308, 0 24px 50px -10px rgba(255, 175, 40, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.75), inset 0 -3px 6px rgba(140, 80, 0, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.gbtn:hover {
+  filter: brightness(1.06);
+}
+
+.gbtn:active {
+  transform: translateY(6px);
+  box-shadow: 0 4px 0 #7d5308, 0 10px 22px -10px rgba(255, 175, 40, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.75);
+}
+
+.gbtn:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 3px;
+}
+
+.gbtn .gb-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 18.5px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.gbtn .gb-main .slot7 {
+  display: inline-block;
+  font-size: 22px;
+  animation: g-slot-wig 2.2s ease-in-out infinite;
+}
+
+@keyframes g-slot-wig {
+  0%,
+  100% {
+    transform: rotate(-9deg) scale(1);
+  }
+  50% {
+    transform: rotate(9deg) scale(1.12);
+  }
+}
+
+.gbtn .gsheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.8) 46%, transparent 58%);
+  background-size: 260% 100%;
+  animation: g-btn-sheen 2.4s ease-in-out infinite;
+}
+
+@keyframes g-btn-sheen {
+  0% {
+    background-position: 130% 0;
+  }
+  55%,
+  100% {
+    background-position: -130% 0;
+  }
+}
+
+.gbtn .gspk {
+  position: absolute;
+  font-size: 14px;
+  color: #fff;
+  pointer-events: none;
+  animation: g-spk-tw 1.7s ease-in-out infinite;
+}
+
+.gbtn .gspk.a {
+  top: 8px;
+  left: 18px;
+}
+
+.gbtn .gspk.b {
+  bottom: 9px;
+  right: 20px;
+  animation-delay: 0.8s;
+}
+
+@keyframes g-spk-tw {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.6) rotate(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(40deg);
+  }
+}
+
+/* ---------- 슬롯 릴 오버레이 ---------- */
+.greel-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  padding: max(24px, env(safe-area-inset-top)) 18px 20px;
+  background: radial-gradient(130% 60% at 50% -6%, #2b1f4d 0%, transparent 55%),
+    radial-gradient(90% 40% at 50% 108%, #241a3d 0%, transparent 60%), linear-gradient(180deg, #120e22, #0a0716);
+  animation: g-ov-in 0.5s cubic-bezier(0.3, 1, 0.35, 1);
+}
+
+@keyframes g-ov-in {
+  from {
+    transform: translateY(102%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.gspot {
+  position: absolute;
+  top: -60px;
+  width: 220px;
+  height: 55vh;
+  z-index: 0;
+  opacity: 0.14;
+  pointer-events: none;
+  background: linear-gradient(180deg, #ffe9a8, transparent 75%);
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+}
+
+.gspot.s1 {
+  left: -30px;
+  transform-origin: top center;
+  animation: g-spot-sw 5.5s ease-in-out infinite alternate;
+}
+
+.gspot.s2 {
+  right: -30px;
+  transform-origin: top center;
+  animation: g-spot-sw 5.5s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes g-spot-sw {
+  from {
+    transform: rotate(-16deg);
+  }
+  to {
+    transform: rotate(16deg);
+  }
+}
+
+.gro-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0 2px;
+  z-index: 2;
+}
+
+.gro-title {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #fff3c4, var(--gold) 60%, #e08a12);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px rgba(255, 200, 60, 0.5));
+}
+
+.gro-sub {
+  position: relative;
+  font-size: 11.5px;
+  color: #8f88ac;
+  font-weight: 700;
+  margin: 4px 0 14px;
+  z-index: 2;
+  text-align: center;
+}
+
+.gpodium {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 250px;
+  z-index: 2;
+  max-width: 430px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.gpod {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 12px 14px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(20px) scale(0.92);
+  background: none;
+  border: 1.5px solid transparent;
+  text-align: left;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+.gpod.show {
+  animation: g-pod-in 0.6s cubic-bezier(0.2, 1.4, 0.35, 1) forwards;
+}
+
+@keyframes g-pod-in {
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.gpod.r1 {
+  background: linear-gradient(120deg, #33270e, #1c1530 62%);
+  border-color: var(--gold);
+  box-shadow: 0 0 30px -4px rgba(255, 206, 74, 0.45), inset 0 1px 0 rgba(255, 230, 150, 0.25);
+}
+
+.gpod.r1::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 228, 140, 0.22) 50%, transparent 62%);
+  background-size: 250% 100%;
+  animation: g-btn-sheen 3s ease-in-out infinite;
+}
+
+.gpod.r2 {
+  background: linear-gradient(120deg, #272b36, #181528 62%);
+  border-color: #aebbcc;
+  box-shadow: 0 0 18px -6px rgba(175, 195, 220, 0.35);
+}
+
+.gpod.r3 {
+  background: linear-gradient(120deg, #2e2118, #181226 62%);
+  border-color: #c98d54;
+  box-shadow: 0 0 16px -6px rgba(205, 140, 80, 0.3);
+}
+
+.gmedal {
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 3px 5px rgba(255, 255, 255, 0.6), inset 0 -4px 6px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.gmedal::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(0, 0, 0, 0.22);
+}
+
+.gmedal.g {
+  background: radial-gradient(circle at 34% 28%, #fff6c8, #ffd24a 46%, #c8860f);
+  color: #5a3c05;
+}
+
+.gmedal.s {
+  background: radial-gradient(circle at 34% 28%, #fff, #ccd6e0 46%, #8494a4);
+  color: #39434f;
+}
+
+.gmedal.b {
+  background: radial-gradient(circle at 34% 28%, #ffdfba, #d09055 46%, #8a5424);
+  color: #3a2408;
+}
+
+.gmedal.g::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-bottom: 9px solid #d43a3a;
+  filter: drop-shadow(0 -1px 1px rgba(0, 0, 0, 0.3));
+}
+
+.gpod-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.gpod-time {
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.gpod-time em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+  margin-left: 7px;
+}
+
+.gpod-part {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #948cb4;
+  margin-left: 7px;
+}
+
+.gpod-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.gpod-stats span {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #cfc8e6;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.gpod-stats span.wet {
+  color: #9fd0ff;
+  border-color: rgba(120, 180, 255, 0.35);
+  background: rgba(80, 140, 255, 0.12);
+}
+
+.gpod-score {
+  flex: none;
+  text-align: right;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.gpod-score b {
+  font-size: 24px;
+  color: var(--sccol, #fff);
+}
+
+.gpod-score span {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  color: #7a7392;
+  letter-spacing: 0.1em;
+}
+
+/* 릴 머신 */
+.greelframe {
+  position: relative;
+  margin-top: auto;
+  z-index: 2;
+  border-radius: 22px;
+  padding: 4px;
+  max-width: 430px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: linear-gradient(160deg, #f7dc90, #c8901e 30%, #7d5308 55%, #e0af38 82%, #f7dc90);
+}
+
+.greelbox {
+  position: relative;
+  height: 196px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0b0816, #171130 50%, #0b0816);
+  box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.7);
+}
+
+.greelbox::before,
+.greelbox::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.greelbox::before {
+  top: 0;
+  background: linear-gradient(180deg, #0b0816 8%, transparent);
+}
+
+.greelbox::after {
+  bottom: 0;
+  background: linear-gradient(0deg, #0b0816 8%, transparent);
+}
+
+.gled {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.gled.t {
+  top: 6px;
+}
+
+.gled.b {
+  bottom: 6px;
+}
+
+.gled i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3a2f14;
+}
+
+.greelbox.spinningR .gled i {
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold2);
+}
+
+.greelbox.spinningR .gled i:nth-child(3n + 1) {
+  animation: g-led-chase 0.5s steps(1) infinite;
+}
+
+.greelbox.spinningR .gled i:nth-child(3n + 2) {
+  animation: g-led-chase 0.5s steps(1) infinite 0.17s;
+}
+
+.greelbox.spinningR .gled i:nth-child(3n) {
+  animation: g-led-chase 0.5s steps(1) infinite 0.34s;
+}
+
+@keyframes g-led-chase {
+  0%,
+  32% {
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold2);
+  }
+  33%,
+  100% {
+    background: #4a3a14;
+    box-shadow: none;
+  }
+}
+
+.gspeedfx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 9px, rgba(190, 180, 255, 0.07) 9px 11px);
+}
+
+.greelbox.spinningR .gspeedfx {
+  opacity: 1;
+  animation: g-speed-mv 0.14s linear infinite;
+}
+
+@keyframes g-speed-mv {
+  to {
+    transform: translateY(11px);
+  }
+}
+
+.greel-band {
+  position: absolute;
+  top: 66px;
+  left: 10px;
+  right: 10px;
+  height: 64px;
+  z-index: 3;
+  border-radius: 13px;
+  pointer-events: none;
+  border: 2px solid rgba(255, 206, 74, 0.55);
+  box-shadow: 0 0 22px rgba(255, 206, 74, 0.28) inset;
+}
+
+.greel-band::before,
+.greel-band::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+}
+
+.greel-band::before {
+  left: -4px;
+  border-left: 10px solid var(--gold);
+}
+
+.greel-band::after {
+  right: -4px;
+  border-right: 10px solid var(--gold);
+}
+
+.greel-band.hit {
+  animation: g-band-hit 0.55s ease-out;
+}
+
+@keyframes g-band-hit {
+  0% {
+    border-color: #fff;
+    box-shadow: 0 0 46px rgba(255, 255, 255, 0.85) inset;
+  }
+  100% {
+    border-color: rgba(255, 206, 74, 0.55);
+  }
+}
+
+.gstrip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.gstrip.blur {
+  filter: blur(2.6px);
+}
+
+.grow {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: #cfcadf;
+}
+
+.grow .grt {
+  font-size: 25px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.grow .grs {
+  font-size: 14px;
+  font-weight: 800;
+  color: #8a83a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.grow .gdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dc, #5a5476);
+}
+
+.grow.win .grt {
+  color: #fff;
+  text-shadow: 0 0 14px rgba(255, 220, 120, 0.6);
+}
+
+.grow.win .grs {
+  color: var(--gold);
+}
+
+.greel-hint {
+  position: relative;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #7d75a0;
+  margin-top: 11px;
+  min-height: 20px;
+  z-index: 2;
+  transition: font-size 0.2s ease, color 0.2s ease;
+}
+
+.greel-hint.bighint {
+  font-size: 15px;
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(255, 200, 60, 0.5);
+}
+
+@media (min-width: 700px) {
+  .greel-ov {
+    padding-top: 48px;
   }
 }

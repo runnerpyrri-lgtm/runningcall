@@ -21,7 +21,7 @@ import {
   Wind,
   X
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
 import { getOutfitPlan } from "@/lib/outfit";
@@ -42,6 +42,7 @@ import {
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
+import { GachaHero, TimeReel, type ReelRank } from "./gacha";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
 import {
@@ -212,36 +213,6 @@ async function cancelBackgroundAlarm(id: string) {
   }
 }
 
-// 좁은 칸에서도 항상 한 줄에 맞도록 폰트를 자동 축소 (두 줄/잘림 방지)
-function FitText({ text, maxPx, minPx, className }: { text: string; maxPx: number; minPx: number; className?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const fit = () => {
-      let size = maxPx;
-      el.style.fontSize = `${size}px`;
-      let guard = 0;
-      while (el.scrollWidth > el.clientWidth + 0.5 && size > minPx && guard < 60) {
-        size -= 0.5;
-        el.style.fontSize = `${size}px`;
-        guard += 1;
-      }
-    };
-    fit();
-    const observer = new ResizeObserver(fit);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [text, maxPx, minPx]);
-
-  return (
-    <span ref={ref} className={className} style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden" }}>
-      {text}
-    </span>
-  );
-}
-
 async function fetchAppForecast(location: LocationPoint) {
   const params = new URLSearchParams({
     name: location.name,
@@ -310,39 +281,20 @@ function windowSlots(timeline: RunningSlot[], currentTime: string | null) {
   return win.length >= 6 ? win : timeline.slice(Math.max(0, timeline.length - 13));
 }
 
-function ringColor(score: number) {
-  if (score >= 72) return "#35d07a";
-  if (score >= 55) return "#ffb020";
-  if (score >= 38) return "#ff8a3d";
-  return "#ff5a5f";
-}
-
-// 신호 다이얼 등급 문구 — ringColor와 같은 구간 (초록 GO / 앰버 주의 / 오렌지·레드 나쁨)
-function gradeLabel(score: number) {
-  if (score >= 72) return "좋음 · GO";
-  if (score >= 55) return "보통";
-  if (score >= 38) return "주의";
-  return "나쁨";
-}
-
 const RECO_MIN = 55;
 
-function precipEmoji(probability: number) {
-  if (probability >= 75) return "☔";
-  if (probability >= 45) return "🌦";
-  return "맑음";
-}
-
-function dustEmoji(label: string) {
-  if (label.includes("나쁨")) return "먼지";
-  if (label.includes("보통")) return "보통";
-  return "깨끗";
-}
-
-function windEmoji(label: string) {
-  if (label.includes("강")) return "강풍";
-  if (label.includes("약")) return "잔잔";
-  return "바람";
+// 슬롯 릴 순위 카드용 핵심 지표 칩 3개 — 강수는 항상 포함
+function rankChips(slot: RunningSlot) {
+  const chips = [
+    `💧 강수 ${Math.round(slot.precipitationProbability)}%`,
+    `🌡 체감 ${Math.round(slot.apparentTemperature)}°`
+  ];
+  const dust = gradePm25(slot.pm25);
+  const wind = gradeWind(slot.windSpeed);
+  if (dust.label === "좋음") chips.push("😷 미세 좋음");
+  else if (wind.label === "약함") chips.push("💨 바람 약함");
+  else chips.push(`😷 미세 ${dust.label}`);
+  return chips;
 }
 
 function TimelineChart({
@@ -818,10 +770,6 @@ function rainDecision(slot: RunningSlot): { action: string; short: string; body:
   return { action: "우산 불필요", short: "없음", body: "비 가능성이 낮아요. 비 때문에 일정을 바꿀 정도는 아니에요.", tone: "good" };
 }
 
-function rainActionText(slot: RunningSlot) {
-  return rainDecision(slot).action;
-}
-
 function rainDayLabel(hasToday: boolean, groupIndex: number) {
   if (hasToday) {
     return groupIndex === 0 ? "오늘" : groupIndex === 1 ? "내일" : "다음날";
@@ -1235,6 +1183,7 @@ export default function Home() {
   const [locationShelf, setLocationShelf] = useState<LocationShelf>("fav");
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isPrepOpen, setIsPrepOpen] = useState(false);
+  const [isReelOpen, setIsReelOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
 
   const loadForecast = useCallback(async (target: LocationPoint) => {
@@ -1386,6 +1335,7 @@ export default function Home() {
     (next: ActivityKey) => {
       setSheetKey(null);
       setIsPrepOpen(false);
+      setIsReelOpen(false);
       setDayMode("today");
       setActivity(next);
       const remembered = activityLocations[next];
@@ -2018,16 +1968,8 @@ export default function Home() {
               <div className="content-cols">
                 <div className="col-main">
 
-              {/* HERO — 출발선 신호 다이얼: 픽토그램 + 대형 점수 + 등급칩, 링이 점수만큼 차오름 */}
-              <section
-                className="hero"
-                style={
-                  {
-                    "--p": isTomorrow ? view.best.totalScore : view.reference.totalScore,
-                    "--sig": ringColor(isTomorrow ? view.best.totalScore : view.reference.totalScore)
-                  } as React.CSSProperties
-                }
-              >
+              {/* HERO — 가챠 카드: 개봉 연출 + 실측 날씨 씬 + 티어 등급 (탭 = 재개봉) */}
+              <section className="hero">
                 <div className="hero-top">
                   <span className="hero-cond">
                     <Clock size={14} />
@@ -2038,34 +1980,23 @@ export default function Home() {
                     <span>준비</span>
                   </button>
                 </div>
-                <div className="dial-wrap">
-                  <div className="dial-glow" aria-hidden="true" />
-                  <div className="dial">
-                    <div className="dial-in">
-                      <ActivityPictogram activity={activity} className="dial-picto" />
-                      <span className="dial-eyebrow">{isTomorrow ? "내일 점수" : "오늘 점수"}</span>
-                      <div className="dial-score">{isTomorrow ? view.best.totalScore : view.reference.totalScore}</div>
-                      <span className="dial-grade">
-                        {gradeLabel(isTomorrow ? view.best.totalScore : view.reference.totalScore)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <GachaHero
+                  score={isTomorrow ? view.best.totalScore : view.reference.totalScore}
+                  headline={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
+                  subline={heroSubline(isTomorrow ? view.best : view.reference, activity)}
+                  slot={isTomorrow ? view.best : view.reference}
+                  place={displayLocationName(location.name)}
+                  actLabel={profile.label}
+                  isTomorrow={isTomorrow}
+                />
                 <div className="hero-copy">
-                  <FitText
-                    className="hero-h1"
-                    text={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
-                    maxPx={26}
-                    minPx={16}
-                  />
-                  <div className="hero-sub">
-                    <span className="hero-why">{heroSubline(isTomorrow ? view.best : view.reference, activity)}</span>
-                    {scoreDelta !== null && scoreDelta !== 0 ? (
+                  {scoreDelta !== null && scoreDelta !== 0 ? (
+                    <div className="hero-sub">
                       <span className={`hero-delta ${scoreDelta > 0 ? "up" : "down"}`}>
                         {scoreDelta > 0 ? "▲" : "▼"} {deltaWord} {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
                       </span>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                   <div className="hero-metrics" aria-label="항목별 상태">
                     {reasonRows.map((row) => (
                       <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
@@ -2083,60 +2014,38 @@ export default function Home() {
                 </div>
                 <div className="col-side">
 
-              {/* 추천 시간대는 6개 지표 아래에서 바로 확인할 수 있게 유지 */}
+              {/* 추천 시간대 — 잭팟 버튼 → 슬롯 릴로 금·은·동 순위 공개 (pod 탭 = 알림) */}
               {(() => {
                 const goodParts = view.parts.filter((p) => !p.past && p.best && p.best.totalScore >= RECO_MIN);
                 const hasUpcoming = view.parts.some((p) => !p.past);
+                const ranked = goodParts
+                  .slice()
+                  .sort((a, b) => b.best!.totalScore - a.best!.totalScore)
+                  .slice(0, 3);
+                const reelRanks: ReelRank[] = ranked.map((part) => ({
+                  key: part.key,
+                  label: part.label,
+                  time: formatHour(part.best!),
+                  score: part.best!.totalScore,
+                  chips: rankChips(part.best!)
+                }));
+                const reelPool = view.slots
+                  .filter((s) => (view.currentTime ? s.time >= view.currentTime : true))
+                  .map((s) => ({ time: formatHour(s), score: s.totalScore }));
                 return (
                   <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
-                    <div className="section-title ranks-title">
-                      <b>
-                        {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
-                      </b>
-                    </div>
-                    {goodParts.length > 0 ? (
-                      <div className="rank-list">
-                        {goodParts.map((part) => {
-                          const best = part.best!;
-                          const isNow = !isTomorrow && nowHour >= part.range[0] && nowHour <= part.range[1];
-                          const isBest = best.time === view.best.time;
-                          const hasAlarm = alarms.some((a) => a.id === best.time);
-                          return (
-                            <button
-                              type="button"
-                              key={part.key}
-                              className={`rank-card daypart-card ${isBest ? "is-best" : ""} ${isNow ? "is-now" : ""}`}
-                              onClick={() => openAlarm(part)}
-                            >
-                              <span className="rank-badge daypart-badge">{part.label}</span>
-                              <div className="rank-body">
-                                <p className="rank-time">
-                                  {formatHour(best)}
-                                  {isBest ? (
-                                    <em className="rank-now">오늘 베스트</em>
-                                  ) : isNow ? (
-                                    <em className="rank-now">지금 딱</em>
-                                  ) : null}
-                                  {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
-                                </p>
-                                <div className="rank-metrics">
-                                  <span>체감 {Math.round(best.apparentTemperature)}°</span>
-                                  <span>{precipEmoji(best.precipitationProbability)} {rainActionText(best)}</span>
-                                  <span>
-                                    {dustEmoji(gradePm25(best.pm25).label)} 미세 {gradePm25(best.pm25).label}
-                                  </span>
-                                  <span>
-                                    {windEmoji(gradeWind(best.windSpeed).label)} 바람 {gradeWind(best.windSpeed).label}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="rank-score" style={{ color: ringColor(best.totalScore) }}>
-                                {best.totalScore}
-                                <small>점</small>
-                              </span>
-                            </button>
-                          );
-                        })}
+                    {reelRanks.length > 0 ? (
+                      <div className="gbtnwrap">
+                        <div className="gbtn-aura" aria-hidden="true" />
+                        <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
+                          <span className="gsheen" aria-hidden="true" />
+                          <span className="gspk a" aria-hidden="true">✦</span>
+                          <span className="gspk b" aria-hidden="true">✦</span>
+                          <span className="gb-main">
+                            <span className="slot7" aria-hidden="true">🎰</span>
+                            {isTomorrow ? "내일" : "오늘"}의 추천 시간대 뽑기
+                          </span>
+                        </button>
                       </div>
                     ) : (
                       <div className="rec-empty-body">
@@ -2154,6 +2063,17 @@ export default function Home() {
                         ) : null}
                       </div>
                     )}
+                    <TimeReel
+                      open={isReelOpen && reelRanks.length > 0}
+                      title={`${isTomorrow ? "내일" : "오늘"}의 ${profile.label} 시간대`}
+                      ranks={reelRanks}
+                      pool={reelPool}
+                      onClose={() => setIsReelOpen(false)}
+                      onPick={(rank) => {
+                        const part = ranked.find((p) => p.key === rank.key);
+                        if (part) openAlarm(part);
+                      }}
+                    />
                   </section>
                 );
               })()}
