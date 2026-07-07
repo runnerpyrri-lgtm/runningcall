@@ -427,7 +427,6 @@ button {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding-right: 58px;
 }
 
 .hero-cond {
@@ -445,23 +444,16 @@ button {
 }
 
 .hero-prep {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 2;
   display: inline-flex;
-  width: 48px;
-  height: 48px;
-  flex-direction: column;
+  min-height: 34px;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 0;
-  border-radius: 16px;
-  border: 1px solid rgba(43, 213, 118, 0.34);
-  background: linear-gradient(180deg, rgba(43, 213, 118, 0.18), rgba(43, 213, 118, 0.07));
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(43, 213, 118, 0.28);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--good);
-  font-size: 0.67rem;
+  font-size: 0.78rem;
   font-weight: 900;
   box-shadow: 0 10px 20px -16px rgba(43, 213, 118, 0.7);
 }
@@ -1897,7 +1889,7 @@ button {
   }
 
   .hero-top {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .hero-cond,
@@ -2698,6 +2690,212 @@ button {
   line-height: 1.45;
 }
 
+.rain-day-hero {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.rain-day-hero span,
+.rain-day-hero b,
+.rain-day-hero small {
+  display: block;
+}
+
+.rain-day-hero span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.rain-day-hero b {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: 1.32rem;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.rain-day-hero small {
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.rain-day-hero.tone-good {
+  border-color: rgba(43, 213, 118, 0.3);
+  background: rgba(43, 213, 118, 0.09);
+}
+
+.rain-day-hero.tone-normal {
+  border-color: rgba(95, 176, 255, 0.3);
+  background: rgba(61, 155, 255, 0.1);
+}
+
+.rain-day-hero.tone-caution {
+  border-color: rgba(255, 176, 32, 0.38);
+  background: rgba(255, 176, 32, 0.1);
+}
+
+.rain-day-hero.tone-bad {
+  border-color: rgba(255, 90, 95, 0.38);
+  background: rgba(255, 90, 95, 0.1);
+}
+
+.rain-day-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.rain-day-stats em {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.rain-hour-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 96px;
+  margin-top: 13px;
+  padding: 12px 10px 8px;
+  border-radius: 17px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  overflow-x: auto;
+}
+
+.rain-hour {
+  flex: 0 0 24px;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--muted);
+}
+
+.rain-hour-bar {
+  width: 12px;
+  min-height: 8px;
+  border-radius: 999px 999px 4px 4px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.rain-hour.tone-good .rain-hour-bar {
+  background: rgba(43, 213, 118, 0.55);
+}
+
+.rain-hour.tone-normal .rain-hour-bar {
+  background: #5fb0ff;
+}
+
+.rain-hour.tone-caution .rain-hour-bar {
+  background: var(--warn);
+}
+
+.rain-hour.tone-bad .rain-hour-bar {
+  background: var(--bad);
+}
+
+.rain-hour.active {
+  color: var(--ink);
+}
+
+.rain-hour.active .rain-hour-bar {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.rain-hour small {
+  font-size: 0.66rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.rain-focus-compact {
+  margin-top: 12px;
+}
+
+.rain-period-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.rain-period-pill {
+  min-width: 0;
+  padding: 10px 9px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-align: left;
+}
+
+.rain-period-pill.active {
+  border-color: rgba(95, 176, 255, 0.72);
+  box-shadow: 0 0 0 3px rgba(95, 176, 255, 0.13);
+}
+
+.rain-period-pill span,
+.rain-period-pill b,
+.rain-period-pill small {
+  display: block;
+}
+
+.rain-period-pill span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.rain-period-pill b {
+  margin-top: 4px;
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.rain-period-pill small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.rain-period-pill.tone-good {
+  border-color: rgba(43, 213, 118, 0.24);
+  background: rgba(43, 213, 118, 0.06);
+}
+
+.rain-period-pill.tone-normal {
+  border-color: rgba(95, 176, 255, 0.24);
+  background: rgba(61, 155, 255, 0.08);
+}
+
+.rain-period-pill.tone-caution {
+  border-color: rgba(255, 176, 32, 0.32);
+  background: rgba(255, 176, 32, 0.08);
+}
+
+.rain-period-pill.tone-bad {
+  border-color: rgba(255, 90, 95, 0.34);
+  background: rgba(255, 90, 95, 0.08);
+}
+
 .rain-glance {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2941,6 +3139,10 @@ button {
 
   .rain-glance {
     grid-template-columns: 1fr;
+  }
+
+  .rain-period-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .rain-focus {
@@ -3611,6 +3813,45 @@ button {
   margin-top: 4px;
 }
 
+.location-shelves {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.location-shelf {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  height: 36px;
+  padding: 0 9px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.location-shelf.on {
+  border-color: rgba(43, 213, 118, 0.45);
+  background: rgba(43, 213, 118, 0.12);
+  color: var(--good);
+}
+
+.location-shelf b {
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.68rem;
+}
+
 .saved-list {
   display: flex;
   flex-direction: column;
@@ -3621,10 +3862,12 @@ button {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
   border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--card);
   padding-right: 4px;
+  padding-bottom: 4px;
 }
 
 .saved-row.is-fav {
@@ -3633,7 +3876,7 @@ button {
 }
 
 .saved-pick {
-  flex: 1;
+  flex: 1 1 148px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -3646,7 +3889,15 @@ button {
 
 .saved-ic {
   flex: none;
-  font-size: 1.05rem;
+  min-width: 36px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--good);
+  font-size: 0.72rem;
+  font-weight: 900;
   line-height: 1;
 }
 
@@ -3675,6 +3926,16 @@ button {
   text-overflow: ellipsis;
 }
 
+.saved-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.saved-tag,
 .saved-star {
   flex: none;
   width: 34px;
@@ -3685,6 +3946,19 @@ button {
   border-radius: 10px;
   background: transparent;
   color: #c3cfe2;
+}
+
+.saved-tag {
+  width: auto;
+  min-width: 32px;
+  padding: 0 7px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.saved-tag.on {
+  color: var(--good);
+  background: rgba(43, 213, 118, 0.12);
 }
 
 .saved-star.on {
@@ -3706,6 +3980,32 @@ button {
 .saved-del:hover {
   color: var(--bad);
   background: rgba(255, 90, 95, 0.14);
+}
+
+.saved-empty {
+  padding: 15px;
+  border-radius: 15px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.saved-empty b,
+.saved-empty span {
+  display: block;
+}
+
+.saved-empty b {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.saved-empty span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.45;
 }
 
 /* ---------- 추천 러닝 시간대 (언제~언제) ---------- */

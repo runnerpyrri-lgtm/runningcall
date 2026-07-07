@@ -89,7 +89,9 @@ const ACTIVITY_KEY = "running-alarm:activity";
 const QUICK_NEIGHBORHOODS = ["성수동", "독산1동", "연남동", "서초동"];
 const QUICK_MOUNTAINS = ["북한산", "관악산", "한라산", "설악산"];
 
-type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number };
+type SavedLocationTag = "home" | "work";
+type LocationShelf = SavedLocationTag | "fav" | "recent";
+type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number; tag?: SavedLocationTag };
 
 function locKey(l: { latitude: number; longitude: number }) {
   return `${l.latitude.toFixed(3)},${l.longitude.toFixed(3)}`;
@@ -104,15 +106,26 @@ function hasNeighborhoodName(value: string) {
 }
 
 function displayLocationName(name: string, detail = "") {
+  return locationDisplay(name, detail).title;
+}
+
+function locationDisplay(name: string, detail = "") {
   const joined = `${name} ${detail}`.trim();
   const matches = neighborhoodMatch(joined);
-  if (matches && matches.length > 0) return matches[matches.length - 1];
-  const parts = name
+  const titleFromDong = matches && matches.length > 0 ? matches[matches.length - 1] : "";
+  const parts = joined
+    .replace(/\([^)]*\)/g, " ")
     .replace(/[(),]/g, " ")
     .split(/\s+/)
     .map((part) => part.trim())
     .filter(Boolean);
-  return parts[parts.length - 1] ?? name;
+  const title = titleFromDong || parts[parts.length - 1] || name;
+  const titleIndex = parts.lastIndexOf(title);
+  const regionParts = (titleIndex > 0 ? parts.slice(0, titleIndex) : parts.slice(0, -1))
+    .filter((part) => /(특별시|광역시|자치시|자치도|도|시|군|구)$/.test(part))
+    .slice(-2);
+  const subtitle = regionParts.length > 0 ? regionParts.join(" ") : detail && detail !== title ? detail : "";
+  return { title, subtitle };
 }
 
 type AlarmConfig = { id: string; targetMs: number; label: string; timeLabel: string; leadMin: number; popup: boolean };
@@ -511,8 +524,10 @@ function MetricSheet({
   onClose: () => void;
 }) {
   const metric = METRICS.find((item) => item.key === sheetKey) ?? METRICS[0];
-  const chart = windowSlots(slots, currentTime);
-  const rainChart = sheetKey === "precip" ? rainWindowSlots(slots, currentTime) : chart;
+  const daySlots = slots.filter((slot) => slot.time.slice(0, 10) === reference.time.slice(0, 10));
+  const sheetSlots = daySlots.length > 0 ? daySlots : slots;
+  const chart = windowSlots(sheetSlots, currentTime);
+  const rainChart = sheetKey === "precip" ? rainWindowSlots(sheetSlots, currentTime) : chart;
   const activeSlots = sheetKey === "precip" ? rainChart : chart;
 
   // 그래프에서 선택한 시각 (기본 = 지금). 탭하면 그 시각 값·등급·바가 바뀜.
@@ -586,7 +601,7 @@ function MetricSheet({
             activity={activity}
             selectedTime={selTime}
             onSelectTime={setSelTime}
-            currentTime={currentTime}
+            dayLabel={currentTime ? "오늘" : "내일"}
           />
         )}
       </div>
@@ -874,12 +889,6 @@ function summarizeMetric(slots: RunningSlot[], metric: (typeof METRICS)[number],
   ];
 }
 
-function relativeDayLabel(slot: RunningSlot, slots: RunningSlot[], currentTime: string | null) {
-  const days = Array.from(new Set(slots.map((s) => s.time.slice(0, 10))));
-  const index = Math.max(0, days.indexOf(slot.time.slice(0, 10)));
-  return rainDayLabel(Boolean(currentTime), index);
-}
-
 function windHuman(ms: number) {
   if (ms < 4) return "약한 바람";
   if (ms < 9) return "조금 강한 바람";
@@ -936,7 +945,7 @@ function metricPeriodSummary(metric: (typeof METRICS)[number], group: RunningSlo
   return { primary: hum.label, value: `${Math.round(avg)}%`, note: hum.note, tone: hum.tone, focus: best };
 }
 
-function buildMetricPeriodCards(slots: RunningSlot[], metric: (typeof METRICS)[number], activity: ActivityKey, currentTime: string | null) {
+function buildMetricPeriodCards(slots: RunningSlot[], metric: (typeof METRICS)[number], activity: ActivityKey) {
   return PERIOD_DEFS.flatMap((period) => {
     const groups = slots.filter((slot) => slot.hour >= period.from && slot.hour <= period.to);
     if (groups.length === 0) return [];
@@ -956,7 +965,7 @@ function buildMetricPeriodCards(slots: RunningSlot[], metric: (typeof METRICS)[n
       const summary = metricPeriodSummary(metric, group, activity);
       return {
         key: `${period.key}-${first.time}`,
-        label: `${relativeDayLabel(first, slots, currentTime)} ${period.label}`,
+        label: period.label,
         range: timeRangeText(first, last),
         slots: group,
         ...summary
@@ -971,21 +980,21 @@ function MetricPeriodPanel({
   activity,
   selectedTime,
   onSelectTime,
-  currentTime
+  dayLabel
 }: {
   slots: RunningSlot[];
   metric: (typeof METRICS)[number];
   activity: ActivityKey;
   selectedTime: string;
   onSelectTime: (time: string) => void;
-  currentTime: string | null;
+  dayLabel: string;
 }) {
-  const cards = buildMetricPeriodCards(slots, metric, activity, currentTime);
+  const cards = buildMetricPeriodCards(slots, metric, activity);
 
   return (
     <div className="metric-period-panel">
       <p className="sheet-graph-label">
-        <b>{currentTime ? "앞으로 12시간" : "내일"} {metric.label} 핵심</b>
+        <b>{dayLabel} {metric.label} 핵심</b>
         <small>시간대를 누르면 위 설명이 바뀌어요</small>
       </p>
       <div className="metric-period-grid">
@@ -1087,6 +1096,42 @@ function buildRainDayBoards(slots: RunningSlot[], currentTime: string | null) {
   });
 }
 
+function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
+  const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+  const focus = peak.precipitation >= 0.1 ? peak : probable;
+  const decision = rainDecision(focus);
+
+  if (wet.length === 0) {
+    return {
+      tone: "good" as PanelTone,
+      title: `${dayLabel} 비 걱정 낮음`,
+      body: "우산 없이 봐도 괜찮아요. 나가기 전 하늘만 한 번 확인하면 충분해요.",
+      time: "비 신호 없음",
+      amount: "0mm",
+      prob: `${Math.round(probable.precipitationProbability)}%`
+    };
+  }
+
+  const first = wet[0];
+  const last = wet[wet.length - 1];
+  return {
+    tone: decision.tone,
+    title: decision.action,
+    body: `${timeRangeText(first, last)} 중심으로 비 신호가 있어요. 제일 신경 쓸 시간은 ${fmtAmPm(focus.hour)} 전후예요.`,
+    time: timeRangeText(first, last),
+    amount: rainAmountText(peak.precipitation),
+    prob: `${Math.round(probable.precipitationProbability)}%`
+  };
+}
+
+function rainBarHeight(slot: RunningSlot) {
+  const byAmount = Math.min(100, slot.precipitation * 26);
+  const byProb = Math.min(100, slot.precipitationProbability);
+  return Math.max(8, Math.min(100, Math.max(byAmount, byProb * 0.74)));
+}
+
 function RainDetailPanel({
   slots,
   selectedTime,
@@ -1101,35 +1146,46 @@ function RainDetailPanel({
   const selected = slots.find((slot) => slot.time === selectedTime) ?? slots[0];
   const selectedInfo = rainInfo(selected.precipitation);
   const selectedDecision = rainDecision(selected);
-  const rainSummary = summarizeRain(slots);
-  const dayBoards = buildRainDayBoards(slots, currentTime);
+  const dayLabel = currentTime ? "오늘" : "내일";
+  const overview = buildRainOverview(slots, dayLabel);
+  const periodCards = buildRainDayBoards(slots, currentTime)[0]?.cells ?? [];
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{currentTime ? "오늘·내일 비 시간표" : "내일 비 시간표"}</b>
-        <small>새벽·오전·오후·저녁만 보면 돼요</small>
+        <b>{dayLabel} 비 한눈에</b>
+        <small>우산 판단 먼저</small>
       </p>
 
-      <div className="rain-glance" aria-label="비 한눈 요약">
-        {dayBoards.map((board) => {
-          const wetCell = board.cells.find((cell) => cell.decision.short !== "없음") ?? board.cells[0];
+      <div className={`rain-day-hero tone-${overview.tone}`}>
+        <span>{overview.time}</span>
+        <b>{overview.title}</b>
+        <small>{overview.body}</small>
+        <div className="rain-day-stats">
+          <em>최대 {overview.amount}</em>
+          <em>가능성 {overview.prob}</em>
+        </div>
+      </div>
+
+      <div className="rain-hour-strip" aria-label={`${dayLabel} 시간별 강수`}>
+        {slots.map((slot) => {
+          const decision = rainDecision(slot);
+          const active = slot.time === selected.time;
           return (
             <button
               type="button"
-              key={board.key}
-              className={`rain-glance-card tone-${board.tone}`}
-              onClick={() => wetCell && onSelectTime(wetCell.focus.time)}
+              key={slot.time}
+              className={`rain-hour tone-${decision.tone}${active ? " active" : ""}`}
+              onClick={() => onSelectTime(slot.time)}
             >
-              <span>{board.label}</span>
-              <b>{board.headline}</b>
-              <small>{board.summary}</small>
+              <span className="rain-hour-bar" style={{ height: `${rainBarHeight(slot)}%` }} />
+              <small>{slot.hour}</small>
             </button>
           );
         })}
       </div>
 
-      <div className={`rain-focus tone-${selectedDecision.tone}`}>
+      <div className={`rain-focus rain-focus-compact tone-${selectedDecision.tone}`}>
         <div>
           <span>{fmtAmPm(selected.hour)}</span>
           <b>{selectedDecision.action}</b>
@@ -1139,41 +1195,22 @@ function RainDetailPanel({
         <em>{rainAmountText(selected.precipitation)} · 가능성 {Math.round(selected.precipitationProbability)}%</em>
       </div>
 
-      <div className="rain-answer" aria-label={rainSummary.title}>
-        <div>
-          <b>{rainSummary.title}</b>
-          <span>{rainSummary.body}</span>
-        </div>
-      </div>
-
-      <div className="rain-board-list">
-        {dayBoards.map((board) => (
-          <section className={`rain-board tone-${board.tone}`} key={board.key}>
-            <div className="rain-board-head">
-              <span>{board.label}</span>
-              <b>{board.headline}</b>
-              <small>{board.summary}</small>
-            </div>
-            <div className="rain-board-grid">
-              {board.cells.map((cell) => {
-                const active = cell.focus.time === selected.time;
-                return (
-                  <button
-                    type="button"
-                    key={cell.key}
-                    className={`rain-cell tone-${cell.decision.tone}${active ? " active" : ""}`}
-                    onClick={() => onSelectTime(cell.focus.time)}
-                  >
-                    <span>{cell.label}</span>
-                    <b>{cell.decision.action}</b>
-                    <strong>{cell.info.label}</strong>
-                    <small>{cell.range} · {cell.amount} · {cell.prob}%</small>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+      <div className="rain-period-row">
+        {periodCards.map((cell) => {
+          const active = cell.focus.time === selected.time;
+          return (
+            <button
+              type="button"
+              key={cell.key}
+              className={`rain-period-pill tone-${cell.decision.tone}${active ? " active" : ""}`}
+              onClick={() => onSelectTime(cell.focus.time)}
+            >
+              <span>{cell.label}</span>
+              <b>{cell.decision.short}</b>
+              <small>{cell.range} · {cell.amount}</small>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1205,6 +1242,7 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchNote, setSearchNote] = useState("");
   const [saved, setSaved] = useState<SavedLocation[]>([]);
+  const [locationShelf, setLocationShelf] = useState<LocationShelf>("fav");
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isPrepOpen, setIsPrepOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
@@ -1462,6 +1500,18 @@ export default function Home() {
     setSaved((prev) => prev.map((s) => (locKey(s) === locKey(target) ? { ...s, fav: !s.fav } : s)));
   }
 
+  function assignSavedTag(target: SavedLocation, tag: SavedLocationTag) {
+    const key = locKey(target);
+    setSaved((prev) =>
+      prev.map((s) => ({
+        ...s,
+        tag: locKey(s) === key ? tag : s.tag === tag ? undefined : s.tag,
+        fav: locKey(s) === key ? true : s.fav
+      }))
+    );
+    setLocationShelf(tag);
+  }
+
   function removeSaved(target: SavedLocation) {
     setSaved((prev) => prev.filter((s) => locKey(s) !== locKey(target)));
   }
@@ -1478,12 +1528,21 @@ export default function Home() {
     setSearchNote("");
   }
 
-  const favList = saved.filter((s) => s.fav).sort((a, b) => b.ts - a.ts);
+  const homeList = saved.filter((s) => s.tag === "home");
+  const workList = saved.filter((s) => s.tag === "work");
+  const favList = saved.filter((s) => s.fav && s.tag !== "home" && s.tag !== "work").sort((a, b) => b.ts - a.ts);
   const recentList = saved
-    .filter((s) => !s.fav)
+    .filter((s) => s.tag !== "home" && s.tag !== "work")
     .sort((a, b) => b.ts - a.ts)
-    .slice(0, 3);
-  const savedList = [...favList, ...recentList];
+    .slice(0, 5);
+  const locationShelves: Array<{ key: LocationShelf; label: string; count: number }> = [
+    { key: "home", label: "집", count: homeList.length },
+    { key: "work", label: "회사", count: workList.length },
+    { key: "fav", label: "즐겨찾기", count: favList.length },
+    { key: "recent", label: "최근", count: recentList.length }
+  ];
+  const activeSavedList =
+    locationShelf === "home" ? homeList : locationShelf === "work" ? workList : locationShelf === "fav" ? favList : recentList;
 
   async function runSearch(query: string) {
     const trimmed = query.trim();
@@ -1800,73 +1859,102 @@ export default function Home() {
                   현재 위치 사용
                 </button>
 
-                {savedList.length > 0 ? (
-                  <div className="saved-block">
-                    <p className="quick-title">{favList.length > 0 ? "즐겨찾기 · 최근" : "최근 위치"}</p>
-                    <div className="saved-list">
-                      {savedList.map((loc) => (
-                        <div className={`saved-row ${loc.fav ? "is-fav" : ""}`} key={locKey(loc)}>
-                          <button
-                            type="button"
-                            className="saved-pick"
-                            onClick={() => chooseLocation({ name: loc.name, latitude: loc.latitude, longitude: loc.longitude, source: loc.source }, loc.detail)}
-                          >
-                            <span className="saved-ic" aria-hidden="true">
-                              {loc.source === "gps" ? "📍" : loc.fav ? "⭐" : "🕘"}
-                            </span>
-                            <span className="saved-name">
-                              <strong>{loc.name}</strong>
-                              {loc.detail ? <small>{loc.detail}</small> : null}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            className={`saved-star ${loc.fav ? "on" : ""}`}
-                            onClick={() => toggleFav(loc)}
-                            aria-label={loc.fav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-                          >
-                            <Star size={17} fill={loc.fav ? "currentColor" : "none"} />
-                          </button>
-                          <button
-                            type="button"
-                            className="saved-del"
-                            onClick={() => removeSaved(loc)}
-                            aria-label="삭제"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                <div className="saved-block">
+                  <div className="location-shelves" role="tablist" aria-label="저장 위치">
+                    {locationShelves.map((shelf) => (
+                      <button
+                        key={shelf.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={locationShelf === shelf.key}
+                        className={`location-shelf ${locationShelf === shelf.key ? "on" : ""}`}
+                        onClick={() => setLocationShelf(shelf.key)}
+                      >
+                        <span>{shelf.label}</span>
+                        <b>{shelf.count}</b>
+                      </button>
+                    ))}
                   </div>
-                ) : null}
+
+                  {activeSavedList.length > 0 ? (
+                    <div className="saved-list">
+                      {activeSavedList.map((loc) => {
+                        const display = locationDisplay(loc.name, loc.detail);
+                        return (
+                          <div className={`saved-row ${loc.fav ? "is-fav" : ""}`} key={locKey(loc)}>
+                            <button
+                              type="button"
+                              className="saved-pick"
+                              onClick={() => chooseLocation({ name: loc.name, latitude: loc.latitude, longitude: loc.longitude, source: loc.source }, loc.detail)}
+                            >
+                              <span className="saved-ic" aria-hidden="true">
+                                {loc.tag === "home" ? "집" : loc.tag === "work" ? "회사" : loc.fav ? "★" : "최근"}
+                              </span>
+                              <span className="saved-name">
+                                <strong>{display.title}</strong>
+                                {display.subtitle ? <small>{display.subtitle}</small> : null}
+                              </span>
+                            </button>
+                            <div className="saved-actions">
+                              <button type="button" className={`saved-tag ${loc.tag === "home" ? "on" : ""}`} onClick={() => assignSavedTag(loc, "home")}>
+                                집
+                              </button>
+                              <button type="button" className={`saved-tag ${loc.tag === "work" ? "on" : ""}`} onClick={() => assignSavedTag(loc, "work")}>
+                                회사
+                              </button>
+                              <button
+                                type="button"
+                                className={`saved-star ${loc.fav ? "on" : ""}`}
+                                onClick={() => toggleFav(loc)}
+                                aria-label={loc.fav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                              >
+                                <Star size={16} fill={loc.fav ? "currentColor" : "none"} />
+                              </button>
+                              <button type="button" className="saved-del" onClick={() => removeSaved(loc)} aria-label="삭제">
+                                <X size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="saved-empty">
+                      <b>{locationShelves.find((shelf) => shelf.key === locationShelf)?.label} 위치가 비어 있어요</b>
+                      <span>검색한 장소를 저장한 뒤 집이나 회사로 지정할 수 있어요.</span>
+                    </div>
+                  )}
+                </div>
 
                 {isSearching ? <p className="search-note">검색 중…</p> : null}
                 {searchNote ? <p className="search-note">{searchNote}</p> : null}
 
                 {searchResults.length > 0 ? (
                   <ul className="search-results">
-                    {searchResults.map((result, index) => (
-                      <li key={`${result.latitude}-${result.longitude}-${index}`}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            chooseLocation(
-                              {
-                                name: activity === "hike" ? result.name : displayLocationName(result.name, result.detail),
-                                latitude: result.latitude,
-                                longitude: result.longitude,
-                                source: "search"
-                              },
-                              activity === "hike" ? result.detail : result.name
-                            )
-                          }
-                        >
-                          <strong>{activity === "hike" ? result.name : displayLocationName(result.name, result.detail)}</strong>
-                          {result.detail ? <small>{result.detail}</small> : null}
-                        </button>
-                      </li>
-                    ))}
+                    {searchResults.map((result, index) => {
+                      const display = activity === "hike" ? { title: result.name, subtitle: result.detail } : locationDisplay(result.name, result.detail);
+                      return (
+                        <li key={`${result.latitude}-${result.longitude}-${index}`}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              chooseLocation(
+                                {
+                                  name: activity === "hike" ? result.name : display.title,
+                                  latitude: result.latitude,
+                                  longitude: result.longitude,
+                                  source: "search"
+                                },
+                                activity === "hike" ? result.detail : result.name
+                              )
+                            }
+                          >
+                            <strong>{display.title}</strong>
+                            {display.subtitle ? <small>{display.subtitle}</small> : null}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <>
