@@ -3,18 +3,16 @@
 // 러닝콜 메인 화면 — 점수 히어로, 시간대 추천, 러닝 정보 드로어
 import {
   AlertCircle,
+  Backpack,
   BellRing,
   ChevronDown,
-  ChevronRight,
   Clock,
   CloudRain,
   Droplets,
   Haze,
   LocateFixed,
-  Plus,
   RefreshCw,
   Search,
-  Share2,
   Sparkles,
   Star,
   Sun,
@@ -23,7 +21,7 @@ import {
   X
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CITY_PRESETS, DEFAULT_CITY } from "@/lib/cities";
+import { DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
 import { getOutfitPlan } from "@/lib/outfit";
 import {
@@ -87,11 +85,33 @@ const METRICS: Array<{
 const ALARM_KEY = "running-alarm:alarms";
 const SAVED_KEY = "running-alarm:saved";
 const ACTIVITY_KEY = "running-alarm:activity";
+const QUICK_NEIGHBORHOODS = ["성수동", "독산1동", "연남동", "서초동"];
+const QUICK_MOUNTAINS = ["북한산", "관악산", "한라산", "설악산"];
 
 type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number };
 
 function locKey(l: { latitude: number; longitude: number }) {
   return `${l.latitude.toFixed(3)},${l.longitude.toFixed(3)}`;
+}
+
+function neighborhoodMatch(value: string) {
+  return value.match(/[가-힣0-9]+(?:동|읍|면|리|가)\b/g);
+}
+
+function hasNeighborhoodName(value: string) {
+  return Boolean(neighborhoodMatch(value));
+}
+
+function displayLocationName(name: string, detail = "") {
+  const joined = `${name} ${detail}`.trim();
+  const matches = neighborhoodMatch(joined);
+  if (matches && matches.length > 0) return matches[matches.length - 1];
+  const parts = name
+    .replace(/[(),]/g, " ")
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts[parts.length - 1] ?? name;
 }
 
 type AlarmConfig = { id: string; targetMs: number; label: string; timeLabel: string; leadMin: number; popup: boolean };
@@ -240,10 +260,6 @@ async function fetchSearch(query: string, mountainFirst = false) {
   return data.results ?? [];
 }
 
-function formatHour(slot: RunningSlot) {
-  return `${String(slot.hour).padStart(2, "0")}:00`;
-}
-
 function fmtAmPm(hour: number) {
   const h = ((hour % 24) + 24) % 24;
   if (h === 0 || h === 24) return "자정";
@@ -289,25 +305,6 @@ function gradeLabel(score: number) {
   if (score >= 55) return "보통";
   if (score >= 38) return "주의";
   return "나쁨";
-}
-
-// 추천 시간대에 올릴 최소 점수(보통 이상). 이 밑(주의·나쁨)은 억지로 추천하지 않고 뺀다.
-const RECO_MIN = 55;
-
-// 상황에 맞는 이모지 (미세 좋음인데 마스크 같은 오류 방지)
-function precipEmoji(prob: number) {
-  return prob >= 60 ? "🌧️" : prob >= 30 ? "🌦️" : "☀️";
-}
-
-function dustEmoji(label: string) {
-  if (label === "좋음") return "😊";
-  if (label === "보통") return "🙂";
-  if (label === "나쁨") return "😷";
-  return "🤢";
-}
-
-function windEmoji(label: string) {
-  return label === "약함" ? "🍃" : "💨";
 }
 
 function TimelineChart({
@@ -844,10 +841,6 @@ function rainDecision(slot: RunningSlot): { action: string; short: string; body:
   return { action: "우산 불필요", short: "없음", body: "비 가능성이 낮아요. 비 때문에 일정을 바꿀 정도는 아니에요.", tone: "good" };
 }
 
-function rainActionText(slot: RunningSlot) {
-  return rainDecision(slot).action;
-}
-
 function rainDayLabel(hasToday: boolean, groupIndex: number) {
   if (hasToday) {
     return groupIndex === 0 ? "오늘" : groupIndex === 1 ? "내일" : "다음날";
@@ -1051,55 +1044,81 @@ function MetricPeriodPanel({
   );
 }
 
-function buildRainEvents(slots: RunningSlot[]) {
-  const events: RunningSlot[][] = [];
-  slots.forEach((slot) => {
-    const signal = slot.precipitation >= 0.1 || slot.precipitationProbability >= 55;
-    if (!signal) return;
-    const last = events[events.length - 1];
-    const previous = last?.[last.length - 1];
-    const connected = previous && previous.time.slice(0, 10) === slot.time.slice(0, 10) && slot.hour - previous.hour <= 1;
-    if (last && connected) {
-      last.push(slot);
-    } else {
-      events.push([slot]);
-    }
-  });
-  return events;
+function toneRank(tone: PanelTone) {
+  if (tone === "bad") return 3;
+  if (tone === "caution") return 2;
+  if (tone === "normal") return 1;
+  return 0;
 }
 
-function buildRainPeriodCards(slots: RunningSlot[], currentTime: string | null) {
-  return PERIOD_DEFS.flatMap((period) => {
-    const group = slots.filter((slot) => slot.hour >= period.from && slot.hour <= period.to);
-    if (group.length === 0) return [];
-    const byDay = group.reduce<Array<RunningSlot[]>>((acc, slot) => {
-      const last = acc[acc.length - 1];
-      if (last?.[0]?.time.slice(0, 10) === slot.time.slice(0, 10)) {
-        last.push(slot);
-      } else {
-        acc.push([slot]);
-      }
-      return acc;
-    }, []);
+function buildRainDayBoards(slots: RunningSlot[], currentTime: string | null) {
+  const dayGroups = slots.reduce<Array<{ day: string; slots: RunningSlot[] }>>((groups, slot) => {
+    const day = slot.time.slice(0, 10);
+    const last = groups[groups.length - 1];
+    if (last?.day === day) {
+      last.slots.push(slot);
+    } else {
+      groups.push({ day, slots: [slot] });
+    }
+    return groups;
+  }, []);
 
-    return byDay.map((dayGroup) => {
-      const first = dayGroup[0];
-      const last = dayGroup[dayGroup.length - 1];
-      const peak = dayGroup.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), dayGroup[0]);
-      const probable = dayGroup.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), dayGroup[0]);
+  return dayGroups.slice(0, 2).map((group, groupIndex) => {
+    const cells = PERIOD_DEFS.flatMap((period) => {
+      const periodSlots = group.slots.filter((slot) => slot.hour >= period.from && slot.hour <= period.to);
+      if (periodSlots.length === 0) return [];
+      const first = periodSlots[0];
+      const last = periodSlots[periodSlots.length - 1];
+      const peak = periodSlots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), periodSlots[0]);
+      const probable = periodSlots.reduce(
+        (a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a),
+        periodSlots[0]
+      );
       const focus = peak.precipitation >= 0.1 ? peak : probable;
       const decision = rainDecision(focus);
-      return {
-        key: `rain-${period.key}-${first.time}`,
-        label: `${relativeDayLabel(first, slots, currentTime)} ${period.label}`,
-        range: timeRangeText(first, last),
-        amount: rainAmountText(peak.precipitation),
-        prob: Math.round(probable.precipitationProbability),
-        decision,
-        focus
-      };
+      const info = rainInfo(focus.precipitation);
+      return [
+        {
+          key: `${group.day}-${period.key}`,
+          label: period.label,
+          range: timeRangeText(first, last),
+          amount: rainAmountText(peak.precipitation),
+          prob: Math.round(probable.precipitationProbability),
+          decision,
+          info,
+          focus
+        }
+      ];
     });
-  }).slice(0, 8);
+    if (cells.length === 0) {
+      return {
+        key: group.day,
+        label: rainDayLabel(Boolean(currentTime), groupIndex),
+        headline: "비 정보 없음",
+        summary: "표시할 시간대가 없어요",
+        cells,
+        tone: "good" as PanelTone
+      };
+    }
+    const worst = cells.reduce((a, b) => (toneRank(b.decision.tone) > toneRank(a.decision.tone) ? b : a), cells[0]);
+    const rainy = cells.filter((cell) => cell.decision.short !== "없음" && cell.decision.short !== "확인");
+    const watch = cells.filter((cell) => cell.decision.short === "확인");
+    const headline = rainy.length > 0 ? `${rainy[0].label}부터 ${worst.decision.action}` : watch.length > 0 ? "하늘만 확인" : "비 걱정 낮음";
+    const summary =
+      rainy.length > 0
+        ? `${rainy[0].range} 중심 · 최대 ${worst.amount}`
+        : watch.length > 0
+        ? `${watch[0].range} 전후 약한 신호`
+        : "우산 없이 봐도 괜찮아요";
+    return {
+      key: group.day,
+      label: rainDayLabel(Boolean(currentTime), groupIndex),
+      headline,
+      summary,
+      cells,
+      tone: worst?.decision.tone ?? "good"
+    };
+  });
 }
 
 function RainDetailPanel({
@@ -1117,14 +1136,13 @@ function RainDetailPanel({
   const selectedInfo = rainInfo(selected.precipitation);
   const selectedDecision = rainDecision(selected);
   const rainSummary = summarizeRain(slots);
-  const rainEvents = buildRainEvents(slots);
-  const periodCards = buildRainPeriodCards(slots, currentTime);
+  const dayBoards = buildRainDayBoards(slots, currentTime);
 
   return (
     <div className="rain-panel">
       <p className="sheet-graph-label rain-panel-title">
-        <b>{currentTime ? "오늘·내일 비 오는 시간" : "내일 비 오는 시간"}</b>
-        <small>확률보다 먼저 우산 판단을 보여줘요</small>
+        <b>{currentTime ? "오늘·내일 비 시간표" : "내일 비 시간표"}</b>
+        <small>새벽·오전·오후·저녁만 보면 돼요</small>
       </p>
 
       <div className={`rain-focus tone-${selectedDecision.tone}`}>
@@ -1137,63 +1155,41 @@ function RainDetailPanel({
         <em>{rainAmountText(selected.precipitation)} · 가능성 {Math.round(selected.precipitationProbability)}%</em>
       </div>
 
-      <div className="rain-events" aria-label={rainSummary.title}>
-        <div className="rain-events-head">
+      <div className="rain-answer" aria-label={rainSummary.title}>
+        <div>
           <b>{rainSummary.title}</b>
           <span>{rainSummary.body}</span>
         </div>
-        {rainEvents.length > 0 ? (
-          rainEvents.map((event) => {
-            const first = event[0];
-            const last = event[event.length - 1];
-            const peak = event.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), event[0]);
-            const probable = event.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), event[0]);
-            const focus = peak.precipitation >= 0.1 ? peak : probable;
-            const info = rainInfo(peak.precipitation);
-            const decision = rainDecision(focus);
-            const total = event.reduce((sum, slot) => sum + slot.precipitation, 0);
-            const active = event.some((slot) => slot.time === selected.time);
-            return (
-              <button
-                type="button"
-                key={first.time}
-                className={`rain-event tone-${decision.tone}${active ? " active" : ""}`}
-                onClick={() => onSelectTime(focus.time)}
-              >
-                <span>{relativeDayLabel(first, slots, currentTime)} · {timeRangeText(first, last)}</span>
-                <b>{decision.action}</b>
-                <strong>{info.label}</strong>
-                <small>가장 강할 때 {rainAmountText(peak.precipitation)} · 구간 합계 {rainAmountText(total)} · 가능성 최대 {Math.round(probable.precipitationProbability)}%</small>
-              </button>
-            );
-          })
-        ) : (
-          <div className="rain-empty">
-            <b>뚜렷한 비 구간 없음</b>
-            <span>비 때문에 우산이나 일정 변경을 먼저 고민할 상황은 아니에요.</span>
-          </div>
-        )}
       </div>
 
-      <div className="rain-periods">
-        <div className="rain-periods-head">
-          <b>시간대별 판단</b>
-          <span>작은 숫자 대신 행동 기준으로 봐요.</span>
-        </div>
-        <div className="rain-period-grid">
-          {periodCards.map((card) => (
-            <button
-              type="button"
-              key={card.key}
-              className={`rain-period-card tone-${card.decision.tone}${card.focus.time === selected.time ? " active" : ""}`}
-              onClick={() => onSelectTime(card.focus.time)}
-            >
-              <span>{card.label}</span>
-              <b>{card.decision.action}</b>
-              <small>{card.range} · 최대 {card.amount} · 가능성 {card.prob}%</small>
-            </button>
-          ))}
-        </div>
+      <div className="rain-board-list">
+        {dayBoards.map((board) => (
+          <section className={`rain-board tone-${board.tone}`} key={board.key}>
+            <div className="rain-board-head">
+              <span>{board.label}</span>
+              <b>{board.headline}</b>
+              <small>{board.summary}</small>
+            </div>
+            <div className="rain-board-grid">
+              {board.cells.map((cell) => {
+                const active = cell.focus.time === selected.time;
+                return (
+                  <button
+                    type="button"
+                    key={cell.key}
+                    className={`rain-cell tone-${cell.decision.tone}${active ? " active" : ""}`}
+                    onClick={() => onSelectTime(cell.focus.time)}
+                  >
+                    <span>{cell.label}</span>
+                    <b>{cell.decision.action}</b>
+                    <strong>{cell.info.label}</strong>
+                    <small>{cell.range} · {cell.amount} · {cell.prob}%</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
@@ -1487,9 +1483,10 @@ export default function Home() {
   }
 
   function chooseLocation(next: LocationPoint, detail?: string) {
-    setLocation(next);
-    rememberLocation(next, detail);
-    setActivityLocations((prev) => ({ ...prev, [activity]: next }));
+    const normalized = activity === "hike" ? next : { ...next, name: displayLocationName(next.name, detail) };
+    setLocation(normalized);
+    rememberLocation(normalized, detail);
+    setActivityLocations((prev) => ({ ...prev, [activity]: normalized }));
     setDayMode("today");
     setIsSearchOpen(false);
     setSearchResults([]);
@@ -1510,12 +1507,21 @@ export default function Home() {
       setSearchNote("두 글자 이상 입력해 주세요.");
       return;
     }
+    if (activity !== "hike" && !hasNeighborhoodName(trimmed)) {
+      setSearchResults([]);
+      setSearchNote("동네명까지 입력해 주세요. 예: 성수동, 독산1동, 연남동");
+      return;
+    }
     setIsSearching(true);
     setSearchNote("");
     try {
-      const results = await fetchSearch(trimmed, activity === "hike");
+      const rawResults = await fetchSearch(trimmed, activity === "hike");
+      const results =
+        activity === "hike"
+          ? rawResults
+          : rawResults.filter((result) => hasNeighborhoodName(`${result.name} ${result.detail}`));
       setSearchResults(results);
-      setSearchNote(results.length === 0 ? "검색 결과가 없어요. 동/도로명/장소명을 확인해 주세요." : "");
+      setSearchNote(results.length === 0 ? "동까지 포함된 결과가 없어요. 예: 성수동, 독산1동처럼 입력해 주세요." : "");
     } catch {
       setSearchNote("검색에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -1556,7 +1562,7 @@ export default function Home() {
       setLocationStep("address");
       const name = await fetchLocationName(latitude, longitude).catch(() => "현재 위치 근처");
       setLocationStep("weather");
-      chooseLocation({ name, latitude, longitude, source: "gps" });
+      chooseLocation({ name: displayLocationName(name), latitude, longitude, source: "gps" }, name);
       setIsLocating(false);
       setLocationStep("idle");
     };
@@ -1591,43 +1597,7 @@ export default function Home() {
     );
   }
 
-  async function handleShare() {
-    const score = view ? (isTomorrow ? view.best.totalScore : view.reference.totalScore) : null;
-    const text =
-      score !== null
-        ? `오늘 ${location.name} ${profile.label} 점수 ${score}점 ${profile.emoji} — 러닝콜`
-        : "러닝콜 — 걷기·애견산책·러닝·등산·자전거, 나가기 좋은 시간";
-    const url = window.location.href;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "러닝콜", text, url });
-      } catch {
-        // 사용자가 공유를 취소한 경우
-      }
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
-      setToast("링크를 복사했어요");
-    } catch {
-      setToast("공유를 지원하지 않는 브라우저예요");
-    }
-  }
-
   const canNotify = typeof window !== "undefined" && "Notification" in window;
-
-  function openAlarm(part: { label: string; best: RunningSlot | null }) {
-    if (!part.best) return;
-    const targetMs = slotToMs(part.best.time);
-    setAlarmTarget({
-      id: part.best.time,
-      label: `${part.label} ${profile.label}`,
-      timeLabel: formatHour(part.best),
-      targetMs
-    });
-  }
 
   async function saveAlarm(leadMin: number, popup: boolean) {
     if (!alarmTarget) return;
@@ -1747,6 +1717,7 @@ export default function Home() {
 
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
+  const locationLabel = displayLocationName(location.name);
 
   const ready = !isLoading && view;
 
@@ -1754,7 +1725,7 @@ export default function Home() {
     <main className="page">
       <div className="dashboard-frame">
         <section className="app-shell">
-          {/* 상단 바 — 활동 선택(좌) · 현재 위치(중) · 공유·추가(우) */}
+          {/* 상단 바 — 활동 선택(좌) · 동네 표시(우) */}
           <header className="top-header">
             <div className="activity-select-wrap">
               <button
@@ -1793,20 +1764,12 @@ export default function Home() {
               ) : null}
             </div>
             <button className="loc-center" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
-              <small>{location.source === "gps" ? "현재 위치" : "선택한 위치"}</small>
+              <small>{location.source === "gps" ? "현재" : "동네"}</small>
               <strong>
-                {location.name}
+                {locationLabel}
                 <ChevronDown size={15} className="loc-caret" />
               </strong>
             </button>
-            <div className="top-actions">
-              <button className="icon-button" type="button" onClick={handleShare} aria-label="공유하기">
-                <Share2 size={19} />
-              </button>
-              <button className="icon-button" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 추가">
-                <Plus size={21} />
-              </button>
-            </div>
           </header>
 
           {/* 위치 검색 모달 */}
@@ -1831,7 +1794,7 @@ export default function Home() {
                     autoFocus
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={activity === "hike" ? "산 이름 검색 (예: 북한산)" : "동·도로명·장소 검색"}
+                    placeholder={activity === "hike" ? "산 이름 검색 (예: 북한산)" : "동네명 입력 (예: 성수동)"}
                     aria-label="검색어"
                   />
                   <button type="submit" className="search-go">
@@ -1897,16 +1860,16 @@ export default function Home() {
                           onClick={() =>
                             chooseLocation(
                               {
-                                name: result.name,
+                                name: activity === "hike" ? result.name : displayLocationName(result.name, result.detail),
                                 latitude: result.latitude,
                                 longitude: result.longitude,
                                 source: "search"
                               },
-                              result.detail
+                              activity === "hike" ? result.detail : result.name
                             )
                           }
                         >
-                          <strong>{result.name}</strong>
+                          <strong>{activity === "hike" ? result.name : displayLocationName(result.name, result.detail)}</strong>
                           {result.detail ? <small>{result.detail}</small> : null}
                         </button>
                       </li>
@@ -1914,22 +1877,18 @@ export default function Home() {
                   </ul>
                 ) : (
                   <>
-                    <p className="quick-title">주요 도시</p>
+                    <p className="quick-title">{activity === "hike" ? "산 예시" : "동네 예시"}</p>
                     <div className="quick-cities">
-                      {CITY_PRESETS.slice(0, 4).map((city) => (
+                      {(activity === "hike" ? QUICK_MOUNTAINS : QUICK_NEIGHBORHOODS).map((name) => (
                         <button
-                          key={city.id}
+                          key={name}
                           type="button"
-                          onClick={() =>
-                            chooseLocation({
-                              name: city.name,
-                              latitude: city.latitude,
-                              longitude: city.longitude,
-                              source: "city"
-                            })
-                          }
+                          onClick={() => {
+                            setSearchQuery(name);
+                            void runSearch(name);
+                          }}
                         >
-                          {city.name}
+                          {name}
                         </button>
                       ))}
                     </div>
@@ -2001,12 +1960,12 @@ export default function Home() {
                 <div className="hero-top">
                   <span className="hero-cond">
                     <Clock size={14} />
-                    {isTomorrow
-                      ? `내일 ${profile.label} 전망`
-                      : nowClock
-                      ? `${nowClock} 기준 · ${profile.label}`
-                      : `지금 ${profile.label} 컨디션`}
+                    {isTomorrow ? "내일" : nowClock || "지금"}
                   </span>
+                  <button className="hero-prep" type="button" onClick={() => setIsPrepOpen(true)} aria-label="준비물 보기">
+                    <Backpack size={18} />
+                    <span>준비</span>
+                  </button>
                 </div>
                 <div className="dial-wrap">
                   <div className="dial-glow" aria-hidden="true" />
@@ -2053,82 +2012,6 @@ export default function Home() {
                 </div>
                 <div className="col-side">
 
-              {/* 추천 시간대 — 아침·낮·저녁 중 '추천할 만한'(RECO_MIN 이상) 블록만. 낮게 나오면 억지로 안 넣음 */}
-              {(() => {
-                const goodParts = view.parts.filter((p) => !p.past && p.best && p.best.totalScore >= RECO_MIN);
-                const hasUpcoming = view.parts.some((p) => !p.past);
-                return (
-                  <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
-                    <div className="section-title ranks-title">
-                      <b>
-                        {isTomorrow ? "내일" : "오늘"} 추천 {profile.label} 시간대
-                      </b>
-                      <small>시간대별 베스트</small>
-                    </div>
-                    {goodParts.length > 0 ? (
-                      <div className="rank-list">
-                        {goodParts.map((part) => {
-                          const best = part.best!;
-                          const isNow = !isTomorrow && nowHour >= part.range[0] && nowHour <= part.range[1];
-                          const isBest = best.time === view.best.time;
-                          const hasAlarm = alarms.some((a) => a.id === best.time);
-                          return (
-                            <button
-                              type="button"
-                              key={part.key}
-                              className={`rank-card daypart-card ${isBest ? "is-best" : ""} ${isNow ? "is-now" : ""}`}
-                              onClick={() => openAlarm(part)}
-                            >
-                              <span className="rank-badge daypart-badge">{part.label}</span>
-                              <div className="rank-body">
-                                <p className="rank-time">
-                                  {formatHour(best)}
-                                  {isBest ? (
-                                    <em className="rank-now">오늘 베스트</em>
-                                  ) : isNow ? (
-                                    <em className="rank-now">지금 딱</em>
-                                  ) : null}
-                                  {hasAlarm ? <BellRing size={14} className="rank-bell" /> : null}
-                                </p>
-                                <div className="rank-metrics">
-                                  <span>🌡️ 체감 {Math.round(best.apparentTemperature)}°</span>
-                                  <span>{precipEmoji(best.precipitationProbability)} {rainActionText(best)}</span>
-                                  <span>
-                                    {dustEmoji(gradePm25(best.pm25).label)} 미세 {gradePm25(best.pm25).label}
-                                  </span>
-                                  <span>
-                                    {windEmoji(gradeWind(best.windSpeed).label)} 바람 {gradeWind(best.windSpeed).label}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="rank-score" style={{ color: ringColor(best.totalScore) }}>
-                                {best.totalScore}
-                                <small>점</small>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="rec-empty-body">
-                        <p className="rec-none">
-                          {isTomorrow
-                            ? `내일은 ${profile.label}하기 좋은 시간대가 없어요.`
-                            : hasUpcoming
-                            ? `오늘은 남은 시간 중 ${profile.label}하기 좋은 때가 없어요.`
-                            : `오늘 ${profile.label} 좋은 시간대는 이미 지나갔어요.`}
-                        </p>
-                        {!isTomorrow && hasTomorrow ? (
-                          <button type="button" className="rec-tomorrow" onClick={() => setDayMode("tomorrow")}>
-                            내일 시간대 보기 <ChevronRight size={16} />
-                          </button>
-                        ) : null}
-                      </div>
-                    )}
-                  </section>
-                );
-              })()}
-
               {/* 일출 · 일몰 — 슬림 한 줄(숫자 위주) */}
               {sunrise && sunset ? (
                 <div className="suntimes" aria-label="일출과 일몰">
@@ -2145,15 +2028,6 @@ export default function Home() {
                   </span>
                 </div>
               ) : null}
-
-              {/* 준비물 · 복장 — 탭 대신 슬림 버튼 → 시트로 (필요할 때만) */}
-              <button type="button" className="prep-btn" onClick={() => setIsPrepOpen(true)}>
-                <span className="prep-ic" aria-hidden="true">
-                  🎒
-                </span>
-                <span className="prep-tx">오늘 준비물 · 복장</span>
-                <ChevronRight size={18} className="prep-arrow" />
-              </button>
 
               <AdSlot />
 
