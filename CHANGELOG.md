@@ -6,6 +6,12 @@
 ## [Unreleased]
 - (다음 배포에 포함될 변경사항을 여기에 쌓습니다)
 
+## [0.13.2] - 2026-07-09
+### 보안 / Security
+- `/api/{search-location,reverse-location,forecast}` 에 IP 기반 레이트리밋 추가 — 외부 남용으로부터 서버의 `KAKAO_REST_API_KEY`(유료 쿼터) 소진 방지. 실사용자는 닿지 않는 넉넉한 한도(10초당 30회), 초과 시 429.
+- 검색 응답에 짧은 CDN 캐시 헤더(`s-maxage=300`) — 반복 질의의 상위 API 호출 절감.
+- ⚠️ 한계: Vercel 서버리스 인스턴스별 인메모리라 완전 차단은 아님. 강한 보호는 Vercel KV/Upstash 등 공유 저장소로 교체(후속). `lib/rate-limit.ts` 참조.
+
 ## [0.13.1] - 2026-07-07
 "골든 카드" 성능·사용성 보완.
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
+
 type NominatimAddress = {
   city?: string;
   town?: string;
@@ -79,6 +81,14 @@ async function fetchKakaoName(latitude: number, longitude: number) {
 }
 
 export async function GET(request: Request) {
+  const gate = rateLimit(clientKey(request));
+  if (!gate.ok) {
+    return NextResponse.json(
+      { name: "내 위치" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } }
+    );
+  }
+
   const url = new URL(request.url);
   const latitude = coordinate(url.searchParams.get("latitude"));
   const longitude = coordinate(url.searchParams.get("longitude"));

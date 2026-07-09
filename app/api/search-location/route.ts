@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isMountain, type SearchResultKind } from "@/lib/search";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export type SearchResult = {
   name: string;
@@ -167,6 +168,14 @@ async function searchNominatim(query: string): Promise<SearchResult[]> {
 }
 
 export async function GET(request: Request) {
+  const gate = rateLimit(clientKey(request));
+  if (!gate.ok) {
+    return NextResponse.json(
+      { results: [] },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } }
+    );
+  }
+
   const url = new URL(request.url);
   const query = (url.searchParams.get("query") || "").trim();
 
@@ -190,7 +199,10 @@ export async function GET(request: Request) {
       const rank = (r: SearchResult) => (r.kind === "mountain" ? 0 : r.kind === "place" ? 1 : 2);
       results = [...results].sort((a, b) => rank(a) - rank(b));
     }
-    return NextResponse.json({ results: dedupe(results).slice(0, 8) });
+    return NextResponse.json(
+      { results: dedupe(results).slice(0, 8) },
+      { headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=600" } }
+    );
   } catch {
     return NextResponse.json({ results: [] });
   }

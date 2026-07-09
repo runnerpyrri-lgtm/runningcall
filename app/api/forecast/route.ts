@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchRawForecast, type LocationPoint } from "@/lib/weather";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 function readCoordinate(value: string | null) {
   const coordinate = Number(value);
@@ -7,6 +8,14 @@ function readCoordinate(value: string | null) {
 }
 
 export async function GET(request: Request) {
+  const gate = rateLimit(clientKey(request));
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } }
+    );
+  }
+
   const url = new URL(request.url);
   const latitude = readCoordinate(url.searchParams.get("latitude"));
   const longitude = readCoordinate(url.searchParams.get("longitude"));
