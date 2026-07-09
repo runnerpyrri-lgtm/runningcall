@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchRawForecast, type LocationPoint } from "@/lib/weather";
+import { checkRateLimit, getClientKey, isAllowedOrigin } from "@/lib/rate-limit";
 
 function readCoordinate(value: string | null) {
   const coordinate = Number(value);
@@ -7,6 +8,13 @@ function readCoordinate(value: string | null) {
 }
 
 export async function GET(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!checkRateLimit(`forecast:${getClientKey(request)}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const url = new URL(request.url);
   const latitude = readCoordinate(url.searchParams.get("latitude"));
   const longitude = readCoordinate(url.searchParams.get("longitude"));
