@@ -13,3 +13,12 @@ export function isMountain(name: string, category?: string): boolean {
   if (category && /(산|공원|관광|명소|자연)/.test(category)) return true;
   return false;
 }
+
+// 동네명(행정동/읍/면/리/가) 추출. 위치 검색이 진짜 동네 입력인지 판정할 때 쓴다.
+// ★ 주의: 트레일링 경계에 ASCII `\b` 를 쓰면 안 된다 — JS 정규식에서 한글은 단어문자(\w)가
+// 아니라, "성수동"처럼 한글로 끝나면 `\b` 가 성립하지 않아 매치가 항상 실패한다.
+// (그 결과 hike 외 모든 활동에서 위치 검색이 전면 차단됐다.) 대신 "바로 뒤에 한글이
+// 오지 않음"을 부정 룩어헤드로 판정한다. → "성수동"·"독산1동"·"종로1가" 매치, "구리시"·"강남역" 거부.
+export function neighborhoodMatch(value: string): RegExpMatchArray | null {
+  return value.match(/[가-힣0-9]+(?:동|읍|면|리|가)(?![가-힣])/g);
+}

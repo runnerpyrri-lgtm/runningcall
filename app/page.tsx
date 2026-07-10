@@ -41,6 +41,7 @@ import {
   type RawForecast
 } from "@/lib/weather";
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
+import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { GachaHero, TimeReel, type ReelRank } from "./gacha";
 
@@ -96,10 +97,6 @@ type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number
 
 function locKey(l: { latitude: number; longitude: number }) {
   return `${l.latitude.toFixed(3)},${l.longitude.toFixed(3)}`;
-}
-
-function neighborhoodMatch(value: string) {
-  return value.match(/[가-힣0-9]+(?:동|읍|면|리|가)\b/g);
 }
 
 function hasNeighborhoodName(value: string) {
