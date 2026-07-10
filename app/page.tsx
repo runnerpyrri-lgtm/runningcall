@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
 import { getOutfitPlan } from "@/lib/outfit";
+import { neighborhoodMatch, hasNeighborhoodName } from "@/lib/neighborhood";
 import {
   getDayParts,
   getMetricDetail,
@@ -96,14 +97,6 @@ type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number
 
 function locKey(l: { latitude: number; longitude: number }) {
   return `${l.latitude.toFixed(3)},${l.longitude.toFixed(3)}`;
-}
-
-function neighborhoodMatch(value: string) {
-  return value.match(/[가-힣0-9]+(?:동|읍|면|리|가)\b/g);
-}
-
-function hasNeighborhoodName(value: string) {
-  return Boolean(neighborhoodMatch(value));
 }
 
 function displayLocationName(name: string, detail = "") {
