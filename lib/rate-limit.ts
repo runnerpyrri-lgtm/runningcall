@@ -27,15 +27,12 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): bo
 }
 
 /**
- * Origin/Referer 헤더가 요청 host와 같은 오리진인지 검증한다.
- * Origin 헤더가 있는데 host와 다르면 false, 아예 없으면(직접 API 호출 도구·헬스체크 등
- * 정상 트래픽 오탐 방지) 관대하게 true를 반환한다.
+ * Origin/Referer/Sec-Fetch-Site 헤더로 같은 오리진의 브라우저 요청인지 검증한다.
  */
 export function isAllowedOrigin(request: Request): boolean {
   const host = request.headers.get("host");
   if (!host) {
-    // host 헤더조차 없으면 판단 근거가 없다 — 관대하게 통과
-    return true;
+    return false;
   }
 
   const origin = request.headers.get("origin");
@@ -56,8 +53,8 @@ export function isAllowedOrigin(request: Request): boolean {
     }
   }
 
-  // Origin/Referer 둘 다 없으면(서버사이드 렌더링, curl, 헬스체크 등) 통과시킨다.
-  return true;
+  const fetchSite = request.headers.get("sec-fetch-site");
+  return fetchSite === "same-origin";
 }
 
 /** 요청 헤더에서 레이트리밋 키로 쓸 클라이언트 IP를 뽑아낸다. */

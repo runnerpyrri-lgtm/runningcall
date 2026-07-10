@@ -29,13 +29,6 @@ type KakaoKeywordDoc = {
   y?: string;
 };
 
-type NominatimDoc = {
-  display_name?: string;
-  lat?: string;
-  lon?: string;
-  name?: string;
-};
-
 function toResult(
   name: string,
   detail: string,
@@ -68,6 +61,8 @@ function dedupe(results: SearchResult[]) {
 
 async function searchKakao(query: string, apiKey: string): Promise<SearchResult[]> {
   const headers = { Authorization: `KakaoAK ${apiKey}`, Accept: "application/json" };
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), 4_500);
 
   // 1) 주소 검색 (지번·도로명 모두 지원)
   const addressUrl = new URL("https://dapi.kakao.com/v2/local/search/address.json");
@@ -80,9 +75,9 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
   keywordUrl.searchParams.set("size", "8");
 
   const [addressRes, keywordRes] = await Promise.all([
-    fetch(addressUrl, { headers }).catch(() => null),
-    fetch(keywordUrl, { headers }).catch(() => null)
-  ]);
+    fetch(addressUrl, { headers, signal: controller.signal }).catch(() => null),
+    fetch(keywordUrl, { headers, signal: controller.signal }).catch(() => null)
+  ]).finally(() => globalThis.clearTimeout(timeout));
 
   const results: SearchResult[] = [];
 
@@ -117,56 +112,6 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
   return results;
 }
 
-async function searchNominatim(query: string): Promise<SearchResult[]> {
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("q", query);
-  url.searchParams.set("countrycodes", "kr");
-  url.searchParams.set("accept-language", "ko");
-  url.searchParams.set("addressdetails", "0");
-  url.searchParams.set("limit", "8");
-
-  const controller = new AbortController();
-  const timeout = globalThis.setTimeout(() => controller.abort(), 4500);
-
-  const response = await fetch(url, {
-    signal: controller.signal,
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "running-alarm/0.1 (contact: support@running-alarm.app)"
-    }
-  }).finally(() => globalThis.clearTimeout(timeout));
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const data = (await response.json()) as NominatimDoc[];
-  const results: SearchResult[] = [];
-  for (const doc of data) {
-    // display_name은 상세→광역 순. 국가·우편번호 빼고 광역→상세로 뒤집어 전체 주소를 만든다.
-    const parts = (doc.display_name || "")
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part && part !== "대한민국" && part !== "South Korea" && !/^\d{3,}$/.test(part));
-    const full = parts
-      .reverse()
-      .slice(0, 4)
-      .join(" ")
-      .replace("특별시", "")
-      .replace("광역시", "")
-      .trim();
-    const name = full || doc.name || "";
-    // 폴백에서도 산 우선 정렬이 동작하게 원래 지명(doc.name)으로 산 판정
-    const kind: SearchResult["kind"] = isMountain(doc.name || name) ? "mountain" : "place";
-    const result = toResult(name, "", doc.lon, doc.lat, kind);
-    if (result) {
-      results.push(result);
-    }
-  }
-  return results;
-}
-
 export async function GET(request: Request) {
   if (!isAllowedOrigin(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -178,27 +123,30 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = (url.searchParams.get("query") || "").trim();
 
-  if (query.length < 2) {
+  if (query.length < 2 || query.length > 80) {
     return NextResponse.json({ results: [] });
   }
 
   const apiKey = process.env.KAKAO_REST_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { results: [], error: "Location search is not configured" },
+      { status: 503 }
+    );
+  }
   const wantMountain = url.searchParams.get("mountain") === "1";
 
   try {
-    let results: SearchResult[] = [];
-    if (apiKey) {
-      results = await searchKakao(query, apiKey);
-    }
-    if (results.length === 0) {
-      results = await searchNominatim(query).catch(() => []);
-    }
+    let results = await searchKakao(query, apiKey);
     // 등산 모드 — 산 결과를 위로, 그다음 장소, 주소 순
     if (wantMountain) {
       const rank = (r: SearchResult) => (r.kind === "mountain" ? 0 : r.kind === "place" ? 1 : 2);
       results = [...results].sort((a, b) => rank(a) - rank(b));
     }
-    return NextResponse.json({ results: dedupe(results).slice(0, 8) });
+    return NextResponse.json(
+      { results: dedupe(results).slice(0, 8) },
+      { headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=1800" } }
+    );
   } catch {
     return NextResponse.json({ results: [] });
   }

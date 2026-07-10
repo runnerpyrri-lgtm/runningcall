@@ -169,47 +169,6 @@ async function showRunningNotification(alarm: AlarmConfig) {
   new Notification("러닝콜", { body, icon: "/icons/icon-192.png" });
 }
 
-// 앱이 완전히 닫혀 있어도 예약 발동하는 브라우저 기능(Notification Triggers). 지원 시 사용.
-function supportsTrigger() {
-  return typeof window !== "undefined" && "Notification" in window && "showTrigger" in Notification.prototype;
-}
-
-async function scheduleBackgroundAlarm(alarm: AlarmConfig) {
-  if (!supportsTrigger()) return false;
-  const registration = await getNotificationRegistration();
-  if (!registration?.showNotification) return false;
-  const fireAt = alarm.targetMs - alarm.leadMin * 60000;
-  if (fireAt <= Date.now()) return false;
-  try {
-    const TriggerCtor = (window as unknown as { TimestampTrigger: new (t: number) => unknown }).TimestampTrigger;
-    await registration.showNotification("러닝콜", {
-      body: `${alarm.label} · 지금 나가기 좋은 시간이에요!`,
-      tag: `running-alarm-${alarm.id}`,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      data: { url: "/" },
-      showTrigger: new TriggerCtor(fireAt)
-    } as NotificationOptions & { showTrigger: unknown });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function cancelBackgroundAlarm(id: string) {
-  const registration = await getNotificationRegistration();
-  const reg = registration as (ServiceWorkerRegistration & {
-    getNotifications?: (opts?: { includeTriggered?: boolean; tag?: string }) => Promise<Notification[]>;
-  }) | null;
-  if (!reg?.getNotifications) return;
-  try {
-    const notes = await reg.getNotifications({ includeTriggered: true, tag: `running-alarm-${id}` });
-    notes.forEach((note) => note.close());
-  } catch {
-    // 무시
-  }
-}
-
 async function fetchAppForecast(location: LocationPoint) {
   const params = new URLSearchParams({
     name: location.name,
@@ -237,7 +196,8 @@ async function fetchSearch(query: string, mountainFirst = false) {
   const response = await fetch(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`, {
     cache: "no-store"
   });
-  if (!response.ok) return [];
+  if (response.status === 503) throw new Error("LOCATION_SEARCH_NOT_CONFIGURED");
+  if (!response.ok) throw new Error("LOCATION_SEARCH_FAILED");
   const data = (await response.json()) as { results?: SearchResult[] };
   return data.results ?? [];
 }
@@ -677,7 +637,7 @@ function AlarmSheet({
         <p className="alarm-note">
           {tooLate
             ? "이미 지난 시간이에요. 다른 시간대를 골라주세요."
-            : "앱을 백그라운드에 둔 상태까지는 알림이 안정적이에요. 완전히 종료하면 제한될 수 있어요."}
+            : "알림은 이 앱 화면이 열려 있을 때 동작해요. 앱을 닫거나 기기가 절전 상태면 울리지 않을 수 있어요."}
         </p>
 
         <div className="alarm-actions">
@@ -1524,8 +1484,12 @@ export default function Home() {
           : rawResults.filter((result) => hasNeighborhoodName(`${result.name} ${result.detail}`));
       setSearchResults(results);
       setSearchNote(results.length === 0 ? "동까지 포함된 결과가 없어요. 예: 성수동, 독산1동처럼 입력해 주세요." : "");
-    } catch {
-      setSearchNote("검색에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } catch (searchError) {
+      setSearchNote(
+        searchError instanceof Error && searchError.message === "LOCATION_SEARCH_NOT_CONFIGURED"
+          ? "위치 검색 연결을 준비 중이에요. 현재 위치 버튼을 사용해 주세요."
+          : "검색에 실패했어요. 잠시 후 다시 시도해 주세요."
+      );
     } finally {
       setIsSearching(false);
     }
@@ -1629,18 +1593,11 @@ export default function Home() {
       popup
     };
     setAlarms((prev) => [...prev.filter((a) => a.id !== next.id), next]);
-    // 앱이 닫혀 있어도 울리도록 백그라운드 예약(지원 기기) — 미지원이면 앱 열려있을 때 발동
-    let background = false;
-    if (popup) {
-      background = await scheduleBackgroundAlarm(next);
-    }
     setAlarmTarget(null);
     setToast(
-      background
-        ? "백그라운드 알림을 예약했어요"
-        : leadMin === 0
-        ? `${alarmTarget.timeLabel} 알림을 켰어요`
-        : `${leadMin}분 전에 알려드릴게요`
+      leadMin === 0
+        ? `${alarmTarget.timeLabel} 앱 실행 중 알림을 켰어요`
+        : `${leadMin}분 전 앱 실행 중 알림을 켰어요`
     );
   }
 
@@ -1648,7 +1605,6 @@ export default function Home() {
     if (!alarmTarget) return;
     const id = alarmTarget.id;
     setAlarms((prev) => prev.filter((a) => a.id !== id));
-    void cancelBackgroundAlarm(id);
     setAlarmTarget(null);
     setToast("알림을 껐어요");
   }
@@ -2108,6 +2064,21 @@ export default function Home() {
               ) : null}
 
               <AdSlot />
+
+              <footer className="data-notice">
+                <p>
+                  날씨·대기질 데이터는{" "}
+                  <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
+                    Open-Meteo
+                  </a>
+                  , 위치 정보는 Kakao Local과{" "}
+                  <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                    © OpenStreetMap contributors
+                  </a>
+                  를 사용합니다.
+                </p>
+                <p>현재 위치를 사용하면 좌표가 위치 이름 확인과 날씨 조회를 위해 해당 서비스로 전달됩니다.</p>
+              </footer>
 
                 </div>
               </div>
