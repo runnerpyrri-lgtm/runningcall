@@ -6,6 +6,11 @@
 ## [Unreleased]
 - (다음 배포에 포함될 변경사항을 여기에 쌓습니다)
 
+## [0.13.4] - 2026-07-10
+
+### Added
+- `lib/insights.ts`의 순수함수(`getRankedWindows`·`getDayParts`·`getConditionChips`·`getMetricDetail`)에 단위 테스트 16개를 추가했다. 추천 시간대 필터링(강수·최소점수·과거 시간 제외)·구간별 최고점 선택·조건 칩 3개 선정·지표 marker 범위(clamp) 등 로직을 회귀 보호한다. 문구 테이블 자체는 검증 범위 밖.
+
 ## [0.13.3] - 2026-07-10
 출시 전 위치 검색·외부 데이터 정책·알림 안내를 보강했다.
 
