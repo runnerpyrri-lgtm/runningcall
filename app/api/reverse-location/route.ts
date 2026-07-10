@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientKey, isAllowedOrigin } from "@/lib/rate-limit";
 
 type NominatimAddress = {
   city?: string;
@@ -79,6 +80,13 @@ async function fetchKakaoName(latitude: number, longitude: number) {
 }
 
 export async function GET(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!checkRateLimit(`reverse-location:${getClientKey(request)}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const url = new URL(request.url);
   const latitude = coordinate(url.searchParams.get("latitude"));
   const longitude = coordinate(url.searchParams.get("longitude"));

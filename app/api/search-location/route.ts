@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isMountain, type SearchResultKind } from "@/lib/search";
+import { checkRateLimit, getClientKey, isAllowedOrigin } from "@/lib/rate-limit";
 
 export type SearchResult = {
   name: string;
@@ -167,6 +168,13 @@ async function searchNominatim(query: string): Promise<SearchResult[]> {
 }
 
 export async function GET(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!checkRateLimit(`search-location:${getClientKey(request)}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const url = new URL(request.url);
   const query = (url.searchParams.get("query") || "").trim();
 
