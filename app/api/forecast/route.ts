@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchRawForecast, type LocationPoint } from "@/lib/weather";
 import { checkRateLimit, getClientKey, isAllowedOrigin } from "@/lib/rate-limit";
-
-function readCoordinate(value: string | null) {
-  const coordinate = Number(value);
-  return Number.isFinite(coordinate) ? coordinate : null;
-}
+import { readCoordinate } from "@/lib/geocoding";
 
 export async function GET(request: Request) {
   if (!isAllowedOrigin(request)) {
@@ -16,8 +12,8 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const latitude = readCoordinate(url.searchParams.get("latitude"));
-  const longitude = readCoordinate(url.searchParams.get("longitude"));
+  const latitude = readCoordinate(url.searchParams.get("latitude"), -90, 90);
+  const longitude = readCoordinate(url.searchParams.get("longitude"), -180, 180);
   const rawSource = url.searchParams.get("source");
   const source: LocationPoint["source"] =
     rawSource === "gps" ? "gps" : rawSource === "search" ? "search" : "city";

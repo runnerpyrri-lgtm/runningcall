@@ -1,7 +1,8 @@
 {
   "name": "running-day-score",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "private": true,
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -21,5 +22,10 @@
     "@types/react-dom": "^19.2.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.10"
+    }
   }
 }

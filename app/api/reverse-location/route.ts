@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientKey, isAllowedOrigin } from "@/lib/rate-limit";
+import { fetchNominatim, readCoordinate } from "@/lib/geocoding";
 
 type NominatimAddress = {
   city?: string;
@@ -31,11 +32,6 @@ type KakaoRegion = {
 type KakaoResponse = {
   documents?: KakaoRegion[];
 };
-
-function coordinate(value: string | null) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
 
 function compact(parts: Array<string | undefined>) {
   return [...new Set(parts.filter(Boolean))].join(" ");
@@ -88,8 +84,8 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const latitude = coordinate(url.searchParams.get("latitude"));
-  const longitude = coordinate(url.searchParams.get("longitude"));
+  const latitude = readCoordinate(url.searchParams.get("latitude"), -90, 90);
+  const longitude = readCoordinate(url.searchParams.get("longitude"), -180, 180);
 
   if (latitude === null || longitude === null) {
     return NextResponse.json({ name: "내 위치" }, { status: 400 });
@@ -97,7 +93,10 @@ export async function GET(request: Request) {
 
   const kakaoName = await fetchKakaoName(latitude, longitude).catch(() => null);
   if (kakaoName) {
-    return NextResponse.json({ name: kakaoName });
+    return NextResponse.json(
+      { name: kakaoName },
+      { headers: { "Cache-Control": "s-maxage=86400, stale-while-revalidate=604800" } }
+    );
   }
 
   const reverseUrl = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -112,22 +111,19 @@ export async function GET(request: Request) {
   const timeout = globalThis.setTimeout(() => controller.abort(), 4500);
 
   try {
-    const response = await fetch(reverseUrl, {
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "running-day-score/0.1 contact:local"
-      }
-    }).finally(() => globalThis.clearTimeout(timeout));
+    const response = await fetchNominatim(reverseUrl, controller.signal).finally(() =>
+      globalThis.clearTimeout(timeout)
+    );
 
     if (!response.ok) {
       return NextResponse.json({ name: "내 위치" });
     }
 
     const data = (await response.json()) as NominatimResponse;
-    return NextResponse.json({
-      name: formatAddress(data.address, "내 위치")
-    });
+    return NextResponse.json(
+      { name: formatAddress(data.address, "내 위치") },
+      { headers: { "Cache-Control": "s-maxage=86400, stale-while-revalidate=604800" } }
+    );
   } catch {
     return NextResponse.json({ name: "내 위치" });
   }

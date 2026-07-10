@@ -64,16 +64,24 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin(request)).toBe(true);
   });
 
-  it("Origin·Referer가 모두 없으면 관대하게 true", () => {
+  it("Origin·Referer가 없어도 same-origin 브라우저 요청이면 true", () => {
     const request = new Request("https://example.com/api/forecast", {
-      headers: { host: "example.com" }
+      headers: { host: "example.com", "sec-fetch-site": "same-origin" }
     });
     expect(isAllowedOrigin(request)).toBe(true);
   });
 
-  it("host 헤더 자체가 없으면 관대하게 true", () => {
+  it("출처 판단 헤더가 없거나 cross-site면 false", () => {
+    const noSource = new Request("https://example.com/api/forecast", {
+      headers: { host: "example.com" }
+    });
+    const crossSite = new Request("https://example.com/api/forecast", {
+      headers: { host: "example.com", "sec-fetch-site": "cross-site" }
+    });
     const request = new Request("https://example.com/api/forecast");
-    expect(isAllowedOrigin(request)).toBe(true);
+    expect(isAllowedOrigin(noSource)).toBe(false);
+    expect(isAllowedOrigin(crossSite)).toBe(false);
+    expect(isAllowedOrigin(request)).toBe(false);
   });
 });
 

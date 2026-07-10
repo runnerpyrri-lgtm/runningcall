@@ -8164,3 +8164,27 @@ button {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
+/* 외부 데이터 출처와 위치정보 사용 범위를 안내하는 하단 고지. */
+.data-notice {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.data-notice p {
+  margin: 0;
+}
+
+.data-notice p + p {
+  margin-top: 4px;
+}
+
+.data-notice a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
