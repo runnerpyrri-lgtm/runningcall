@@ -1,7 +1,8 @@
 name: Daily Self-Improve
+# [예비용 — 스케줄 없음] 하루 2회 자가개선은 유료 API 키 대신 회장 Claude 구독 기반의
+# 본부장 루틴(Claude Code Remote Routine)이 수행한다(Zoop-holdings D20 — 추가 비용 0원).
+# 이 워크플로는 ANTHROPIC_API_KEY를 등록한 경우에만 수동 실행(workflow_dispatch)할 수 있다.
 on:
-  schedule:
-    - cron: "0 9,21 * * *"   # UTC 09:00/21:00 = KST 18:00/06:00, 하루 2회
   workflow_dispatch:
 permissions:
   contents: write
