@@ -1,11 +1,11 @@
-# 러닝콜 TODO (당장 할 일)
+# 야외봄 TODO (당장 할 일)
 
 🌐 **상시 주소: https://runningcall.vercel.app** (컴퓨터 꺼도 작동 ✅)
 
 지금 집중: **1단계 마무리 — 폰 설치 확인 + 카카오 키**
 
 ## 내가(사용자) 할 일 — 순서대로
-1. [x] GitHub 저장소 `runningcall` 생성
+1. [x] GitHub 저장소를 `robom-labs/outbom`으로 이전하기 위한 구조 확정
 2. [x] 코드 push (Claude가 실행)
 3. [x] Vercel Import → Deploy 성공
 4. [ ] 폰에서 https://runningcall.vercel.app 접속 + PWA 설치 테스트  ← **지금**
