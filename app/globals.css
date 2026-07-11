@@ -1390,8 +1390,8 @@ button {
   position: absolute;
   right: 0;
   top: 0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 11px;
@@ -1656,8 +1656,8 @@ button {
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -1897,9 +1897,14 @@ button {
     align-items: center;
   }
 
-  .hero-cond,
-  .hero-prep {
+  .hero-cond {
     min-height: 32px;
+    font-size: 0.78rem;
+  }
+
+  /* 준비물 버튼은 메인 화면의 실제 액션 → 모바일 최소 터치영역 44px 확보 */
+  .hero-prep {
+    min-height: 44px;
     font-size: 0.78rem;
   }
 
@@ -3616,8 +3621,8 @@ button {
 .saved-tag,
 .saved-star {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -3645,8 +3650,8 @@ button {
 
 .saved-del {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -7349,11 +7354,25 @@ button {
 @media (max-width: 620px) {
   .gbtnwrap-mobile {
     display: block;
-    margin-top: 12px;
+    margin-top: 14px;
   }
 
   .gbtnwrap-ranks {
     display: none;
+  }
+
+  /* 카드 아래 한 줄 멘트는 카드 안 등급 문구와 중복이라 모바일에선 시각적으로 감춘다.
+     (스크린리더 안내는 유지하려고 제거 대신 sr-only 처리) */
+  .gsay {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 

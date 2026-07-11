@@ -30,7 +30,8 @@ import {
   getMetricDetail,
   getRankedWindows,
   heroHeadline,
-  type MetricKey as DetailKey
+  type MetricKey as DetailKey,
+  type RankedWindow
 } from "@/lib/insights";
 import {
   compareWithYesterday,
@@ -1397,6 +1398,42 @@ export default function Home() {
     };
   }, [forecast, isTomorrow, nowHour, activity]);
 
+  // 추천 시간대 계산을 한 번만 수행한다. 모바일 CTA 노출 조건과 릴 가드가 각각 getRankedWindows를
+  // 따로 호출하면 정시 경계나 인자 차이로 갈려 "버튼은 보이는데 안 열리는" 문제가 생길 수 있어 일원화한다.
+  const recommendation = useMemo(() => {
+    const empty = {
+      ranks: [] as ReelRank[],
+      pool: [] as Array<{ time: string; score: number }>,
+      entries: [] as Array<{ win: RankedWindow; start: RunningSlot; label: string }>
+    };
+    if (!view) return empty;
+    const hour = nowHour >= 0 ? nowHour : new Date().getHours();
+    const rankedWindows = getRankedWindows(view.slots, !isTomorrow, hour, activity);
+    const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
+    const entries = rankedWindows
+      .map((win, index) => {
+        const start = byHour.get(win.startHour);
+        if (!start) return null;
+        const label = isTomorrow ? "내일" : index === 0 ? "베스트" : "추천";
+        return { win, start, label };
+      })
+      .filter((item): item is { win: RankedWindow; start: RunningSlot; label: string } => item !== null);
+    const ranks: ReelRank[] = entries.map(({ win, label }) => ({
+      key: `${win.startHour}`,
+      label,
+      time: formatTwoHourWindow(win.startHour),
+      score: win.score,
+      chips: [
+        `🌡️ 체감 ${win.feel}°`,
+        `🌧️ 강수 ${win.precipProb}%`,
+        `🙂 미세 ${win.dustLabel}`,
+        `🍃 바람 ${win.windLabel}`
+      ]
+    }));
+    const pool = entries.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }));
+    return { ranks, pool, entries };
+  }, [view, isTomorrow, nowHour, activity]);
+
 
   function rememberLocation(loc: LocationPoint, detail?: string) {
     setSaved((prev) => {
@@ -1677,9 +1714,7 @@ export default function Home() {
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
   const locationLabel = displayLocationName(location.name);
-  const hasRecommendedWindow = view
-    ? getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity).length > 0
-    : false;
+  const hasRecommendedWindow = recommendation.ranks.length > 0;
 
   const ready = !isLoading && view;
 
@@ -1888,7 +1923,7 @@ export default function Home() {
             </section>
           ) : null}
 
-          {error && forecast ? <div className="notice">{error}</div> : null}
+          {error && forecast ? <div className="notice" role="alert">{error}</div> : null}
           {/* 대기질 결측 정직 안내 — 결측을 "공기 좋음"으로 위장하지 않는다 */}
           {rawForecast && rawForecast.airQualityAvailable === false ? (
             <div className="notice" role="status">
@@ -1903,7 +1938,7 @@ export default function Home() {
           ) : null}
 
           {error && !forecast && !isLoading ? (
-            <section className="error-panel">
+            <section className="error-panel" role="alert">
               <AlertCircle size={30} />
               <p>{error}</p>
               <button className="primary-action" type="button" onClick={() => loadForecast(location)}>
@@ -1911,7 +1946,7 @@ export default function Home() {
               </button>
             </section>
           ) : !ready || !view ? (
-            <section className="loading-panel">
+            <section className="loading-panel" role="status" aria-live="polite">
               <RefreshCw className="spin" size={28} />
               <p>{profile.label} 점수를 계산하고 있어요</p>
             </section>
@@ -1993,29 +2028,9 @@ export default function Home() {
               {/* 추천 시간대 — 잭팟 버튼 → 슬롯 릴로 금·은·동 순위 공개 (pod 탭 = 알림) */}
               {(() => {
                 const hasUpcoming = view.parts.some((p) => !p.past);
-                const rankedWindows = getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity);
-                const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
-                const ranked = rankedWindows
-                  .map((win, index) => {
-                    const start = byHour.get(win.startHour);
-                    if (!start) return null;
-                    const label = isTomorrow ? "내일" : index === 0 ? "베스트" : "추천";
-                    return { win, start, label };
-                  })
-                  .filter((item): item is { win: (typeof rankedWindows)[number]; start: RunningSlot; label: string } => item !== null);
-                const reelRanks: ReelRank[] = ranked.map(({ win, start, label }) => ({
-                  key: `${win.startHour}`,
-                  label,
-                  time: formatTwoHourWindow(win.startHour),
-                  score: win.score,
-                  chips: [
-                    `🌡️ 체감 ${win.feel}°`,
-                    `🌧️ 강수 ${win.precipProb}%`,
-                    `🙂 미세 ${win.dustLabel}`,
-                    `🍃 바람 ${win.windLabel}`
-                  ]
-                }));
-                const reelPool = ranked.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }));
+                const reelRanks = recommendation.ranks;
+                const reelPool = recommendation.pool;
+                const ranked = recommendation.entries;
                 return (
                   <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
                     {reelRanks.length > 0 ? (
