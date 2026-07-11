@@ -8,11 +8,12 @@ export type HourlyInput = {
   temperature: number;
   apparentTemperature: number;
   humidity: number;
-  pm10: number;
-  pm25: number;
+  // 결측(null)은 0으로 뭉개지 않고 그대로 전달한다 — 대기질 API 장애가 "공기 최상"으로 둔갑하는 것을 막는다.
+  pm10: number | null;
+  pm25: number | null;
   uvIndex: number;
   precipitation: number;
-  precipitationProbability: number;
+  precipitationProbability: number | null;
   windSpeed: number;
   // 등산 안전용 (optional, 점수 계산엔 미사용 — 러닝 골든마스터 불변 보장)
   weatherCode?: number;
@@ -25,7 +26,8 @@ export type HourlyInput = {
 export type RunningSlot = HourlyInput & {
   hour: number;
   totalScore: number;
-  dustScore: number;
+  // 대기질(pm2.5·pm10) 모두 결측이면 null — 이 시간 점수에서 미세먼지 요인이 제외됐다는 표시.
+  dustScore: number | null;
   uvScore: number;
   temperatureScore: number;
   humidityScore: number;
@@ -68,24 +70,41 @@ function linearScore(value: number, points: Array<[number, number]>) {
   return points[points.length - 1][1];
 }
 
-export function scoreDust(pm25: number, pm10: number) {
-  const pm25Score = linearScore(pm25, [
-    [0, 100],
-    [15, 100],
-    [35, 78],
-    [55, 48],
-    [75, 22],
-    [100, 0]
-  ]);
+// 결측 처리: 둘 다 null이면 null(요인 제외), 하나만 있으면 있는 값만으로 계산(가중치 재정규화).
+// 결측을 0(=최상 공기)으로 취급하지 않는다.
+export function scoreDust(pm25: number | null, pm10: number | null): number | null {
+  const pm25Score =
+    pm25 === null
+      ? null
+      : linearScore(pm25, [
+          [0, 100],
+          [15, 100],
+          [35, 78],
+          [55, 48],
+          [75, 22],
+          [100, 0]
+        ]);
 
-  const pm10Score = linearScore(pm10, [
-    [0, 100],
-    [30, 100],
-    [80, 76],
-    [150, 36],
-    [250, 0]
-  ]);
+  const pm10Score =
+    pm10 === null
+      ? null
+      : linearScore(pm10, [
+          [0, 100],
+          [30, 100],
+          [80, 76],
+          [150, 36],
+          [250, 0]
+        ]);
 
+  if (pm25Score === null && pm10Score === null) {
+    return null;
+  }
+  if (pm25Score === null) {
+    return clampScore(pm10Score as number);
+  }
+  if (pm10Score === null) {
+    return clampScore(pm25Score);
+  }
   return clampScore(pm25Score * 0.65 + pm10Score * 0.35);
 }
 
@@ -127,7 +146,7 @@ export function scoreHumidity(humidity: number) {
   return clampScore(100 - (humidity - 60) * 3);
 }
 
-export function scorePrecipitation(amountMm: number, probability: number) {
+export function scorePrecipitation(amountMm: number, probability: number | null) {
   const amountScore = linearScore(amountMm, [
     [0, 100],
     [0.2, 86],
@@ -135,6 +154,11 @@ export function scorePrecipitation(amountMm: number, probability: number) {
     [3, 22],
     [6, 0]
   ]);
+
+  // 확률 결측 시 실측 강수량만으로 판정 (결측을 "확률 0%"로 취급하지 않음).
+  if (probability === null) {
+    return clampScore(amountScore);
+  }
 
   const probabilityScore = linearScore(probability, [
     [0, 100],
@@ -176,7 +200,7 @@ function applyCaps(
     cap = Math.min(cap, 25);
   } else if (input.precipitation >= 1) {
     cap = Math.min(cap, 45);
-  } else if (input.precipitationProbability >= 80) {
+  } else if ((input.precipitationProbability ?? 0) >= 80) {
     cap = Math.min(cap, 60);
   }
 
@@ -192,7 +216,7 @@ function applyCaps(
     cap = Math.min(cap, 55);
   }
 
-  if (input.pm25 > 75 || input.pm10 > 150) {
+  if ((input.pm25 ?? 0) > 75 || (input.pm10 ?? 0) > 150) {
     cap = Math.min(cap, 30);
   }
 
@@ -284,13 +308,19 @@ export function calculateSlot(input: HourlyInput, profile: ActivityProfile): Run
   const windScore = scoreWind(input.windSpeed);
 
   const w = profile.weights;
-  const weighted =
-    dustScore * w.dust +
+  // 대기질 결측(dustScore=null) 시 미세먼지 요인을 제외하고 남은 가중치로 재정규화한다.
+  // 결측을 만점으로 치지 않으면서 점수는 항상 0~100 범위를 유지한다.
+  // 데이터가 완전할 때는 기존 식 그대로 (러닝 골든마스터 불변).
+  const restWeighted =
     temperatureScore * w.temperature +
     precipitationScore * w.precipitation +
     uvScore * w.uv +
     humidityScore * w.humidity +
     windScore * w.wind;
+  const weighted =
+    dustScore === null
+      ? restWeighted / (w.temperature + w.precipitation + w.uv + w.humidity + w.wind)
+      : dustScore * w.dust + restWeighted;
 
   const totalScore = clampScore(applyCaps(weighted, input, profile.heat, profile.windCap));
   const hour = Number(input.time.slice(11, 13));

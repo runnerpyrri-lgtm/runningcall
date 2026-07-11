@@ -97,16 +97,16 @@ export function weatherFxFrom(slot: RunningSlot): CardWeatherFx {
   const cold = Math.min(slot.temperature, slot.apparentTemperature) <= 1.5;
   const wetPrecip = slot.precipitation >= 0.1;
   const snow = snowAmount > 0.03 || (wetPrecip && cold);
-  const wet = !snow && (wetPrecip || slot.precipitationProbability >= 60);
+  const wet = !snow && (wetPrecip || (slot.precipitationProbability ?? 0) >= 60);
   const mode: CardWeatherFx["mode"] = snow ? "snow" : wet ? "rain" : "none";
   const count =
     mode === "rain"
-      ? Math.round(Math.min(64, 28 + slot.precipitation * 12 + slot.precipitationProbability * 0.18))
+      ? Math.round(Math.min(64, 28 + slot.precipitation * 12 + (slot.precipitationProbability ?? 0) * 0.18))
       : mode === "snow"
       ? Math.round(Math.min(54, 24 + snowAmount * 45))
       : 0;
-  const cloud = mode !== "none" || slot.precipitationProbability >= 25 || (slot.cloudCover ?? 0) >= 55;
-  const sun = mode === "none" && slot.precipitationProbability < 30 && (slot.cloudCover ?? 0) < 70;
+  const cloud = mode !== "none" || (slot.precipitationProbability ?? 0) >= 25 || (slot.cloudCover ?? 0) >= 55;
+  const sun = mode === "none" && (slot.precipitationProbability ?? 0) < 30 && (slot.cloudCover ?? 0) < 70;
   const storm = mode === "rain" && (slot.precipitation >= 8 || (slot.windGust ?? 0) >= 14);
   return { mode, count, sun, cloud, storm, snowpile: mode === "snow" };
 }

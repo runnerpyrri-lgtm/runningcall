@@ -47,7 +47,7 @@ export function getOutfit(slot: RunningSlot, activity: ActivityKey = "run"): Out
 
   const main = mainFor(feel, activity);
 
-  if (slot.precipitation >= 0.3 || slot.precipitationProbability >= 60) {
+  if (slot.precipitation >= 0.3 || (slot.precipitationProbability ?? 0) >= 60) {
     extras.push(activity === "run" ? "방수 자켓" : "우산");
   }
   if (slot.uvIndex >= 5) extras.push("선글라스");
@@ -214,7 +214,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
     });
   }
 
-  if (current.precipitation >= 0.3 || current.precipitationProbability >= 60) {
+  if (current.precipitation >= 0.3 || (current.precipitationProbability ?? 0) >= 60) {
     categories.push({
       emoji: isRun ? "🧥" : "☂️",
       label: "비 대비",
@@ -246,7 +246,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
     if (current.uvIndex >= 3 || feel >= 20) {
       categories.push({ emoji: "🕶️", label: "아이웨어", value: "라이딩 고글", reason: "바람·벌레·자외선에서 눈을 지켜요." });
     }
-    if (current.precipitation >= 0.3 || current.precipitationProbability >= 60 || current.uvIndex <= 1) {
+    if (current.precipitation >= 0.3 || (current.precipitationProbability ?? 0) >= 60 || current.uvIndex <= 1) {
       categories.push({ emoji: "🔦", label: "라이트", value: "전조등 + 후미등", reason: "흐리거나 비 오면 시야 확보가 안전을 좌우해요." });
     }
   }
@@ -272,10 +272,10 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
 
   // ── 오늘 날씨 변화 ──
   const changes: WeatherChange[] = [];
-  const dry = current.precipitation < 0.3 && current.precipitationProbability < 60;
+  const dry = current.precipitation < 0.3 && (current.precipitationProbability ?? 0) < 60;
   const rainSlot = slots
     .filter((s) => s.hour > current.hour && s.hour <= 23)
-    .find((s) => s.precipitation >= 0.5 || s.precipitationProbability >= 60);
+    .find((s) => s.precipitation >= 0.5 || (s.precipitationProbability ?? 0) >= 60);
   if (!dry) {
     changes.push({
       emoji: "☔",
@@ -340,7 +340,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
       const s = slots.find((x) => x.hour === p.hour);
       if (!s) return null;
       let note = "";
-      if (s.precipitation >= 0.5 || s.precipitationProbability >= 60) note = isRun ? "방수 챙기기" : "우산 챙기기";
+      if (s.precipitation >= 0.5 || (s.precipitationProbability ?? 0) >= 60) note = isRun ? "방수 챙기기" : "우산 챙기기";
       else if (s.uvIndex >= 5) note = isDog ? "그늘길로" : "선글라스·모자";
       else if (s.apparentTemperature <= 12) note = isRun ? "긴팔 여분" : "겉옷 챙기기";
       else if (s.windSpeed >= 8) note = isRun ? "바람막이" : "겉옷 한 겹";

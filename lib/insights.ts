@@ -56,7 +56,7 @@ function isRunnable(slot: RunningSlot) {
 }
 
 function isRainy(slot: RunningSlot) {
-  return slot.precipitation >= 0.2 || slot.precipitationProbability >= 60;
+  return slot.precipitation >= 0.2 || (slot.precipitationProbability ?? 0) >= 60;
 }
 
 // 오늘/내일 추천 러닝 시간대 — 2시간 구간을 점수순 1·2·3등으로.
@@ -91,7 +91,7 @@ export function getRankedWindows(
     if (!a || !b) continue;
     if (isToday && h < nowHour) continue; // 이미 지난(또는 진행 중) 시간대 제외
     const rainy =
-      a.precipitation >= 0.2 || b.precipitation >= 0.2 || a.precipitationProbability >= 60 || b.precipitationProbability >= 60;
+      a.precipitation >= 0.2 || b.precipitation >= 0.2 || (a.precipitationProbability ?? 0) >= 60 || (b.precipitationProbability ?? 0) >= 60;
     if (rainy) continue;
     if (a.totalScore < WIN_MIN_EACH || b.totalScore < WIN_MIN_EACH) continue;
     const avg = (a.totalScore + b.totalScore) / 2;
@@ -117,8 +117,8 @@ export function getRankedWindows(
       startHour: c.h,
       score: Math.round(c.avg),
       feel: Math.round(peak.apparentTemperature),
-      precipProb: Math.round(Math.max(c.a.precipitationProbability, c.b.precipitationProbability)),
-      dustLabel: gradePm25(peak.pm25).label,
+      precipProb: Math.round(Math.max(c.a.precipitationProbability ?? 0, c.b.precipitationProbability ?? 0)),
+      dustLabel: peak.pm25 === null ? "정보 없음" : gradePm25(peak.pm25).label,
       windLabel: gradeWind(peak.windSpeed).label
     };
   });
@@ -207,7 +207,7 @@ export function heroHeadline(slot: RunningSlot, activity: ActivityKey = "run") {
 
   // 큰 제목 = "상태". 심각 조건만 먼저 말하고, 좋은 점수는 좋은 톤을 우선한다.
   if (slot.precipitation >= 1) return pick(["비가 와요", "궂은 날이에요", "젖은 노면이에요"], seed);
-  if (slot.pm25 > 75) return pick(["공기가 나빠요", "미세먼지 심해요", "탁한 공기예요"], seed);
+  if ((slot.pm25 ?? 0) > 75) return pick(["공기가 나빠요", "미세먼지 심해요", "탁한 공기예요"], seed);
   if (slot.apparentTemperature >= 32) return pick(["많이 더워요", "한낮 무더위예요", "푹푹 쪄요"], seed);
   if (slot.apparentTemperature <= -5) return pick(["많이 추워요", "한파예요", "매섭게 추워요"], seed);
   if (slot.windSpeed >= 14) return pick(["바람이 강해요", "강풍이 불어요", "바람 많이 불어요"], seed);
@@ -217,8 +217,8 @@ export function heroHeadline(slot: RunningSlot, activity: ActivityKey = "run") {
     if (slot.totalScore >= threshold) return pick(variants, seed);
   }
 
-  if (slot.precipitationProbability >= 70) return pick(["비 올 수 있어요", "하늘이 흐려요", "곧 비 소식이에요"], seed);
-  if (slot.pm25 > 35) return pick(["미세먼지 있어요", "공기가 탁해요", "먼지가 좀 껴요"], seed);
+  if ((slot.precipitationProbability ?? 0) >= 70) return pick(["비 올 수 있어요", "하늘이 흐려요", "곧 비 소식이에요"], seed);
+  if ((slot.pm25 ?? 0) > 35) return pick(["미세먼지 있어요", "공기가 탁해요", "먼지가 좀 껴요"], seed);
   if (slot.apparentTemperature >= 26) return pick(["조금 더워요", "살짝 무더워요", "기온이 높아요"], seed);
   if (slot.apparentTemperature <= 3) return pick(["쌀쌀해요", "제법 추워요", "찬 바람 불어요"], seed);
   if (slot.windSpeed >= 12) return pick(["바람이 좀 있어요", "바람 체크해요", "맞바람 주의예요"], seed);
@@ -359,7 +359,7 @@ export function heroSubline(slot: RunningSlot, activity: ActivityKey = "run") {
   const t = SUBLINES[activity];
 
   if (slot.precipitation >= 1) return pick(t.rain, seed);
-  if (slot.pm25 > 75) return pick(t.dustBad, seed);
+  if ((slot.pm25 ?? 0) > 75) return pick(t.dustBad, seed);
   if (slot.apparentTemperature >= 32) return pick(t.hot2, seed);
   if (slot.apparentTemperature <= -5) return pick(t.cold2, seed);
   if (slot.windSpeed >= 14) return pick(t.windy, seed);
@@ -369,8 +369,8 @@ export function heroSubline(slot: RunningSlot, activity: ActivityKey = "run") {
     if (slot.totalScore >= threshold) return pick(variants, seed);
   }
 
-  if (slot.precipitationProbability >= 70) return pick(t.rainMaybe, seed);
-  if (slot.pm25 > 35) return pick(t.dustSoso, seed);
+  if ((slot.precipitationProbability ?? 0) >= 70) return pick(t.rainMaybe, seed);
+  if ((slot.pm25 ?? 0) > 35) return pick(t.dustSoso, seed);
   if (slot.apparentTemperature >= 26) return pick(t.hot1, seed);
   if (slot.apparentTemperature <= 3) return pick(t.cold1, seed);
   if (slot.windSpeed >= 12) return pick(t.windy, seed);
@@ -689,8 +689,8 @@ export function composeOneLiner(slot: RunningSlot, isTomorrow: boolean, activity
   const t = ONE_LINERS[activity];
 
   if (slot.precipitation >= 0.5) return prefix + pick(t.rain, seed);
-  if (slot.precipitationProbability >= 60) return prefix + pick(t.rainMaybe, seed);
-  if (slot.pm25 > 35) return prefix + pick(t.dust, seed);
+  if ((slot.precipitationProbability ?? 0) >= 60) return prefix + pick(t.rainMaybe, seed);
+  if ((slot.pm25 ?? 0) > 35) return prefix + pick(t.dust, seed);
   if (slot.apparentTemperature >= 27) return prefix + pick(t.hot, seed);
   if (slot.uvIndex >= 6) return prefix + pick(t.uv, seed);
   if (slot.windSpeed >= 8) return prefix + pick(t.wind, seed);
@@ -712,7 +712,8 @@ export function getConditionChips(slot: RunningSlot): ConditionChip[] {
   const hot = slot.apparentTemperature >= 19;
   const defs: Array<{ key: ConditionChip["key"]; score: number; good: string; warn: string }> = [
     { key: "precip", score: slot.precipitationScore, good: "비 없음", warn: "비 주의" },
-    { key: "dust", score: slot.dustScore, good: "공기 맑음", warn: "미세먼지" },
+    // 대기질 결측(dustScore=null)이면 미세먼지 칩은 아예 다루지 않는다 — "공기 맑음"으로 위장 금지.
+    ...(slot.dustScore === null ? [] : [{ key: "dust" as const, score: slot.dustScore, good: "공기 맑음", warn: "미세먼지" }]),
     { key: "temp", score: slot.temperatureScore, good: "선선함", warn: hot ? "더움" : "쌀쌀함" },
     { key: "uv", score: slot.uvScore, good: "자외선 낮음", warn: "자외선 강함" },
     { key: "wind", score: slot.windScore, good: "바람 잔잔", warn: "바람 강함" },
@@ -827,7 +828,7 @@ export function getMetricDetail(key: MetricKey, slot: RunningSlot, activity: Act
       };
     }
     case "precip": {
-      const prob = slot.precipitationProbability;
+      const prob = slot.precipitationProbability ?? 0;
       const amount = slot.precipitation;
       const grade = gradePrecipitation(amount, prob);
       return {
@@ -875,6 +876,27 @@ export function getMetricDetail(key: MetricKey, slot: RunningSlot, activity: Act
     }
     case "dust": {
       const value = slot.pm25;
+      // 대기질 결측 — 0(좋음)으로 위장하지 않고 "정보 없음"으로 정직하게 안내한다.
+      if (value === null) {
+        return {
+          key,
+          title: "미세먼지 (PM2.5)",
+          valueText: "—",
+          unit: "",
+          grade: { label: "정보 없음", tone: "normal" },
+          rangeMin: 0,
+          rangeMax: 150,
+          segments: [
+            { label: "좋음", tone: "good", from: 0, to: 15 },
+            { label: "보통", tone: "normal", from: 15, to: 35 },
+            { label: "나쁨", tone: "caution", from: 35, to: 75 },
+            { label: "매우 나쁨", tone: "bad", from: 75, to: 150 }
+          ],
+          marker: 0,
+          meaning: "대기질 정보를 불러오지 못했어요. 이 시간대 점수에는 미세먼지가 반영되지 않았어요.",
+          tip: "잠시 후 새로고침하면 대기질 정보를 다시 불러올 수 있어요."
+        };
+      }
       const grade = gradePm25(value);
       return {
         key,

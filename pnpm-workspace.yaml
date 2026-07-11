@@ -1,2 +1,4 @@
+# sharp는 package.json 직접 의존성은 아니지만 Next.js 16의 optionalDependencies로 설치된다
+# (프로덕션 이미지 최적화용). install 스크립트 실행을 허용해야 하므로 이 설정은 leftover가 아니다.
 onlyBuiltDependencies:
   - sharp

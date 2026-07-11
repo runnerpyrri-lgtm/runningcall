@@ -21,6 +21,8 @@ export type RawForecast = {
   // 내일 산행(등산 하산 마감 등)용 — 내일 탭에서 오늘 일몰로 계산되는 버그 방지
   sunriseTomorrow: string | null;
   sunsetTomorrow: string | null;
+  // 대기질(pm2.5·pm10) 데이터를 하나라도 받았는지 — false면 UI가 "점수 미반영" 안내를 띄운다.
+  airQualityAvailable: boolean;
 };
 
 export type RunningForecast = {
@@ -34,6 +36,7 @@ export type RunningForecast = {
   sunset: string | null;
   sunriseTomorrow: string | null;
   sunsetTomorrow: string | null;
+  airQualityAvailable: boolean;
 };
 
 type WeatherResponse = {
@@ -70,6 +73,11 @@ type AirQualityResponse = {
 
 function ensureNumber(value: number | null | undefined, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+// 결측을 fallback으로 뭉개지 않고 null로 보존한다 (대기질·강수확률 등 "모르면 모른다"가 맞는 지표용).
+function numberOrNull(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function buildUrl(base: string, params: Record<string, string | number>) {
@@ -120,13 +128,14 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     timezone: "auto"
   });
 
+  // 대기질 API 장애는 예보 전체를 막지 않는다 — 대신 pm 값이 null로 남고 airQualityAvailable=false가 된다.
   const [weather, airQuality] = await Promise.all([
     fetchJson<WeatherResponse>(forecastUrl),
-    fetchJson<AirQualityResponse>(airUrl)
+    fetchJson<AirQualityResponse>(airUrl).catch(() => null)
   ]);
 
   const times = weather.hourly?.time ?? [];
-  const airTimes = airQuality.hourly?.time ?? [];
+  const airTimes = airQuality?.hourly?.time ?? [];
   const airIndexByTime = new Map(airTimes.map((time, index) => [time, index]));
 
   const allInputs = times.map((time, index) => {
@@ -141,10 +150,10 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
       humidity: ensureNumber(weather.hourly?.relative_humidity_2m?.[index]),
       uvIndex: ensureNumber(weather.hourly?.uv_index?.[index]),
       precipitation: ensureNumber(weather.hourly?.precipitation?.[index]),
-      precipitationProbability: ensureNumber(weather.hourly?.precipitation_probability?.[index]),
+      precipitationProbability: numberOrNull(weather.hourly?.precipitation_probability?.[index]),
       windSpeed: ensureNumber(weather.hourly?.wind_speed_10m?.[index]),
-      pm10: ensureNumber(airQuality.hourly?.pm10?.[airIndex]),
-      pm25: ensureNumber(airQuality.hourly?.pm2_5?.[airIndex]),
+      pm10: numberOrNull(airQuality?.hourly?.pm10?.[airIndex]),
+      pm25: numberOrNull(airQuality?.hourly?.pm2_5?.[airIndex]),
       windGust: ensureNumber(weather.hourly?.wind_gusts_10m?.[index]),
       weatherCode: ensureNumber(weather.hourly?.weather_code?.[index]),
       visibility: ensureNumber(weather.hourly?.visibility?.[index], 20000),
@@ -190,7 +199,8 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     sunrise: weather.daily?.sunrise?.[todayDailyIndex] ?? null,
     sunset: weather.daily?.sunset?.[todayDailyIndex] ?? null,
     sunriseTomorrow: weather.daily?.sunrise?.[todayDailyIndex + 1] ?? null,
-    sunsetTomorrow: weather.daily?.sunset?.[todayDailyIndex + 1] ?? null
+    sunsetTomorrow: weather.daily?.sunset?.[todayDailyIndex + 1] ?? null,
+    airQualityAvailable: allInputs.some((input) => input.pm25 !== null || input.pm10 !== null)
   };
 }
 
@@ -206,7 +216,8 @@ export function scoreForecast(raw: RawForecast, profile: ActivityProfile): Runni
     sunrise: raw.sunrise,
     sunset: raw.sunset,
     sunriseTomorrow: raw.sunriseTomorrow,
-    sunsetTomorrow: raw.sunsetTomorrow
+    sunsetTomorrow: raw.sunsetTomorrow,
+    airQualityAvailable: raw.airQualityAvailable
   };
 }
 

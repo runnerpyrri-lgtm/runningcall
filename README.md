@@ -28,7 +28,7 @@ pnpm typecheck
 
 - 날씨: Open-Meteo Forecast API (체감온도·강수·바람·자외선·낙뢰·돌풍·시정·적설 등)
 - 대기질: Open-Meteo Air Quality API (PM2.5/PM10)
-- 위치 검색: Kakao Local API (없으면 Nominatim 폴백)
+- 위치 검색: Kakao Local API — `KAKAO_REST_API_KEY`가 없으면 검색이 비활성화되고(503) 화면에 안내가 표시됩니다. 텍스트 검색 폴백은 없습니다. (Nominatim은 좌표→동네명 역지오코딩에만 사용)
 
 ## 주요 라우트
 
