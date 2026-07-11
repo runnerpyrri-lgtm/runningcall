@@ -776,6 +776,7 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
   const doneRef = useRef(false);
   const skipRef = useRef(false);
   const wakeRef = useRef<null | (() => void)>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
   doneRef.current = done;
 
   // 스핀 중 탭 → 즉시 전체 순위 공개
@@ -875,6 +876,52 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // 접근성: 열릴 때 다이얼로그로 포커스를 옮기고, 닫힐 때 열기 전 트리거로 복원한다.
+  useEffect(() => {
+    if (!open) return;
+    restoreRef.current = (document.activeElement as HTMLElement) ?? null;
+    const node = overlayRef.current;
+    node?.focus();
+    return () => {
+      const el = restoreRef.current;
+      if (el && typeof el.focus === "function") el.focus();
+    };
+  }, [open]);
+
+  // 오버레이 안에서 포커스를 순환시키고 Escape로 닫는다(스핀 중이면 결과로 건너뛴다).
+  const onOverlayKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        if (!doneRef.current) skip();
+        else onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const root = overlayRef.current;
+      if (!root) return;
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>('button:not([disabled]):not([aria-hidden="true"])')
+      ).filter((el) => el.offsetParent !== null);
+      if (focusables.length === 0) {
+        event.preventDefault();
+        root.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement;
+      if (event.shiftKey && (active === first || active === root)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
+    [skip, onClose]
+  );
+
   if (!open) return null;
 
   return (
@@ -884,6 +931,8 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      tabIndex={-1}
+      onKeyDown={onOverlayKeyDown}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest(".gpod")) return; // 순위 카드는 알림 예약
@@ -899,6 +948,8 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
             type="button"
             key={rank.key}
             className={`gpod r${index + 1} ${shown >= index ? "show" : ""}`}
+            aria-hidden={shown < index}
+            tabIndex={shown < index ? -1 : 0}
             onClick={(event) => {
               event.stopPropagation();
               onPick(rank);
