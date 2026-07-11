@@ -59,12 +59,16 @@ async function fetchKakaoName(latitude: number, longitude: number) {
   url.searchParams.set("x", String(longitude));
   url.searchParams.set("y", String(latitude));
 
+  // Kakao가 무응답이면 이 요청이 매달려 역지오코딩 전체가 지연된다(Nominatim 폴백과 동일한 4.5초 타임아웃).
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), 4500);
   const response = await fetch(url, {
     headers: {
       Authorization: `KakaoAK ${apiKey}`,
       Accept: "application/json"
-    }
-  });
+    },
+    signal: controller.signal
+  }).finally(() => globalThis.clearTimeout(timeout));
 
   if (!response.ok) {
     return null;
