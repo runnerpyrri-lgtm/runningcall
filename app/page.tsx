@@ -1677,9 +1677,55 @@ export default function Home() {
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
   const locationLabel = displayLocationName(location.name);
-  const hasRecommendedWindow = view
-    ? getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity).length > 0
-    : false;
+  const recommendation = useMemo(() => {
+    if (!view) return { hasUpcoming: false, ranked: [], reelRanks: [] as ReelRank[], reelPool: [] };
+
+    const rankedWindows = getRankedWindows(
+      view.slots,
+      !isTomorrow,
+      nowHour >= 0 ? nowHour : new Date().getHours(),
+      activity
+    );
+    const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
+    const ranked = rankedWindows
+      .map((win, index) => {
+        const start = byHour.get(win.startHour);
+        if (!start) return null;
+        const label = isTomorrow ? "내일" : index === 0 ? "베스트" : "추천";
+        return { win, start, label };
+      })
+      .filter((item): item is { win: (typeof rankedWindows)[number]; start: RunningSlot; label: string } => item !== null);
+
+    return {
+      hasUpcoming: view.parts.some((part) => !part.past),
+      ranked,
+      reelRanks: ranked.map(({ win, label }) => ({
+        key: `${win.startHour}`,
+        label,
+        time: formatTwoHourWindow(win.startHour),
+        score: win.score,
+        chips: [
+          `🌡️ 체감 ${win.feel}°`,
+          `🌧️ 강수 ${win.precipProb}%`,
+          `🙂 미세 ${win.dustLabel}`,
+          `🍃 바람 ${win.windLabel}`
+        ]
+      })),
+      reelPool: ranked.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }))
+    };
+  }, [activity, isTomorrow, nowHour, view]);
+
+  const renderReelButton = (className: string) => (
+    <div className={`gbtnwrap ${className}`}>
+      <div className="gbtn-aura" aria-hidden="true" />
+      <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
+        <span className="gb-main">
+          <span className="slot7" aria-hidden="true">🎰</span>
+          <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
+        </span>
+      </button>
+    </div>
+  );
 
   const ready = !isLoading && view;
 
@@ -1835,8 +1881,8 @@ export default function Home() {
                   )}
                 </div>
 
-                {isSearching ? <p className="search-note">검색 중…</p> : null}
-                {searchNote ? <p className="search-note">{searchNote}</p> : null}
+                {isSearching ? <p className="search-note" role="status">검색 중…</p> : null}
+                {searchNote ? <p className="search-note" role="status">{searchNote}</p> : null}
 
                 {searchResults.length > 0 ? (
                   <ul className="search-results">
@@ -1888,7 +1934,7 @@ export default function Home() {
             </section>
           ) : null}
 
-          {error && forecast ? <div className="notice">{error}</div> : null}
+          {error && forecast ? <div className="notice" role="status">{error}</div> : null}
           {/* 대기질 결측 정직 안내 — 결측을 "공기 좋음"으로 위장하지 않는다 */}
           {rawForecast && rawForecast.airQualityAvailable === false ? (
             <div className="notice" role="status">
@@ -1896,14 +1942,14 @@ export default function Home() {
             </div>
           ) : null}
           {isLocating ? (
-            <div className="locating-bar">
+            <div className="locating-bar" role="status">
               <RefreshCw className="spin" size={16} />
               {locationStepText[locationStep]}
             </div>
           ) : null}
 
           {error && !forecast && !isLoading ? (
-            <section className="error-panel">
+            <section className="error-panel" role="alert">
               <AlertCircle size={30} />
               <p>{error}</p>
               <button className="primary-action" type="button" onClick={() => loadForecast(location)}>
@@ -1911,7 +1957,7 @@ export default function Home() {
               </button>
             </section>
           ) : !ready || !view ? (
-            <section className="loading-panel">
+            <section className="loading-panel" role="status" aria-live="polite" aria-busy="true">
               <RefreshCw className="spin" size={28} />
               <p>{profile.label} 점수를 계산하고 있어요</p>
             </section>
@@ -1963,17 +2009,7 @@ export default function Home() {
                   actLabel={profile.label}
                   isTomorrow={isTomorrow}
                 />
-                {hasRecommendedWindow ? (
-                  <div className="gbtnwrap gbtnwrap-mobile">
-                    <div className="gbtn-aura" aria-hidden="true" />
-                    <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
-                      <span className="gb-main">
-                        <span className="slot7" aria-hidden="true">🎰</span>
-                        <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
-                      </span>
-                    </button>
-                  </div>
-                ) : null}
+                {recommendation.reelRanks.length > 0 ? renderReelButton("gbtnwrap-mobile") : null}
                 <div className="hero-metrics" aria-label="항목별 상태">
                   {reasonRows.map((row) => (
                     <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
@@ -1991,74 +2027,38 @@ export default function Home() {
                 <div className="col-side">
 
               {/* 추천 시간대 — 잭팟 버튼 → 슬롯 릴로 금·은·동 순위 공개 (pod 탭 = 알림) */}
-              {(() => {
-                const hasUpcoming = view.parts.some((p) => !p.past);
-                const rankedWindows = getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity);
-                const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
-                const ranked = rankedWindows
-                  .map((win, index) => {
-                    const start = byHour.get(win.startHour);
-                    if (!start) return null;
-                    const label = isTomorrow ? "내일" : index === 0 ? "베스트" : "추천";
-                    return { win, start, label };
-                  })
-                  .filter((item): item is { win: (typeof rankedWindows)[number]; start: RunningSlot; label: string } => item !== null);
-                const reelRanks: ReelRank[] = ranked.map(({ win, start, label }) => ({
-                  key: `${win.startHour}`,
-                  label,
-                  time: formatTwoHourWindow(win.startHour),
-                  score: win.score,
-                  chips: [
-                    `🌡️ 체감 ${win.feel}°`,
-                    `🌧️ 강수 ${win.precipProb}%`,
-                    `🙂 미세 ${win.dustLabel}`,
-                    `🍃 바람 ${win.windLabel}`
-                  ]
-                }));
-                const reelPool = ranked.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }));
-                return (
-                  <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
-                    {reelRanks.length > 0 ? (
-                      <div className="gbtnwrap gbtnwrap-ranks">
-                        <div className="gbtn-aura" aria-hidden="true" />
-                        <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
-                          <span className="gb-main">
-                            <span className="slot7" aria-hidden="true">🎰</span>
-                            <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
-                          </span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="gclosed">
-                        <p className="gclosed-title">
-                          {isTomorrow
-                            ? `내일은 ${profile.label} 좋은 시간대가 없어요`
-                            : hasUpcoming
-                            ? `남은 시간엔 ${profile.label} 좋은 때가 없어요`
-                            : `오늘 ${profile.label} 추천 시간대는 마감됐어요`}
-                        </p>
-                      </div>
-                    )}
-                    <TimeReel
-                      open={isReelOpen && reelRanks.length > 0}
-                      title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
-                      ranks={reelRanks}
-                      pool={reelPool}
-                      onClose={() => setIsReelOpen(false)}
-                      onPick={(rank) => {
-                        const target = ranked.find((item) => `${item.win.startHour}` === rank.key);
-                        if (!target) return;
-                        setIsReelOpen(false);
-                        openAlarm({
-                          label: rank.label,
-                          best: target.start,
-                          timeLabel: rank.time
-                        });
-                      }}
-                    />
-                  </section>
-                );
-              })()}
+              <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
+                {recommendation.reelRanks.length > 0 ? (
+                  renderReelButton("gbtnwrap-ranks")
+                ) : (
+                  <div className="gclosed">
+                    <p className="gclosed-title">
+                      {isTomorrow
+                        ? `내일은 ${profile.label} 좋은 시간대가 없어요`
+                        : recommendation.hasUpcoming
+                        ? `남은 시간엔 ${profile.label} 좋은 때가 없어요`
+                        : `오늘 ${profile.label} 추천 시간대는 마감됐어요`}
+                    </p>
+                  </div>
+                )}
+                <TimeReel
+                  open={isReelOpen && recommendation.reelRanks.length > 0}
+                  title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
+                  ranks={recommendation.reelRanks}
+                  pool={recommendation.reelPool}
+                  onClose={() => setIsReelOpen(false)}
+                  onPick={(rank) => {
+                    const target = recommendation.ranked.find((item) => `${item.win.startHour}` === rank.key);
+                    if (!target) return;
+                    setIsReelOpen(false);
+                    openAlarm({
+                      label: rank.label,
+                      best: target.start,
+                      timeLabel: rank.time
+                    });
+                  }}
+                />
+              </section>
 
               {/* 일출 · 일몰 — 슬림 한 줄(숫자 위주) */}
               {sunrise && sunset ? (
@@ -2101,7 +2101,7 @@ export default function Home() {
         </section>
       </div>
 
-      {toast ? <div className="toast">{toast}</div> : null}
+      {toast ? <div className="toast" role="status">{toast}</div> : null}
 
       {sheetKey && view ? (
         <MetricSheet

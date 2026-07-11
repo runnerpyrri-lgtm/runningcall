@@ -1,7 +1,7 @@
 "use client";
 
 // 가챠 카드 히어로 + 추천 시간대 슬롯 릴 — v0.13 리디자인 표현 계층 (점수 로직 lib 불변)
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { RunningSlot } from "@/lib/scoring";
 
 /* ================= 티어 (80+ 골드 / 10점 간격 / ≤20 재난) ================= */
@@ -772,6 +772,9 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
   const overlayRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef(true);
   const runIdRef = useRef(0);
   const doneRef = useRef(false);
   const skipRef = useRef(false);
@@ -875,6 +878,55 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    restoreFocusRef.current = true;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (restoreFocusRef.current) previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    };
+  }, [open]);
+
+  const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+    const focusable = Array.from(
+      overlay.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => element.offsetParent !== null);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      overlay.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (!overlay.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -883,7 +935,10 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
       className="greel-ov open"
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby="time-reel-title"
+      aria-describedby="time-reel-description"
+      tabIndex={-1}
+      onKeyDown={handleDialogKeyDown}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest(".gpod")) return; // 순위 카드는 알림 예약
@@ -891,16 +946,44 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
         onClose(); // 완료 후 아무 곳이나 탭 → 닫기
       }}
     >
-      <div className="gro-top"><div className="gro-title">{title}</div></div>
-      <div className="gro-sub">{subText}</div>
+      <div className="gro-top"><div className="gro-title" id="time-reel-title">{title}</div></div>
+      <div className="gro-actions">
+        {!done ? (
+          <button
+            type="button"
+            className="greel-skip"
+            onClick={(event) => {
+              event.stopPropagation();
+              skip();
+            }}
+          >
+            결과 바로 보기
+          </button>
+        ) : null}
+        <button
+          ref={closeButtonRef}
+          type="button"
+          className="greel-close"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose();
+          }}
+        >
+          닫기
+        </button>
+      </div>
+      <div className="gro-sub" id="time-reel-description">{subText}</div>
       <div className="gpodium">
         {ranks.map((rank, index) => (
           <button
             type="button"
             key={rank.key}
             className={`gpod r${index + 1} ${shown >= index ? "show" : ""}`}
+            disabled={shown < index}
+            aria-hidden={shown < index}
             onClick={(event) => {
               event.stopPropagation();
+              restoreFocusRef.current = false;
               onPick(rank);
             }}
           >
@@ -928,7 +1011,16 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
           <div className="gdone-emoji" aria-hidden="true">🔔</div>
           <p className="gdone-title">시간대 뽑기 완료!</p>
           <p className="gdone-sub">위 순위를 탭하면 그 시간에 맞춰 알림을 예약해요</p>
-          <button type="button" className="gdone-close" onClick={onClose}>닫기</button>
+          <button
+            type="button"
+            className="gdone-close"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
+          >
+            닫기
+          </button>
         </div>
       ) : (
         <>
@@ -945,7 +1037,9 @@ export function TimeReel({ open, title, ranks, pool, onClose, onPick }: TimeReel
               </div>
             </div>
           </div>
-          <div className={`greel-hint ${bigHint ? "bighint" : ""}`}>{hint}</div>
+          <div className={`greel-hint ${bigHint ? "bighint" : ""}`} role="status" aria-live="polite" aria-atomic="true">
+            {hint}
+          </div>
         </>
       )}
     </div>
