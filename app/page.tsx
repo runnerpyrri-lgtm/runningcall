@@ -1677,6 +1677,9 @@ export default function Home() {
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
   const locationLabel = displayLocationName(location.name);
+  const hasRecommendedWindow = view
+    ? getRankedWindows(view.slots, !isTomorrow, nowHour >= 0 ? nowHour : new Date().getHours(), activity).length > 0
+    : false;
 
   const ready = !isLoading && view;
 
@@ -1960,6 +1963,17 @@ export default function Home() {
                   actLabel={profile.label}
                   isTomorrow={isTomorrow}
                 />
+                {hasRecommendedWindow ? (
+                  <div className="gbtnwrap gbtnwrap-mobile">
+                    <div className="gbtn-aura" aria-hidden="true" />
+                    <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
+                      <span className="gb-main">
+                        <span className="slot7" aria-hidden="true">🎰</span>
+                        <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
                 <div className="hero-metrics" aria-label="항목별 상태">
                   {reasonRows.map((row) => (
                     <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
@@ -2005,7 +2019,7 @@ export default function Home() {
                 return (
                   <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
                     {reelRanks.length > 0 ? (
-                      <div className="gbtnwrap">
+                      <div className="gbtnwrap gbtnwrap-ranks">
                         <div className="gbtn-aura" aria-hidden="true" />
                         <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
                           <span className="gb-main">
