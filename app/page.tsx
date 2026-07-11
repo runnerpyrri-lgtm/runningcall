@@ -1,6 +1,6 @@
 "use client";
 
-// 러닝콜 메인 화면 — 점수 히어로, 시간대 추천, 러닝 정보 드로어
+// 야외봄 메인 화면 — 점수 히어로, 시간대 추천, 야외활동 정보 드로어
 import {
   AlertCircle,
   Backpack,
@@ -160,10 +160,10 @@ async function showRunningNotification(alarm: AlarmConfig) {
       badge: "/icons/icon-192.png",
       data: { url: "/" }
     } as NotificationOptions;
-    await registration.showNotification("러닝콜", options);
+    await registration.showNotification("야외봄", options);
     return;
   }
-  new Notification("러닝콜", { body, icon: "/icons/icon-192.png" });
+  new Notification("야외봄", { body, icon: "/icons/icon-192.png" });
 }
 
 async function fetchAppForecast(location: LocationPoint) {

@@ -3,14 +3,14 @@ import { PwaRegister } from "@/app/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "러닝콜 — 걷기·등산·산책·러닝·자전거, 나가기 좋은 시간",
+  title: "야외봄 — 걷기·등산·산책·러닝·자전거, 나가기 좋은 시간",
   description:
     "기온·체감·미세먼지·자외선·강수·바람을 종합해 걷기·애견산책·러닝·등산·자전거 점수와 나가기 좋은 시간을 알려드려요.",
-  applicationName: "러닝콜",
+  applicationName: "야외봄",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "러닝콜",
+    title: "야외봄",
     statusBarStyle: "default"
   },
   icons: {

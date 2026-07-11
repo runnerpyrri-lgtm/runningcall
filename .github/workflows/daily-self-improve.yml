@@ -29,7 +29,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--max-turns 25"
           prompt: |
-            너는 러닝콜(runningcall)의 자가개선 담당 AI 직원이다. 이번 실행에서 딱 1개의 작은 개선만 골라 구현한다.
+            너는 야외봄(outbom)의 자가개선 담당 AI 직원이다. 이번 실행에서 딱 1개의 작은 개선만 골라 구현한다.
 
             ## 개선 후보 (이 중 딱 1개)
             - 작은 버그 수정 (재현 가능한 것만)

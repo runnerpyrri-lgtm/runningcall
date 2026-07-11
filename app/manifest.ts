@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "러닝콜",
-    short_name: "러닝콜",
+    name: "야외봄",
+    short_name: "야외봄",
     description: "걷기·애견산책·러닝·등산·자전거까지, 나가기 좋은 시간을 알려주는 야외활동 컨디션 앱",
     start_url: "/",
     scope: "/",

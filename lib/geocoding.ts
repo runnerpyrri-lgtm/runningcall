@@ -2,7 +2,7 @@
 
 const NOMINATIM_INTERVAL_MS = 1_100;
 const NOMINATIM_USER_AGENT =
-  "runningcall/0.13.3 (+https://github.com/runnerpyrri-lgtm/runningcall)";
+  "outbom/0.13.4 (+https://github.com/robom-labs/outbom)";
 
 let nominatimQueue: Promise<void> = Promise.resolve();
 let lastNominatimStartedAt = 0;
