@@ -1167,16 +1167,22 @@ export default function Home() {
   const [isReelOpen, setIsReelOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
 
+  const forecastReqId = useRef(0);
   const loadForecast = useCallback(async (target: LocationPoint) => {
+    // 위치를 빠르게 바꾸면 여러 요청이 겹친다. 가장 최근 요청의 결과만 반영해
+    // 늦게 도착한 이전 위치 응답이 새 위치를 덮어쓰는 경합을 막는다.
+    const reqId = ++forecastReqId.current;
     setIsLoading(true);
     setError("");
     try {
       const data = await fetchAppForecast(target);
+      if (forecastReqId.current !== reqId) return;
       setRawForecast(data);
     } catch {
+      if (forecastReqId.current !== reqId) return;
       setError("데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
-      setIsLoading(false);
+      if (forecastReqId.current === reqId) setIsLoading(false);
     }
   }, []);
 
