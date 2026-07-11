@@ -4,9 +4,15 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/), 버전은 [유의적 버전(SemVer)](https://semver.org/lang/ko/)을 따릅니다.
 
 ## [Unreleased]
+
+## [0.13.5] - 2026-07-11
+
+### Changed
+
 - 로봄 포트폴리오 개편에 맞춰 서비스명을 러닝콜에서 야외봄으로 변경했다.
 - PWA 이름, 메타데이터, 알림 제목과 저장소 식별자를 새 브랜드로 통일했다.
 - 기존 `running-alarm:*` 저장 키와 배포 주소는 사용자 설정 호환을 위해 유지한다.
+- 기존 `runningcall` Vercel 프로젝트의 Git 저장소를 `robom-labs/outbom`으로 다시 연결해 자동 배포 경로를 복구했다.
 
 ## [0.13.4] - 2026-07-10
 출시 전 안정화: 검색·날씨 오류를 숨기지 않고 정직하게 알리도록 고쳤다.
