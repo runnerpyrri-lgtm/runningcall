@@ -62,7 +62,7 @@ export const ACTIVITY_GUIDE: Record<ActivityKey, { prep: GuideBlock[]; guide: Gu
 export function getDynamicGuideBlock(activity: ActivityKey, slot: RunningSlot): GuideBlock | null {
   const items: string[] = [];
 
-  if (slot.precipitation >= 0.5 || slot.precipitationProbability >= 60) {
+  if (slot.precipitation >= 0.5 || (slot.precipitationProbability ?? 0) >= 60) {
     items.push(
       activity === "hike"
         ? "🌧️ 비 소식 — 바위·계단이 미끄러워요. 하산 속도를 절반으로 낮추세요."
@@ -92,7 +92,7 @@ export function getDynamicGuideBlock(activity: ActivityKey, slot: RunningSlot): 
         : "🥵 폭염 — 물을 넉넉히 챙기고 무리하지 마세요."
     );
   }
-  if (slot.pm25 > 55) {
+  if ((slot.pm25 ?? 0) > 55) {
     items.push("😷 미세먼지가 나쁨이에요 — 강도를 낮추고 시간을 줄이세요.");
   }
 

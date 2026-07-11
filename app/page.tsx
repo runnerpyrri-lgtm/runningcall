@@ -79,7 +79,8 @@ const METRICS: Array<{
 }> = [
   { key: "feel", label: "체감", unit: "°", read: (s) => s.apparentTemperature, score: (s) => s.temperatureScore },
   { key: "precip", label: "강수", unit: "mm", read: (s) => s.precipitation, score: (s) => s.precipitationScore },
-  { key: "dust", label: "미세먼지", unit: "㎍", read: (s) => s.pm25, score: (s) => s.dustScore },
+  // 대기질 결측(null)은 차트에선 0으로 그리되, 결측 배지·"정보 없음" 등급으로 정직하게 안내한다.
+  { key: "dust", label: "미세먼지", unit: "㎍", read: (s) => s.pm25 ?? 0, score: (s) => s.dustScore ?? 0 },
   { key: "uv", label: "자외선", unit: "", read: (s) => s.uvIndex, score: (s) => s.uvScore },
   { key: "wind", label: "바람", unit: "㎧", read: (s) => s.windSpeed, score: (s) => s.windScore },
   { key: "humidity", label: "습도", unit: "%", read: (s) => s.humidity, score: (s) => s.humidityScore }
@@ -88,7 +89,7 @@ const METRICS: Array<{
 const ALARM_KEY = "running-alarm:alarms";
 const SAVED_KEY = "running-alarm:saved";
 const ACTIVITY_KEY = "running-alarm:activity";
-const QUICK_NEIGHBORHOODS = ["성수동", "독산1동", "연남동", "서초동"];
+const QUICK_NEIGHBORHOODS = ["성수동", "강남역", "연남동", "서초동"];
 const QUICK_MOUNTAINS = ["북한산", "관악산", "한라산", "설악산"];
 
 type SavedLocationTag = "home" | "work";
@@ -97,10 +98,6 @@ type SavedLocation = LocationPoint & { detail?: string; fav: boolean; ts: number
 
 function locKey(l: { latitude: number; longitude: number }) {
   return `${l.latitude.toFixed(3)},${l.longitude.toFixed(3)}`;
-}
-
-function hasNeighborhoodName(value: string) {
-  return Boolean(neighborhoodMatch(value));
 }
 
 function displayLocationName(name: string, detail = "") {
@@ -197,8 +194,9 @@ async function fetchSearch(query: string, mountainFirst = false) {
     cache: "no-store"
   });
   if (response.status === 503) throw new Error("LOCATION_SEARCH_NOT_CONFIGURED");
-  if (!response.ok) throw new Error("LOCATION_SEARCH_FAILED");
-  const data = (await response.json()) as { results?: SearchResult[] };
+  const data = (await response.json().catch(() => ({}))) as { results?: SearchResult[]; error?: string };
+  // 502(카카오 장애)나 error 필드는 "결과 없음"과 구분해 일시 오류로 처리한다.
+  if (!response.ok || data.error) throw new Error("LOCATION_SEARCH_UNSTABLE");
   return data.results ?? [];
 }
 
@@ -691,7 +689,7 @@ function rainAmountText(mm: number) {
 
 function rainDecision(slot: RunningSlot): { action: string; short: string; body: string; tone: PanelTone } {
   const mm = slot.precipitation;
-  const prob = Math.round(slot.precipitationProbability);
+  const prob = Math.round((slot.precipitationProbability ?? 0));
   const info = rainInfo(mm);
 
   if (mm >= 3) {
@@ -734,14 +732,14 @@ function timeRangeText(first: RunningSlot, last: RunningSlot) {
 }
 
 function summarizeRain(slots: RunningSlot[]) {
-  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || (slot.precipitationProbability ?? 0) >= 55);
   if (wet.length === 0) {
     return { title: "비 때문에 바꿀 일정은 거의 없어요", body: "뚜렷한 비 구간이 없고, 우산은 대체로 필요하지 않아요." };
   }
   const first = wet[0];
   const last = wet[wet.length - 1];
   const peak = wet.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), wet[0]);
-  const probable = wet.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), wet[0]);
+  const probable = wet.reduce((a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a), wet[0]);
   const focus = peak.precipitation >= 0.1 ? peak : probable;
   const decision = rainDecision(focus);
   const strength = focus.precipitation >= 0.1 ? rainInfo(focus.precipitation).label : "아직 양은 작지만 가능성 높은";
@@ -767,9 +765,9 @@ function summarizeMetric(slots: RunningSlot[], metric: (typeof METRICS)[number],
   if (metric.key === "precip") {
     const rain = summarizeRain(slots);
     const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
-    const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+    const probable = slots.reduce((a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a), slots[0]);
     const focus = peak.precipitation >= 0.1 ? peak : probable;
-    const risky = slots.filter((s) => s.precipitation >= 0.1 || s.precipitationProbability >= 55).length;
+    const risky = slots.filter((s) => s.precipitation >= 0.1 || (s.precipitationProbability ?? 0) >= 55).length;
     const decision = rainDecision(focus);
     const strength = focus.precipitation >= 0.1 ? rainInfo(focus.precipitation).label : "확률 높음";
     return [
@@ -816,7 +814,10 @@ function metricPeriodSummary(metric: (typeof METRICS)[number], group: RunningSlo
   }
 
   if (metric.key === "dust") {
-    const worstDust = group.reduce((a, b) => (b.pm25 > a.pm25 ? b : a), group[0]);
+    const worstDust = group.reduce((a, b) => ((b.pm25 ?? -1) > (a.pm25 ?? -1) ? b : a), group[0]);
+    if (worstDust.pm25 === null) {
+      return { primary: "미세 정보 없음", value: "—", note: "대기질 데이터를 못 불러왔어요.", tone: "normal" as PanelTone, focus: worstDust };
+    }
     const grade = gradePm25(worstDust.pm25);
     const tone: PanelTone = grade.label === "좋음" ? "good" : grade.label === "보통" ? "normal" : grade.label === "나쁨" ? "caution" : "bad";
     const note = grade.label === "좋음" ? "호흡 부담이 낮아요." : grade.label === "보통" ? "민감하면 강도만 살짝 낮추세요." : "오래 뛰기보다 짧게 움직이세요.";
@@ -943,7 +944,7 @@ function buildRainDayBoards(slots: RunningSlot[], currentTime: string | null) {
       const last = periodSlots[periodSlots.length - 1];
       const peak = periodSlots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), periodSlots[0]);
       const probable = periodSlots.reduce(
-        (a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a),
+        (a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a),
         periodSlots[0]
       );
       const focus = peak.precipitation >= 0.1 ? peak : probable;
@@ -955,7 +956,7 @@ function buildRainDayBoards(slots: RunningSlot[], currentTime: string | null) {
           label: period.label,
           range: timeRangeText(first, last),
           amount: rainAmountText(peak.precipitation),
-          prob: Math.round(probable.precipitationProbability),
+          prob: Math.round((probable.precipitationProbability ?? 0)),
           decision,
           info,
           focus
@@ -994,9 +995,9 @@ function buildRainDayBoards(slots: RunningSlot[], currentTime: string | null) {
 }
 
 function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
-  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || (slot.precipitationProbability ?? 0) >= 55);
   const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
-  const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+  const probable = slots.reduce((a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a), slots[0]);
   const focus = peak.precipitation >= 0.1 ? peak : probable;
   const decision = rainDecision(focus);
 
@@ -1007,7 +1008,7 @@ function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
       body: "우산 없이 봐도 괜찮아요. 나가기 전 하늘만 한 번 확인하면 충분해요.",
       time: "비 신호 없음",
       amount: "0mm",
-      prob: `${Math.round(probable.precipitationProbability)}%`
+      prob: `${Math.round((probable.precipitationProbability ?? 0))}%`
     };
   }
 
@@ -1019,18 +1020,18 @@ function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
     body: `${timeRangeText(first, last)} 중심으로 비 신호가 있어요. 제일 신경 쓸 시간은 ${fmtAmPm(focus.hour)} 전후예요.`,
     time: timeRangeText(first, last),
     amount: rainAmountText(peak.precipitation),
-    prob: `${Math.round(probable.precipitationProbability)}%`
+    prob: `${Math.round((probable.precipitationProbability ?? 0))}%`
   };
 }
 
 function rainSignalPercent(slot: RunningSlot) {
   const byAmount = Math.min(100, slot.precipitation * 24);
-  const byProb = Math.min(100, slot.precipitationProbability * 0.86);
+  const byProb = Math.min(100, (slot.precipitationProbability ?? 0) * 0.86);
   return Math.round(Math.max(8, Math.min(100, Math.max(byAmount, byProb))));
 }
 
 function rainNowTitle(slot: RunningSlot) {
-  const prob = Math.round(slot.precipitationProbability);
+  const prob = Math.round((slot.precipitationProbability ?? 0));
   if (slot.precipitation >= 3) return "지금 꽤 와요";
   if (slot.precipitation >= 1) return "지금 비 와요";
   if (slot.precipitation >= 0.1) return "약하게 내려요";
@@ -1040,16 +1041,16 @@ function rainNowTitle(slot: RunningSlot) {
 }
 
 function rainFlowSummary(slots: RunningSlot[]) {
-  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || slot.precipitationProbability >= 55);
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1 || (slot.precipitationProbability ?? 0) >= 55);
   const peak = slots.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), slots[0]);
-  const probable = slots.reduce((a, b) => (b.precipitationProbability > a.precipitationProbability ? b : a), slots[0]);
+  const probable = slots.reduce((a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a), slots[0]);
   const focus = peak.precipitation >= 0.1 ? peak : probable;
   const decision = rainDecision(focus);
 
   if (wet.length === 0) {
     return {
       title: "남은 시간 뚜렷한 비 없음",
-      body: `최대 가능성 ${Math.round(probable.precipitationProbability)}%. 우산 없이 봐도 괜찮아요.`,
+      body: `최대 가능성 ${Math.round((probable.precipitationProbability ?? 0))}%. 우산 없이 봐도 괜찮아요.`,
       decision,
       focus
     };
@@ -1093,7 +1094,7 @@ function RainDetailPanel({
           <b>{rainNowTitle(selected)}</b>
           <small>{currentTime ? "현재 기준" : fmtAmPm(selected.hour)} · {rainAmountText(selected.precipitation)}</small>
         </div>
-        <strong>{Math.round(selected.precipitationProbability)}%</strong>
+        <strong>{Math.round((selected.precipitationProbability ?? 0))}%</strong>
       </div>
 
       <div className={`rain-flow-summary tone-${flow.decision.tone}`}>
@@ -1115,7 +1116,7 @@ function RainDetailPanel({
             >
               <span>{fmtAmPm(slot.hour)}</span>
               <i aria-hidden="true" />
-              <b>{Math.round(slot.precipitationProbability)}%</b>
+              <b>{Math.round((slot.precipitationProbability ?? 0))}%</b>
               <small>{rainAmountText(slot.precipitation)}</small>
             </button>
           );
@@ -1469,26 +1470,18 @@ export default function Home() {
       setSearchNote("두 글자 이상 입력해 주세요.");
       return;
     }
-    if (activity !== "hike" && !hasNeighborhoodName(trimmed)) {
-      setSearchResults([]);
-      setSearchNote("동네명까지 입력해 주세요. 예: 성수동, 독산1동, 연남동");
-      return;
-    }
     setIsSearching(true);
     setSearchNote("");
     try {
-      const rawResults = await fetchSearch(trimmed, activity === "hike");
-      const results =
-        activity === "hike"
-          ? rawResults
-          : rawResults.filter((result) => hasNeighborhoodName(`${result.name} ${result.detail}`));
+      // 동네명 게이트 제거 — 역명·도로명·건물명도 그대로 검색한다 (서버가 주소·키워드 검색을 함께 수행).
+      const results = await fetchSearch(trimmed, activity === "hike");
       setSearchResults(results);
-      setSearchNote(results.length === 0 ? "동까지 포함된 결과가 없어요. 예: 성수동, 독산1동처럼 입력해 주세요." : "");
+      setSearchNote(results.length === 0 ? "검색 결과가 없어요. 다른 검색어로 시도해 보세요." : "");
     } catch (searchError) {
       setSearchNote(
         searchError instanceof Error && searchError.message === "LOCATION_SEARCH_NOT_CONFIGURED"
           ? "위치 검색 연결을 준비 중이에요. 현재 위치 버튼을 사용해 주세요."
-          : "검색에 실패했어요. 잠시 후 다시 시도해 주세요."
+          : "위치 검색이 일시적으로 불안정해요. 잠시 후 다시 시도해 주세요."
       );
     } finally {
       setIsSearching(false);
@@ -1627,18 +1620,19 @@ export default function Home() {
             key: "precip" as DetailKey,
             icon: <CloudRain size={19} />,
             label: "비올확률",
-            value: `${Math.round(metricRef.precipitationProbability)}`,
+            value: `${Math.round((metricRef.precipitationProbability ?? 0))}`,
             unit: "%",
-            grade: gradePrecipitation(metricRef.precipitation, metricRef.precipitationProbability),
+            grade: gradePrecipitation(metricRef.precipitation, (metricRef.precipitationProbability ?? 0)),
             iconClass: "ci-teal"
           },
           {
             key: "dust" as DetailKey,
             icon: <Haze size={19} />,
             label: "미세먼지",
-            value: gradePm25(metricRef.pm25).label,
+            // 대기질 결측이면 "좋음"으로 위장하지 않고 정보 없음으로 표시한다.
+            value: metricRef.pm25 === null ? "—" : gradePm25(metricRef.pm25).label,
             unit: "",
-            grade: gradePm25(metricRef.pm25),
+            grade: metricRef.pm25 === null ? { label: "정보 없음", tone: "normal" as const } : gradePm25(metricRef.pm25),
             iconClass: "ci-green"
           },
           {
@@ -1758,7 +1752,7 @@ export default function Home() {
                     autoFocus
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={activity === "hike" ? "산 이름 검색 (예: 북한산)" : "동네명 입력 (예: 성수동)"}
+                    placeholder={activity === "hike" ? "산 이름 검색 (예: 북한산)" : "동네·역·주소 검색 (예: 성수동, 강남역)"}
                     aria-label="검색어"
                   />
                   <button type="submit" className="search-go">
@@ -1870,7 +1864,7 @@ export default function Home() {
                   </ul>
                 ) : (
                   <>
-                    <p className="quick-title">{activity === "hike" ? "산 예시" : "동네 예시"}</p>
+                    <p className="quick-title">{activity === "hike" ? "산 예시" : "검색 예시"}</p>
                     <div className="quick-cities">
                       {(activity === "hike" ? QUICK_MOUNTAINS : QUICK_NEIGHBORHOODS).map((name) => (
                         <button
@@ -1892,6 +1886,12 @@ export default function Home() {
           ) : null}
 
           {error && forecast ? <div className="notice">{error}</div> : null}
+          {/* 대기질 결측 정직 안내 — 결측을 "공기 좋음"으로 위장하지 않는다 */}
+          {rawForecast && rawForecast.airQualityAvailable === false ? (
+            <div className="notice" role="status">
+              대기질 정보를 불러오지 못했어요 — 점수에 반영되지 않았어요.
+            </div>
+          ) : null}
           {isLocating ? (
             <div className="locating-bar">
               <RefreshCw className="spin" size={16} />

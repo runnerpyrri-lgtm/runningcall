@@ -59,7 +59,33 @@ function dedupe(results: SearchResult[]) {
   return out;
 }
 
-async function searchKakao(query: string, apiKey: string): Promise<SearchResult[]> {
+// 각 검색 레그(주소/키워드)의 결과 — 실패(비정상 응답·네트워크 오류·타임아웃)를 삼키지 않고 구분한다.
+type LegOutcome<T> = { ok: true; documents: T[] } | { ok: false };
+
+async function fetchLeg<T>(
+  url: URL,
+  headers: Record<string, string>,
+  signal: AbortSignal
+): Promise<LegOutcome<T>> {
+  try {
+    const response = await fetch(url, { headers, signal });
+    if (!response.ok) {
+      return { ok: false };
+    }
+    const data = (await response.json()) as { documents?: T[] };
+    return { ok: true, documents: data.documents ?? [] };
+  } catch {
+    return { ok: false };
+  }
+}
+
+type KakaoSearchOutcome = {
+  results: SearchResult[];
+  addressOk: boolean;
+  keywordOk: boolean;
+};
+
+async function searchKakao(query: string, apiKey: string): Promise<KakaoSearchOutcome> {
   const headers = { Authorization: `KakaoAK ${apiKey}`, Accept: "application/json" };
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 4_500);
@@ -74,16 +100,15 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
   keywordUrl.searchParams.set("query", query);
   keywordUrl.searchParams.set("size", "8");
 
-  const [addressRes, keywordRes] = await Promise.all([
-    fetch(addressUrl, { headers, signal: controller.signal }).catch(() => null),
-    fetch(keywordUrl, { headers, signal: controller.signal }).catch(() => null)
+  const [addressLeg, keywordLeg] = await Promise.all([
+    fetchLeg<KakaoAddressDoc>(addressUrl, headers, controller.signal),
+    fetchLeg<KakaoKeywordDoc>(keywordUrl, headers, controller.signal)
   ]).finally(() => globalThis.clearTimeout(timeout));
 
   const results: SearchResult[] = [];
 
-  if (addressRes?.ok) {
-    const data = (await addressRes.json()) as { documents?: KakaoAddressDoc[] };
-    for (const doc of data.documents ?? []) {
+  if (addressLeg.ok) {
+    for (const doc of addressLeg.documents) {
       const road = doc.road_address?.address_name;
       const jibun = doc.address?.address_name;
       // 항상 시/도부터 이어지는 전체 주소를 이름으로
@@ -96,9 +121,8 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
     }
   }
 
-  if (keywordRes?.ok) {
-    const data = (await keywordRes.json()) as { documents?: KakaoKeywordDoc[] };
-    for (const doc of data.documents ?? []) {
+  if (keywordLeg.ok) {
+    for (const doc of keywordLeg.documents) {
       const primary = doc.place_name || doc.address_name || "";
       const detail = doc.road_address_name || doc.address_name || "";
       const kind: SearchResult["kind"] = isMountain(primary, doc.category_name) ? "mountain" : "place";
@@ -109,7 +133,7 @@ async function searchKakao(query: string, apiKey: string): Promise<SearchResult[
     }
   }
 
-  return results;
+  return { results, addressOk: addressLeg.ok, keywordOk: keywordLeg.ok };
 }
 
 export async function GET(request: Request) {
@@ -137,17 +161,43 @@ export async function GET(request: Request) {
   const wantMountain = url.searchParams.get("mountain") === "1";
 
   try {
-    let results = await searchKakao(query, apiKey);
+    const { results: rawResults, addressOk, keywordOk } = await searchKakao(query, apiKey);
+
+    // 두 레그 모두 실패 — 200 + 빈 결과로 숨기지 않고 502로 알리고, CDN에 캐시되지 않게 한다.
+    if (!addressOk && !keywordOk) {
+      return NextResponse.json(
+        { results: [], error: "upstream_error" },
+        { status: 502, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    let results = rawResults;
     // 등산 모드 — 산 결과를 위로, 그다음 장소, 주소 순
     if (wantMountain) {
       const rank = (r: SearchResult) => (r.kind === "mountain" ? 0 : r.kind === "place" ? 1 : 2);
       results = [...results].sort((a, b) => rank(a) - rank(b));
     }
-    return NextResponse.json(
-      { results: dedupe(results).slice(0, 8) },
-      { headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=1800" } }
-    );
+
+    const deduped = dedupe(results).slice(0, 8);
+    const partial = !addressOk || !keywordOk;
+
+    // 캐시 정책:
+    // - 부분 실패 + 빈 결과: 열화된 빈 응답이므로 절대 캐시하지 않는다.
+    // - 부분 실패 + 결과 있음: 성공한 레그의 결과는 정상 캐시.
+    // - 두 레그 성공 + 진짜 결과 없음: 짧게만 캐시 (오래 굳지 않게).
+    const cacheControl =
+      partial && deduped.length === 0
+        ? "no-store"
+        : deduped.length > 0
+        ? "s-maxage=300, stale-while-revalidate=1800"
+        : "s-maxage=60, stale-while-revalidate=300";
+
+    return NextResponse.json({ results: deduped }, { headers: { "Cache-Control": cacheControl } });
   } catch {
-    return NextResponse.json({ results: [] });
+    // 예기치 못한 실패도 200으로 위장하지 않는다.
+    return NextResponse.json(
+      { results: [], error: "upstream_error" },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

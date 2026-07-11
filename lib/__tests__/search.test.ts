@@ -30,7 +30,8 @@ describe("isMountain 꼬리표", () => {
 });
 
 describe("neighborhoodMatch (동네명 추출)", () => {
-  // 회귀 방지: 예전엔 트레일링 \b 때문에 한글로 끝나는 동네명이 전부 null → 위치 검색 전면 차단.
+  // 0.13.4부터 이 함수는 검색 게이트가 아니라 위치 "표시 이름"(주소에서 동네명 뽑기)에만 쓰인다.
+  // 회귀 방지: 예전엔 트레일링 \b 때문에 한글로 끝나는 동네명이 전부 null이 됐다.
   it("한글로 끝나는 동네명을 매치한다", () => {
     ["성수동", "독산1동", "연남동", "서초동", "종로1가", "삼평동", "역삼동"].forEach((n) => {
       expect(neighborhoodMatch(n), n).not.toBeNull();
@@ -43,7 +44,7 @@ describe("neighborhoodMatch (동네명 추출)", () => {
     expect(m![m!.length - 1]).toBe("성수동");
   });
 
-  it("동네명이 아닌 입력은 null", () => {
+  it("동네명이 아닌 입력은 null (표시 이름 추출 실패일 뿐, 검색은 막지 않는다)", () => {
     ["강남역", "추가하기", "서울특별시", "구리시"].forEach((n) => {
       expect(neighborhoodMatch(n), n).toBeNull();
     });

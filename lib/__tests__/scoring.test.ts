@@ -1,6 +1,6 @@
 // 러닝 점수 불변(골든마스터)과 활동별 점수 차이를 검증하는 테스트
 import { describe, it, expect } from "vitest";
-import { calculateSlot, calculateRunningSlot, type HourlyInput } from "@/lib/scoring";
+import { calculateSlot, calculateRunningSlot, scoreDust, scorePrecipitation, type HourlyInput } from "@/lib/scoring";
 import { ACTIVITIES, getHikePlan } from "@/lib/activity";
 import snapshot from "./scoring.snapshot.json";
 
@@ -144,5 +144,60 @@ describe("등산 시간대", () => {
   it("다른 활동 데이파트는 3구간 유지", async () => {
     const { getDayParts } = await import("@/lib/insights");
     expect(getDayParts([], false, 6, "run").length).toBe(3);
+  });
+});
+
+describe("대기질 결측 처리 (결측 ≠ 공기 최상)", () => {
+  const goodBase: HourlyInput = {
+    time: "2026-04-01T10:00",
+    temperature: 12,
+    apparentTemperature: 12,
+    humidity: 50,
+    pm10: 20,
+    pm25: 10,
+    uvIndex: 2,
+    precipitation: 0,
+    precipitationProbability: 5,
+    windSpeed: 1
+  };
+
+  it("pm2.5·pm10 모두 결측이면 dustScore는 null (만점 공기가 아니다)", () => {
+    const slot = calculateSlot({ ...goodBase, pm25: null, pm10: null }, ACTIVITIES.run);
+    expect(slot.dustScore).toBeNull();
+    expect(slot.dustScore).not.toBe(100);
+  });
+
+  it("결측 시 남은 가중치 재정규화로 총점이 0~100을 유지한다", () => {
+    const missing = calculateSlot({ ...goodBase, pm25: null, pm10: null }, ACTIVITIES.run);
+    expect(missing.totalScore).toBeGreaterThanOrEqual(0);
+    expect(missing.totalScore).toBeLessThanOrEqual(100);
+
+    const bad: HourlyInput = { ...goodBase, apparentTemperature: 33, humidity: 90, uvIndex: 9, windSpeed: 10 };
+    const badMissing = calculateSlot({ ...bad, pm25: null, pm10: null }, ACTIVITIES.run);
+    expect(badMissing.totalScore).toBeGreaterThanOrEqual(0);
+    expect(badMissing.totalScore).toBeLessThanOrEqual(100);
+    // 다른 지표가 나쁠 때, 결측 공기는 "완벽한 공기"보다 점수를 올려주지 못한다
+    const badPerfectAir = calculateSlot({ ...bad, pm25: 0, pm10: 0 }, ACTIVITIES.run);
+    expect(badMissing.totalScore).toBeLessThanOrEqual(badPerfectAir.totalScore);
+  });
+
+  it("pm 하나만 결측이면 있는 값만으로 계산한다", () => {
+    expect(scoreDust(null, null)).toBeNull();
+    expect(scoreDust(100, null)).toBe(0); // pm2.5 최악 — pm10 결측이 점수를 희석하지 않는다
+    expect(scoreDust(null, 250)).toBe(0);
+    expect(scoreDust(10, null)).toBe(100);
+  });
+
+  it("강수확률 결측은 실측 강수량만으로 판정한다", () => {
+    expect(scorePrecipitation(6, null)).toBe(0); // 강한 비 — 확률 결측이 점수를 끌어올리지 않는다
+    expect(scorePrecipitation(0, null)).toBe(100);
+  });
+
+  it("완전한 데이터의 점수는 기존과 동일하다 (골든마스터 경로 불변)", () => {
+    const complete = calculateSlot(goodBase, ACTIVITIES.run);
+    expect(complete.dustScore).not.toBeNull();
+    for (let i = 0; i < samples.length; i += 1) {
+      expect(calculateSlot(samples[i], ACTIVITIES.run).totalScore).toBe(snapshot.expected[i].total);
+    }
   });
 });
