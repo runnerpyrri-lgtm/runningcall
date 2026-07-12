@@ -777,7 +777,7 @@ function SettingsView() {
 
       <section className="settings-card" aria-labelledby="policy-title">
         <h3 id="policy-title">정책과 정보</h3>
-        <a className="settings-row" href="https://robom.kr/privacy"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
+        <a className="settings-row" href="https://robom.kr/privacy/outbom"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/terms"><span className="settings-row-icon" aria-hidden="true"><FileText size={20} /></span><span><strong>이용약관</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/open-source"><span className="settings-row-icon" aria-hidden="true"><Code2 size={20} /></span><span><strong>오픈소스 라이선스</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
       </section>

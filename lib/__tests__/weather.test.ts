@@ -1,6 +1,6 @@
 // 원본 예보(scoreForecast)의 활동별 점수화 + 대기질 결측 전파를 검증하는 테스트
-import { afterEach, describe, it, expect, vi } from "vitest";
-import { fetchRawForecast, scoreForecast, type RawForecast } from "@/lib/weather";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { dateKeyInTimezone, fetchRawForecast, scoreForecast, shiftDateKey, type RawForecast } from "@/lib/weather";
 import { ACTIVITIES } from "@/lib/activity";
 
 const raw: RawForecast = {
@@ -47,7 +47,13 @@ describe("scoreForecast", () => {
 });
 
 describe("fetchRawForecast 대기질 결측 처리", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T03:00:00Z"));
+  });
+
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -115,5 +121,29 @@ describe("fetchRawForecast 대기질 결측 처리", () => {
     const forecast = await fetchRawForecast({ name: "테스트", latitude: 37, longitude: 127, source: "city" });
     expect(forecast.airQualityAvailable).toBe(true);
     expect(forecast.today[0].pm25).toBe(12);
+  });
+
+  it("대기질 timestamp가 없으면 같은 배열 index 값을 잘못 붙이지 않는다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes("air-quality")) {
+          return new Response(JSON.stringify({ hourly: { time: ["2026-07-09T09:00"], pm10: [99], pm2_5: [88] } }));
+        }
+        return new Response(JSON.stringify(weatherBody));
+      }),
+    );
+    const forecast = await fetchRawForecast({ name: "테스트", latitude: 37, longitude: 127, source: "city" });
+    expect(forecast.today[0].pm10).toBeNull();
+    expect(forecast.today[0].pm25).toBeNull();
+  });
+});
+
+describe("timezone 날짜 선택", () => {
+  it("KST의 실제 오늘과 전후 날짜를 계산한다", () => {
+    const now = new Date("2026-07-10T16:30:00Z");
+    expect(dateKeyInTimezone(now, "Asia/Seoul")).toBe("2026-07-11");
+    expect(shiftDateKey("2026-07-11", -1)).toBe("2026-07-10");
+    expect(shiftDateKey("2026-12-31", 1)).toBe("2027-01-01");
   });
 });
