@@ -8225,21 +8225,21 @@ button {
 
 /* ---------- 로봄 패밀리 전면 재디자인 ---------- */
 :root {
-  color-scheme: light dark;
-  --page: #f5f8f7;
+  color-scheme: light;
+  --page: #fff8ef;
   --card: #ffffff;
-  --ink: #14211f;
-  --ink-2: #425650;
-  --muted: #667873;
-  --line: #dde7e3;
-  --brand: #309bd3;
-  --brand-deep: #197fb8;
-  --brand-soft: #dff1fb;
-  --surface: #edf4f1;
-  --surface-2: #e6efeb;
-  --shadow-sm: 0 1px 2px rgba(24, 64, 60, 0.06), 0 8px 24px -18px rgba(24, 64, 60, 0.24);
-  --shadow: 0 14px 36px -24px rgba(24, 64, 60, 0.36);
-  --shadow-lg: 0 24px 54px -30px rgba(24, 64, 60, 0.42);
+  --ink: #27342b;
+  --ink-2: #53665b;
+  --muted: #758278;
+  --line: #eadfce;
+  --brand: #48a7d4;
+  --brand-deep: #267fae;
+  --brand-soft: #e4f4fb;
+  --surface: #f6f0e7;
+  --surface-2: #fffaf4;
+  --shadow-sm: 0 1px 2px rgba(91, 67, 44, 0.06), 0 8px 24px -18px rgba(91, 67, 44, 0.22);
+  --shadow: 0 14px 36px -24px rgba(91, 67, 44, 0.34);
+  --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, 0.38);
 }
 
 body {
@@ -8329,9 +8329,9 @@ input:focus-visible {
 
 .family-filter-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 9px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: visible;
   padding: 0 0 18px;
 }
 
@@ -8703,10 +8703,11 @@ input:focus-visible {
 }
 
 .family-time-view,
-.family-prep-view,
 .family-settings {
   min-height: 60vh;
 }
+
+.family-prep-view { min-height: 0; }
 
 .family-ranked-list {
   display: grid;
@@ -9100,3 +9101,17 @@ input:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+/* 운영체제 설정과 무관하게 유지되는 밝고 따뜻한 야외봄 테마다. */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: light; --page: #fff8ef; --card: #ffffff; --ink: #27342b; --ink-2: #53665b; --muted: #758278; --line: #eadfce; --brand: #48a7d4; --brand-deep: #267fae; --brand-soft: #e4f4fb; --surface: #f6f0e7; --surface-2: #fffaf4; --shadow-sm: 0 1px 2px rgba(91, 67, 44, .06), 0 8px 24px -18px rgba(91, 67, 44, .22); --shadow: 0 14px 36px -24px rgba(91, 67, 44, .34); --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, .38); }
+  .family-hero { background: color-mix(in srgb, var(--brand-soft) 68%, var(--card)); }
+  .family-hero-actions button { color: #ffffff; }
+  .location-dialog, .sheet { color: var(--ink); background: var(--card); }
+}
+
+.prep-lite-alert { border-color: #f0c679; background: #fff5df; }
+.prep-lite-alert strong { color: #ad6f00; }.prep-lite-alert span { color: #76520f; }
+.prep-lite-note, .prep-lite-times span { background: #fffdf9; color: var(--ink-2); }
+.prep-lite-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 420px) { .family-filter-row { gap: 8px; padding-bottom: 12px; }.activity-menu { max-width: calc(100vw - 28px); }.prep-lite-grid { gap: 7px; }.prep-lite-card { padding: 11px; }.prep-lite-card b { font-size: .88rem; } }
