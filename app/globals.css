@@ -8976,6 +8976,8 @@ input:focus-visible {
 }
 
 .family-prep-view .prep-view {
+  /* 내부 카드·칩이 바깥 테두리에 바짝 붙지 않도록 넉넉한 안쪽 여백을 준다 */
+  padding: 20px 18px;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--line);
