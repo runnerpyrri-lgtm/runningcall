@@ -9212,18 +9212,24 @@ input:focus-visible {
     padding-top: 38px;
   }
 
+  .dashboard-frame {
+    width: min(1120px, 100%);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .family-content:has(.family-hero) {
-    grid-template-columns: minmax(0, 1.18fr) minmax(260px, 0.82fr);
-    align-items: start;
+    width: min(880px, 100%);
+    grid-template-columns: minmax(0, 1fr);
+    margin-inline: auto;
   }
 
   .family-content:has(.family-hero) .family-hero {
-    grid-row: span 2;
+    grid-row: auto;
   }
 
   .family-content:has(.family-hero) .family-quick-list,
   .family-content:has(.family-hero) .family-ad-slot {
-    grid-column: 2;
+    grid-column: auto;
   }
 
   .family-content:has(.family-hero) .family-flow {
@@ -9296,6 +9302,96 @@ input:focus-visible {
 .prep-lite-times span { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--line)); color: var(--ink-2); }
 .prep-lite-times b { color: var(--brand-deep); }
 @media (max-width: 420px) { .family-filter-row { gap: 8px; padding-bottom: 12px; }.activity-menu { max-width: calc(100vw - 28px); }.prep-lite-grid { gap: 7px; }.prep-lite-card { padding: 11px; }.prep-lite-card b { font-size: .88rem; } }
+
+/* 오늘 카드 — 현재 출발 판단을 가장 먼저 읽히게 하는 4개 핵심 근거 */
+.family-now-kicker {
+  margin: 0 0 8px;
+  color: var(--brand-deep);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.family-now-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.family-now-head > div { min-width: 0; }
+.family-now-head h1 { margin: 0; max-width: 13em; font-size: clamp(2rem, 6vw, 3rem); }
+.family-now-head > div > p { margin-top: 8px; max-width: 38em; }
+
+.family-now-head > strong {
+  width: 78px;
+  height: 78px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 7px solid var(--brand);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.family-now-head.tone-caution > strong { border-color: var(--warn); }
+.family-now-head.tone-bad > strong { border-color: var(--bad); }
+.family-now-head.tone-good > strong { border-color: var(--good); }
+
+.family-now-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.family-now-metrics span {
+  min-width: 0;
+  min-height: 102px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 13px;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.family-now-metrics span.now-rain { border-color: color-mix(in srgb, var(--brand) 34%, var(--line)); background: color-mix(in srgb, var(--brand-soft) 62%, var(--card)); }
+.family-now-metrics span.tone-caution { border-color: color-mix(in srgb, var(--warn) 48%, var(--line)); background: #fff8ea; }
+.family-now-metrics span.tone-bad { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
+.family-now-metrics svg { color: var(--brand-deep); }
+.family-now-metrics .tone-caution svg { color: #bd7d14; }
+.family-now-metrics .tone-bad svg { color: var(--bad); }
+.family-now-metrics b { color: var(--ink); font-size: 1.12rem; line-height: 1.1; overflow-wrap: anywhere; }
+.family-now-metrics small { color: var(--muted); font-size: 0.73rem; font-weight: 700; line-height: 1.35; }
+
+.family-next-best {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 15px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-radius: 17px;
+}
+
+.family-next-best span { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.82rem; font-weight: 750; }
+.family-next-best b { color: var(--brand-deep); font-size: 0.92rem; text-align: right; }
+
+@media (max-width: 620px) {
+  .family-now-head { gap: 12px; }
+  .family-now-head h1 { font-size: clamp(1.8rem, 8vw, 2.45rem); }
+  .family-now-head > strong { width: 64px; height: 64px; border-width: 6px; font-size: 1.45rem; }
+  .family-now-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .family-now-metrics span { min-height: 94px; }
+  .family-next-best { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .family-next-best b { text-align: left; }
+}
 
 /* 위치 검색 모달 — 밝은 야외봄 톤에 맞춘 검색·현재 위치·저장 위치 위계 */
 .location-modal {
