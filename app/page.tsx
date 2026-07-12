@@ -71,6 +71,7 @@ type LocationStep = "idle" | "checking" | "gps" | "address" | "weather" | "block
 type DayMode = "today" | "tomorrow";
 type MainTab = "today" | "time" | "prep" | "settings";
 type SearchResult = { name: string; detail: string; latitude: number; longitude: number };
+type GoNowDecision = { tone: "good" | "normal" | "caution" | "bad"; title: string; detail: string };
 
 const STORAGE_KEY = "running-alarm:location";
 
@@ -80,6 +81,33 @@ const DEFAULT_LOCATION: LocationPoint = {
   longitude: DEFAULT_CITY.longitude,
   source: "city"
 };
+
+// 현재 시각의 예보를 점수와 별개로 짧게 설명해, 바로 출발해도 되는지 먼저 판단하게 한다.
+function getGoNowDecision(slot: RunningSlot, profile: (typeof ACTIVITIES)[ActivityKey]): GoNowDecision {
+  const rainProbability = slot.precipitationProbability;
+  if (slot.precipitation >= 0.5 || (rainProbability !== null && rainProbability >= 70)) {
+    return { tone: "bad", title: "비 때문에 지금은 미루세요", detail: "노면과 시야가 불편할 수 있어요. 비가 약해진 뒤 출발하세요." };
+  }
+  if (slot.precipitation >= 0.2 || (rainProbability !== null && rainProbability >= 40)) {
+    return { tone: "caution", title: "비를 보고 짧게만 나가세요", detail: "우산·방수 준비를 하고 가까운 코스로만 다녀오세요." };
+  }
+  if (slot.pm25 !== null && slot.pm25 > 75) {
+    return { tone: "bad", title: "공기 때문에 지금은 쉬어가세요", detail: "미세먼지가 매우 나빠요. 실내 운동이 더 나아요." };
+  }
+  if (slot.pm25 !== null && slot.pm25 > 35) {
+    return { tone: "caution", title: "공기를 보고 가볍게만", detail: "미세먼지가 나쁜 편이에요. 짧은 코스로 줄여 보세요." };
+  }
+  if (slot.apparentTemperature >= profile.heat.hot2) {
+    return { tone: "bad", title: "더위 때문에 지금은 미루세요", detail: "체감온도가 높아요. 해가 진 뒤가 더 안전해요." };
+  }
+  if (slot.apparentTemperature >= profile.heat.hot1 || slot.windSpeed >= profile.windCap.speed) {
+    return { tone: "caution", title: "지금은 짧고 가볍게", detail: "더위나 바람이 부담될 수 있어요. 페이스를 낮춰 보세요." };
+  }
+  if (slot.totalScore >= 72) {
+    return { tone: "good", title: "지금 바로 출발해도 좋아요", detail: "비·공기·체감온도가 무난해요. 평소 코스로 가도 좋아요." };
+  }
+  return { tone: "normal", title: "지금은 가볍게 출발하세요", detail: "무리한 기록보다 짧은 코스로 컨디션을 확인해 보세요." };
+}
 
 // read: 차트에 표시할 실제 값 / score: 러닝 관점 점수(0~100, 높을수록 러닝에 좋음)
 const METRICS: Array<{
@@ -1859,6 +1887,15 @@ export default function Home() {
 
   const ready = !isLoading && view;
   const heroPlan = view && heroSlot ? getOutfitPlan(view.slots, heroSlot, activity) : null;
+  const nowSlot = !isTomorrow && view ? view.reference : heroSlot;
+  const nowDecision = nowSlot ? getGoNowDecision(nowSlot, profile) : null;
+  const nowRainProbability = nowSlot?.precipitationProbability ?? null;
+  const nowRainValue = nowRainProbability === null ? "정보 없음" : `${Math.round(nowRainProbability)}%`;
+  const nowRainDetail = nowSlot && nowSlot.precipitation > 0 ? `예상 ${nowSlot.precipitation.toFixed(1)}mm` : "예상 강수량 0mm";
+  const nowAirValue = nowSlot?.pm25 === null || nowSlot?.pm25 === undefined ? "정보 없음" : `${Math.round(nowSlot.pm25)}`;
+  const nowAirDetail = nowSlot?.pm25 === null || nowSlot?.pm25 === undefined ? "미세먼지" : `미세먼지 · ${gradePm25(nowSlot.pm25).label}`;
+  const nowFeelGrade = nowSlot ? gradeTemperature(nowSlot.apparentTemperature) : { label: "정보 없음", tone: "normal" as const };
+  const nowWindGrade = nowSlot ? gradeWind(nowSlot.windSpeed) : { label: "정보 없음", tone: "normal" as const };
   const heroAir = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "정보 없음" : gradePm25(heroSlot.pm25).label;
   const heroRain = heroSlot ? `${Math.round(heroSlot.precipitationProbability ?? 0)}%` : "—";
   // 오늘 카드 지표에 색+라벨(색각 접근성)로 상태를 함께 표기하기 위한 등급 톤
@@ -2108,24 +2145,31 @@ export default function Home() {
               <p>{error}</p>
               <button className="primary-action" type="button" onClick={() => loadForecast(location)}>다시 시도</button>
             </section>
-          ) : !ready || !view || !heroSlot ? (
+          ) : !ready || !view || !heroSlot || !nowSlot || !nowDecision ? (
             <section className="loading-panel" role="status" aria-live="polite"><RefreshCw className="spin" size={28} /><p>{profile.label} 점수를 계산하고 있어요</p></section>
           ) : (
             <div className="family-content">
               {activeTab === "today" ? (
                 <>
                   <section className="family-hero family-hero-solo" aria-labelledby="hero-title">
-                    <div className="family-hero-accent" aria-hidden="true" />
-                    <div className="family-hero-topline">
-                      <span><CalendarClock size={17} /> 가장 좋은 때 · {formatHour(heroSlot)}</span>
-                      <strong aria-label={`${Math.round(heroSlot.totalScore)}점`}>{Math.round(heroSlot.totalScore)}</strong>
+                    <p className="family-now-kicker">지금 바로 출발 판단 · {view.currentTime ?? "현재"}</p>
+                    <div className={`family-now-head tone-${nowDecision.tone}`}>
+                      <div>
+                        <h1 id="hero-title">{nowDecision.title}</h1>
+                        <p>{nowDecision.detail}</p>
+                      </div>
+                      <strong aria-label={`현재 ${Math.round(nowSlot.totalScore)}점`}>{Math.round(nowSlot.totalScore)}</strong>
                     </div>
-                    <h1 id="hero-title">{heroHeadline(heroSlot, activity)}</h1>
-                    <p>{profile.tagline}</p>
-                    <div className="family-hero-metrics" aria-label="추천 시간 핵심 정보">
-                      <span className={`tone-${heroAirTone}`}><i aria-hidden="true" /><b>{heroAir}</b><small>공기</small></span>
-                      <span className={`tone-${heroFeelTone}`}><i aria-hidden="true" /><b>{Math.round(heroSlot.apparentTemperature)}°</b><small>체감</small></span>
-                      <span className={`tone-${heroRainTone}`}><i aria-hidden="true" /><b>{heroRain}</b><small>비</small></span>
+                    <div className="family-now-metrics" aria-label="현재 출발 판단 근거">
+                      <span className={`now-rain tone-${gradePrecipitation(nowSlot.precipitation, nowRainProbability ?? 0).tone}`}><CloudRain size={18} aria-hidden="true" /><b>{nowRainValue}</b><small>비 가능성 · {nowRainDetail}</small></span>
+                      <span className={`tone-${nowSlot.pm25 === null ? "normal" : gradePm25(nowSlot.pm25).tone}`}><Haze size={18} aria-hidden="true" /><b>{nowAirValue}</b><small>{nowAirDetail}</small></span>
+                      <span className={`tone-${nowFeelGrade.tone}`}><Thermometer size={18} aria-hidden="true" /><b>{Math.round(nowSlot.apparentTemperature)}°</b><small>체감 · {nowFeelGrade.label}</small></span>
+                      <span className={`tone-${nowWindGrade.tone}`}><Wind size={18} aria-hidden="true" /><b>{nowSlot.windSpeed.toFixed(1)}</b><small>바람 ㎧ · {nowWindGrade.label}</small></span>
+                    </div>
+
+                    <div className="family-next-best">
+                      <span><CalendarClock size={17} aria-hidden="true" /> 다음으로 편안한 시간</span>
+                      <b>{formatHour(heroSlot)} · {heroHeadline(heroSlot, activity)}</b>
                     </div>
 
                     <div className="family-hero-flow" aria-label={`${isTomorrow ? "내일" : "오늘"} 나가기 좋은 흐름`}>
@@ -2153,7 +2197,7 @@ export default function Home() {
                     ) : null}
 
                     <div className="family-hero-actions">
-                      <span>지금보다 {formatHour(heroSlot)}가 더 편안해요.</span>
+                      <span>{formatHour(heroSlot)}에는 지금보다 더 편안할 가능성이 높아요.</span>
                       <button type="button" onClick={() => openAlarm({ label: "추천 시간", best: heroSlot })}><BellRing size={20} /> 추천 시간 알림</button>
                     </div>
                   </section>
