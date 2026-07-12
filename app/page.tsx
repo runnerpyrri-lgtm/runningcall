@@ -5,15 +5,25 @@ import {
   AlertCircle,
   Backpack,
   BellRing,
+  CalendarClock,
   ChevronDown,
   ChevronRight,
+  CircleHelp,
   Clock,
   CloudRain,
+  Code2,
   Droplets,
+  ExternalLink,
+  FileText,
   Haze,
+  House,
   LocateFixed,
+  Mail,
+  MapPin,
   RefreshCw,
   Search,
+  Settings,
+  ShieldCheck,
   Sparkles,
   Star,
   Sun,
@@ -21,7 +31,7 @@ import {
   Wind,
   X
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
 import { getOutfitPlan } from "@/lib/outfit";
@@ -44,7 +54,8 @@ import {
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
-import { GachaHero, TimeReel, type ReelRank } from "./gacha";
+import { TimeReel, type ReelRank } from "./gacha";
+import packageInfo from "../package.json";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
 import {
@@ -59,6 +70,7 @@ import {
 
 type LocationStep = "idle" | "checking" | "gps" | "address" | "weather" | "blocked";
 type DayMode = "today" | "tomorrow";
+type MainTab = "today" | "time" | "prep" | "settings";
 type SearchResult = { name: string; detail: string; latitude: number; longitude: number };
 
 const STORAGE_KEY = "running-alarm:location";
@@ -656,10 +668,102 @@ function AlarmSheet({
 
 function AdSlot({ side }: { side?: "left" | "right" }) {
   return (
-    <aside className={side ? `side-ad side-ad-${side}` : "infeed-ad"} aria-label="광고 영역">
-      <span>AD</span>
-      <strong>{side ? "사이드 배너" : "인피드 광고"}</strong>
+    <aside className={side ? `side-ad side-ad-${side}` : "family-ad-slot"} aria-label="광고 자리, 현재 비활성">
+      <span>광고</span>
+      <strong>{side ? "사이드 배너 준비 중" : "산책·야외용품 추천 자리"}</strong>
+      {!side ? <small>광고 기능은 아직 연결하지 않았어요.</small> : null}
     </aside>
+  );
+}
+
+function contactHref(kind: "일반 문의" | "광고·제휴 문의") {
+  const subject = `[야외봄] ${kind} · v${packageInfo.version}`;
+  return `mailto:hello.robom@gmail.com?subject=${encodeURIComponent(subject)}`;
+}
+
+function SettingsView() {
+  const familyApps = [
+    { name: "청약봄", description: "청약 공고와 마감 알림", href: "https://robom.kr/apps/homebom", status: "웹으로 이용" },
+    { name: "러닝봄", description: "러닝 대회 접수 알림", href: "https://robom.kr/apps/runningbom", status: "웹으로 이용" }
+  ];
+
+  return (
+    <div className="family-settings" aria-labelledby="settings-title">
+      <div className="family-section-head">
+        <p>앱과 로봄 패밀리 정보를 한곳에서 확인해요.</p>
+        <h2 id="settings-title">설정과 앱 정보</h2>
+      </div>
+
+      <section className="settings-card" aria-labelledby="family-apps-title">
+        <h3 id="family-apps-title">다른 로봄 앱</h3>
+        {familyApps.map((app) => (
+          <a className="settings-row family-app-row" href={app.href} key={app.name}>
+            <span className="settings-row-icon" aria-hidden="true"><House size={20} /></span>
+            <span><strong>{app.name}</strong><small>{app.description}</small></span>
+            <em>{app.status}</em>
+            <ExternalLink size={18} aria-hidden="true" />
+          </a>
+        ))}
+        <a className="settings-row" href="https://robom.kr">
+          <span className="settings-row-icon" aria-hidden="true"><ExternalLink size={20} /></span>
+          <span><strong>로봄 홈페이지</strong><small>robom.kr</small></span>
+          <ChevronRight size={19} aria-hidden="true" />
+        </a>
+      </section>
+
+      <section className="settings-card" aria-labelledby="contact-title">
+        <h3 id="contact-title">문의</h3>
+        <a className="settings-row" href={contactHref("일반 문의")}>
+          <span className="settings-row-icon" aria-hidden="true"><Mail size={20} /></span>
+          <span><strong>일반 문의</strong><small>hello.robom@gmail.com</small></span>
+          <ChevronRight size={19} aria-hidden="true" />
+        </a>
+        <a className="settings-row" href={contactHref("광고·제휴 문의")}>
+          <span className="settings-row-icon" aria-hidden="true"><Sparkles size={20} /></span>
+          <span><strong>광고·제휴 문의</strong><small>앱명·용도·버전이 제목에 포함돼요.</small></span>
+          <ChevronRight size={19} aria-hidden="true" />
+        </a>
+      </section>
+
+      <section className="settings-card" aria-labelledby="policy-title">
+        <h3 id="policy-title">정책과 정보</h3>
+        <a className="settings-row" href="https://robom.kr/privacy"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
+        <a className="settings-row" href="https://robom.kr/terms"><span className="settings-row-icon" aria-hidden="true"><FileText size={20} /></span><span><strong>이용약관</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
+        <a className="settings-row" href="https://robom.kr/open-source"><span className="settings-row-icon" aria-hidden="true"><Code2 size={20} /></span><span><strong>오픈소스 라이선스</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
+      </section>
+
+      <section className="app-meta-card" aria-label="앱 정보">
+        <span className="app-meta-icon" aria-hidden="true"><Sun size={26} /></span>
+        <div><strong>야외봄</strong><small>개발자 · 로봄</small></div>
+        <span className="app-version">v{packageInfo.version}</span>
+      </section>
+    </div>
+  );
+}
+
+function FamilyBottomNav({ active, onChange }: { active: MainTab; onChange: (tab: MainTab) => void }) {
+  const items: Array<{ key: MainTab; label: string; icon: ReactNode }> = [
+    { key: "today", label: "오늘", icon: <Sun size={23} /> },
+    { key: "time", label: "시간", icon: <Clock size={23} /> },
+    { key: "prep", label: "준비", icon: <Backpack size={23} /> },
+    { key: "settings", label: "설정", icon: <Settings size={23} /> }
+  ];
+
+  return (
+    <nav className="family-bottom-nav" aria-label="주요 메뉴">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={active === item.key ? "is-active" : ""}
+          aria-current={active === item.key ? "page" : undefined}
+          onClick={() => onChange(item.key)}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -1144,6 +1248,7 @@ export default function Home() {
   const [locationStep, setLocationStep] = useState<LocationStep>("idle");
   const [error, setError] = useState("");
   const [dayMode, setDayMode] = useState<DayMode>("today");
+  const [activeTab, setActiveTab] = useState<MainTab>("today");
   const [sheetKey, setSheetKey] = useState<DetailKey | null>(null);
   const [toast, setToast] = useState("");
   const [alarms, setAlarms] = useState<AlarmConfig[]>([]);
@@ -1168,6 +1273,41 @@ export default function Home() {
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
 
   const forecastReqId = useRef(0);
+  const prepDialogRef = useRef<HTMLDivElement | null>(null);
+  const prepTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!isPrepOpen) return;
+    const dialog = prepDialogRef.current;
+    if (!dialog) return;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+    focusable()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsPrepOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      prepTriggerRef.current?.focus();
+    };
+  }, [isPrepOpen]);
+
   const loadForecast = useCallback(async (target: LocationPoint) => {
     // 위치를 빠르게 바꾸면 여러 요청이 겹친다. 가장 최근 요청의 결과만 반영해
     // 늦게 도착한 이전 위치 응답이 새 위치를 덮어쓰는 경합을 막는다.
@@ -1645,8 +1785,9 @@ export default function Home() {
     setToast("알림을 껐어요");
   }
 
-  // 지표 그리드는 다이얼과 같은 기준(오늘=현재 / 내일=베스트)을 쓴다
-  const metricRef = view ? (isTomorrow ? view.best : view.reference) : null;
+  // 새 히어로·상세·준비물은 모두 같은 추천 시각을 기준으로 설명한다.
+  const heroSlot = view?.best ?? null;
+  const metricRef = heroSlot;
   const reasonRows =
     metricRef
       ? [
@@ -1723,13 +1864,26 @@ export default function Home() {
   const hasRecommendedWindow = recommendation.ranks.length > 0;
 
   const ready = !isLoading && view;
+  const heroPlan = view && heroSlot ? getOutfitPlan(view.slots, heroSlot, activity) : null;
+  const heroAir = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "정보 없음" : gradePm25(heroSlot.pm25).label;
+  const heroRain = heroSlot ? `${Math.round(heroSlot.precipitationProbability ?? 0)}%` : "—";
 
   return (
     <main className="page">
       <div className="dashboard-frame">
         <section className="app-shell">
-          {/* 상단 바 — 활동 선택(좌) · 동네 표시(우) */}
-          <header className="top-header">
+          <header className="family-appbar">
+            <div className="family-brand-icon" aria-hidden="true"><Sun size={30} /></div>
+            <div className="family-brand-copy">
+              <strong>야외봄 <i aria-hidden="true" /></strong>
+              <span>robom · 바깥바람이 좋은 때</span>
+            </div>
+            <button className="family-icon-button" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
+              <MapPin size={23} />
+            </button>
+          </header>
+
+          <div className="family-filter-row" aria-label="조회 조건">
             <div className="activity-select-wrap">
               <button
                 className="activity-select"
@@ -1766,13 +1920,14 @@ export default function Home() {
                 </>
               ) : null}
             </div>
-            <button className="loc-center" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
-              <strong>
-                {locationLabel}
-                <ChevronDown size={15} className="loc-caret" />
-              </strong>
+            <button className="family-filter-chip" type="button" onClick={() => setIsSearchOpen(true)} aria-label={`위치 변경, 현재 ${locationLabel}`}>
+              {locationLabel}
             </button>
-          </header>
+            <div className="family-day-filter" role="tablist" aria-label="날짜 선택">
+              <button type="button" role="tab" aria-selected={!isTomorrow} className={!isTomorrow ? "is-active" : ""} onClick={() => setDayMode("today")}>오늘</button>
+              <button type="button" role="tab" aria-selected={isTomorrow} className={isTomorrow ? "is-active" : ""} onClick={() => setDayMode("tomorrow")} disabled={!hasTomorrow}>내일</button>
+            </div>
+          </div>
 
           {/* 위치 검색 모달 */}
           {isSearchOpen ? (
@@ -1930,204 +2085,122 @@ export default function Home() {
           ) : null}
 
           {error && forecast ? <div className="notice" role="alert">{error}</div> : null}
-          {/* 대기질 결측 정직 안내 — 결측을 "공기 좋음"으로 위장하지 않는다 */}
-          {rawForecast && rawForecast.airQualityAvailable === false ? (
-            <div className="notice" role="status">
-              대기질 정보를 불러오지 못했어요 — 점수에 반영되지 않았어요.
-            </div>
-          ) : null}
-          {isLocating ? (
-            <div className="locating-bar">
-              <RefreshCw className="spin" size={16} />
-              {locationStepText[locationStep]}
-            </div>
-          ) : null}
+          {rawForecast && rawForecast.airQualityAvailable === false ? <div className="notice" role="status">대기질 정보를 불러오지 못했어요. 점수에는 반영하지 않았어요.</div> : null}
+          {isLocating ? <div className="locating-bar"><RefreshCw className="spin" size={16} />{locationStepText[locationStep]}</div> : null}
 
-          {error && !forecast && !isLoading ? (
+          {activeTab === "settings" ? (
+            <SettingsView />
+          ) : error && !forecast && !isLoading ? (
             <section className="error-panel" role="alert">
               <AlertCircle size={30} />
               <p>{error}</p>
-              <button className="primary-action" type="button" onClick={() => loadForecast(location)}>
-                다시 시도
-              </button>
+              <button className="primary-action" type="button" onClick={() => loadForecast(location)}>다시 시도</button>
             </section>
-          ) : !ready || !view ? (
-            <section className="loading-panel" role="status" aria-live="polite">
-              <RefreshCw className="spin" size={28} />
-              <p>{profile.label} 점수를 계산하고 있어요</p>
-            </section>
+          ) : !ready || !view || !heroSlot ? (
+            <section className="loading-panel" role="status" aria-live="polite"><RefreshCw className="spin" size={28} /><p>{profile.label} 점수를 계산하고 있어요</p></section>
           ) : (
-            <>
-              <div className="day-toggle" role="tablist" aria-label="날짜 선택">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={!isTomorrow}
-                  className={`day-tab ${!isTomorrow ? "on" : ""}`}
-                  onClick={() => setDayMode("today")}
-                >
-                  오늘
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={isTomorrow}
-                  className={`day-tab ${isTomorrow ? "on" : ""}`}
-                  onClick={() => setDayMode("tomorrow")}
-                  disabled={!hasTomorrow}
-                >
-                  내일
-                </button>
-              </div>
-
-              {/* 데스크탑 2단 대시보드 — 모바일은 display:contents로 1단 유지 */}
-              <div className="content-cols">
-                <div className="col-main">
-
-              {/* HERO — 가챠 카드: 개봉 연출 + 실측 날씨 씬 + 티어 등급 (탭 = 재개봉) */}
-              <section className="hero">
-                <div className="hero-top">
-                  <span className="hero-cond">
-                    <Clock size={14} />
-                    {isTomorrow ? "내일" : nowClock || "지금"}
-                  </span>
-                  <button className="hero-prep" type="button" onClick={() => setIsPrepOpen(true)} aria-label="준비물 보기">
-                    <Backpack size={18} />
-                    <span>준비</span>
-                  </button>
-                </div>
-                <GachaHero
-                  score={isTomorrow ? view.best.totalScore : view.reference.totalScore}
-                  headline={heroHeadline(isTomorrow ? view.best : view.reference, activity)}
-                  slot={isTomorrow ? view.best : view.reference}
-                  place={displayLocationName(location.name)}
-                  actLabel={profile.label}
-                  isTomorrow={isTomorrow}
-                />
-                {hasRecommendedWindow ? (
-                  <div className="gbtnwrap gbtnwrap-mobile">
-                    <div className="gbtn-aura" aria-hidden="true" />
-                    <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
-                      <span className="gb-main">
-                        <span className="slot7" aria-hidden="true">🎰</span>
-                        <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
-                      </span>
-                    </button>
-                  </div>
-                ) : null}
-                <div className="hero-metrics" aria-label="항목별 상태">
-                  {reasonRows.map((row) => (
-                    <button className="hm" key={row.label} type="button" onClick={() => setSheetKey(row.key)}>
-                      <span className="hm-v">
-                        {row.value}
-                        {row.unit ? <em>{row.unit}</em> : null}
-                      </span>
-                      <span className="hm-l">{row.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-                </div>
-                <div className="col-side">
-
-              {/* 추천 시간대 — 잭팟 버튼 → 슬롯 릴로 금·은·동 순위 공개 (pod 탭 = 알림) */}
-              {(() => {
-                const hasUpcoming = view.parts.some((p) => !p.past);
-                const reelRanks = recommendation.ranks;
-                const reelPool = recommendation.pool;
-                const ranked = recommendation.entries;
-                return (
-                  <section className="ranks" aria-label={`추천 ${profile.label} 시간대`}>
-                    {reelRanks.length > 0 ? (
-                      <div className="gbtnwrap gbtnwrap-ranks">
-                        <div className="gbtn-aura" aria-hidden="true" />
-                        <button type="button" className="gbtn" onClick={() => setIsReelOpen(true)}>
-                          <span className="gb-main">
-                            <span className="slot7" aria-hidden="true">🎰</span>
-                            <span className="gb-text">{isTomorrow ? "내일" : "오늘"}의 추천 {profile.label} 시간대 뽑기</span>
-                          </span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="gclosed">
-                        <p className="gclosed-title">
-                          {isTomorrow
-                            ? `내일은 ${profile.label} 좋은 시간대가 없어요`
-                            : hasUpcoming
-                            ? `남은 시간엔 ${profile.label} 좋은 때가 없어요`
-                            : `오늘 ${profile.label} 추천 시간대는 마감됐어요`}
-                        </p>
-                      </div>
-                    )}
-                    <TimeReel
-                      open={isReelOpen && reelRanks.length > 0}
-                      title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
-                      ranks={reelRanks}
-                      pool={reelPool}
-                      onClose={() => setIsReelOpen(false)}
-                      onPick={(rank) => {
-                        const target = ranked.find((item) => `${item.win.startHour}` === rank.key);
-                        if (!target) return;
-                        setIsReelOpen(false);
-                        openAlarm({
-                          label: rank.label,
-                          best: target.start,
-                          timeLabel: rank.time
-                        });
-                      }}
-                    />
+            <div className="family-content">
+              {activeTab === "today" ? (
+                <>
+                  <section className="family-hero" aria-labelledby="hero-title">
+                    <div className="family-hero-accent" aria-hidden="true" />
+                    <div className="family-hero-topline">
+                      <span><CalendarClock size={17} /> 가장 좋은 때 · {formatHour(heroSlot)}</span>
+                      <strong aria-label={`${Math.round(heroSlot.totalScore)}점`}>{Math.round(heroSlot.totalScore)}</strong>
+                    </div>
+                    <h1 id="hero-title">{heroHeadline(heroSlot, activity)}</h1>
+                    <p>{profile.tagline}</p>
+                    <div className="family-hero-metrics" aria-label="추천 시간 핵심 정보">
+                      <span><b>{heroAir}</b><small>공기</small></span>
+                      <span><b>{Math.round(heroSlot.apparentTemperature)}°</b><small>체감</small></span>
+                      <span><b>{heroRain}</b><small>비</small></span>
+                    </div>
+                    <div className="family-hero-actions">
+                      <span>지금보다 {formatHour(heroSlot)}가 더 편안해요.</span>
+                      <button type="button" onClick={() => openAlarm({ label: "추천 시간", best: heroSlot })}><BellRing size={20} /> 추천 시간 알림</button>
+                    </div>
                   </section>
-                );
-              })()}
 
-              {/* 일출 · 일몰 — 슬림 한 줄(숫자 위주) */}
-              {sunrise && sunset ? (
-                <div className="suntimes" aria-label="일출과 일몰">
-                  <span>
-                    <b>일출</b>
-                    {sunrise}
-                  </span>
-                  <span className="suntimes-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  <span>
-                    <b>일몰</b>
-                    {sunset}
-                  </span>
-                </div>
+                  <section className="family-flow" aria-labelledby="flow-title">
+                    <div className="family-section-head"><p>{isTomorrow ? "내일" : "오늘"}의 실제 예보 점수예요.</p><h2 id="flow-title">나가기 좋은 흐름</h2></div>
+                    <div className="family-time-strip">
+                      {recommendation.entries.slice(0, 3).map(({ win, start }, index) => (
+                        <button key={win.startHour} type="button" className={index === 0 ? "is-best" : ""} onClick={() => openAlarm({ label: index === 0 ? "가장 좋은 시간" : "추천 시간", best: start, timeLabel: formatTwoHourWindow(win.startHour) })}>
+                          <b>{formatHourNum(win.startHour)}</b><span>{Math.round(win.score)} · {index === 0 ? "가장 좋음" : "추천"}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {recommendation.entries.length === 0 ? <p className="family-empty">남은 추천 시간대가 없어요. 내일 예보를 확인해 보세요.</p> : null}
+                  </section>
+
+                  <section className="family-quick-list" aria-label={`${isTomorrow ? "내일" : "오늘"} 요약`}>
+                    <button type="button" onClick={() => setActiveTab("prep")}><span><Backpack size={22} aria-hidden="true" /><b>준비물</b><small>{heroPlan?.main ?? "예보에 맞는 준비를 확인해요."}</small></span><ChevronRight size={21} /></button>
+                    <button type="button" onClick={() => setIsReelOpen(true)} disabled={!hasRecommendedWindow}><span><Sparkles size={22} aria-hidden="true" /><b>{isTomorrow ? "내일" : "오늘"}의 날씨 카드</b><small>기존 추천 카드 데이터와 세부 순위를 확인해요.</small></span><ChevronRight size={21} /></button>
+                    {sunrise && sunset ? <div className="family-sun-row"><span><Sun size={20} /> 일출 <b>{sunrise}</b></span><span>일몰 <b>{sunset}</b></span></div> : null}
+                  </section>
+                  <AdSlot />
+                </>
               ) : null}
 
-              <AdSlot />
+              {activeTab === "time" ? (
+                <section className="family-time-view" aria-labelledby="time-title">
+                  <div className="family-section-head"><p>{profile.label} 기준으로 모든 지표를 다시 계산했어요.</p><h2 id="time-title">추천 시간과 날씨</h2></div>
+                  <div className="family-ranked-list">
+                    {recommendation.entries.map(({ win, start, label }, index) => (
+                      <article key={win.startHour}>
+                        <div className="family-rank-badge"><small>{label}</small><b>{formatHourNum(win.startHour)}</b></div>
+                        <div><strong>{formatTwoHourWindow(win.startHour)}</strong><span>점수 {Math.round(win.score)} · 체감 {Math.round(start.apparentTemperature)}° · 비 {Math.round(start.precipitationProbability ?? 0)}%</span></div>
+                        <button type="button" onClick={() => openAlarm({ label: `${index + 1}순위`, best: start, timeLabel: formatTwoHourWindow(win.startHour) })} aria-label={`${formatTwoHourWindow(win.startHour)} 알림 켜기`}><BellRing size={20} /></button>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="family-metric-grid" aria-label="현재 날씨 상세">
+                    {reasonRows.map((row) => <button key={row.label} type="button" onClick={() => setSheetKey(row.key)}><span className={row.iconClass}>{row.icon}</span><b>{row.value}{row.unit}</b><small>{row.label} · {row.grade.label}</small></button>)}
+                  </div>
+                </section>
+              ) : null}
 
-              <footer className="data-notice">
-                <p>
-                  날씨·대기질 데이터는{" "}
-                  <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-                    Open-Meteo
-                  </a>
-                  , 위치 정보는 Kakao Local과{" "}
-                  <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-                    © OpenStreetMap contributors
-                  </a>
-                  를 사용합니다.
-                </p>
-                <p>현재 위치를 사용하면 좌표가 위치 이름 확인과 날씨 조회를 위해 해당 서비스로 전달됩니다.</p>
-              </footer>
+              {activeTab === "prep" ? (
+                <section className="family-prep-view" aria-labelledby="prep-title">
+                  <div className="family-section-head"><p>{formatHour(heroSlot)} 추천 시간의 실제 예보를 기준으로 준비해요.</p><h2 id="prep-title">{isTomorrow ? "내일" : "오늘"}의 준비</h2></div>
+                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} />
+                  <button ref={prepTriggerRef} className="family-secondary-button" type="button" onClick={() => setIsPrepOpen(true)}><CircleHelp size={20} /> 준비물 크게 보기</button>
+                </section>
+              ) : null}
 
-                </div>
-              </div>
-            </>
+              <TimeReel
+                open={isReelOpen && recommendation.ranks.length > 0}
+                title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
+                ranks={recommendation.ranks}
+                pool={recommendation.pool}
+                onClose={() => setIsReelOpen(false)}
+                onPick={(rank) => {
+                  const target = recommendation.entries.find((item) => `${item.win.startHour}` === rank.key);
+                  if (!target) return;
+                  setIsReelOpen(false);
+                  openAlarm({ label: rank.label, best: target.start, timeLabel: rank.time });
+                }}
+              />
+            </div>
           )}
+
+          {activeTab !== "settings" ? (
+            <footer className="data-notice family-data-notice">
+              <p>날씨·대기질은 <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>, 위치는 Kakao Local과 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>를 사용합니다.</p>
+              <p>현재 위치를 사용하면 좌표가 위치 이름 확인과 날씨 조회를 위해 해당 서비스로 전달됩니다.</p>
+            </footer>
+          ) : null}
         </section>
       </div>
+
+      <FamilyBottomNav active={activeTab} onChange={setActiveTab} />
 
       {toast ? <div className="toast">{toast}</div> : null}
 
       {sheetKey && view ? (
         <MetricSheet
           sheetKey={sheetKey}
-          reference={view.reference}
+          reference={heroSlot ?? view.reference}
           slots={view.timeline}
           currentTime={view.currentTime}
           activity={activity}
@@ -2138,19 +2211,16 @@ export default function Home() {
       {isPrepOpen && view ? (
         <div
           className="sheet-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="준비물"
           onClick={() => setIsPrepOpen(false)}
         >
-          <div className="sheet" onClick={(event) => event.stopPropagation()}>
+          <div ref={prepDialogRef} className="sheet" role="dialog" aria-modal="true" aria-label="준비물" onClick={(event) => event.stopPropagation()}>
             <div className="sheet-topbar">
               <div className="sheet-grip" aria-hidden="true" />
               <button className="sheet-close" type="button" onClick={() => setIsPrepOpen(false)} aria-label="닫기">
                 <X size={18} />
               </button>
             </div>
-            <PrepView slot={view.reference} slots={view.slots} activity={activity} />
+            <PrepView slot={heroSlot ?? view.reference} slots={view.slots} activity={activity} />
           </div>
         </div>
       ) : null}
