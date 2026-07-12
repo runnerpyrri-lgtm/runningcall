@@ -67,6 +67,8 @@ export type OutfitItem = { emoji: string; label: string; reason: string };
 export type OutfitCategory = { emoji: string; label: string; value: string; reason: string };
 export type WeatherChange = { emoji: string; text: string; tone: "rain" | "sun" | "temp" | "wind" };
 export type OutfitTime = { label: string; emoji: string; feel: number; main: string; note: string };
+export type PackingItem = { id: string; emoji: string; label: string; detail: string; reason: string };
+export type PackingPlan = { essential: PackingItem[]; conditional: PackingItem[]; skip: PackingItem[] };
 
 export type OutfitPlan = {
   main: string;
@@ -76,6 +78,7 @@ export type OutfitPlan = {
   sun: { level: string; items: OutfitItem[] } | null;
   changes: WeatherChange[];
   byTime: OutfitTime[];
+  packing: PackingPlan;
 };
 
 function fmtH(hour: number) {
@@ -182,6 +185,112 @@ function headlineFor(feel: number, activity: ActivityKey): string {
   if (feel >= 8) return "살짝 서늘해요. 가벼운 겉옷 하나 걸치고 나가세요.";
   if (feel >= 0) return "쌀쌀해요. 따뜻한 외투와 손 보온을 챙기세요.";
   return "한파예요. 든든히 입고 짧게 다녀오세요.";
+}
+
+// 활동의 기본 안전 장비와 현재 출발 시각의 날씨 장비를 분리해, 꼭 필요한 것만 챙기게 한다.
+function getPackingPlan(current: RunningSlot, activity: ActivityKey): PackingPlan {
+  const essential: PackingItem[] = [];
+  const conditional: PackingItem[] = [];
+  const skip: PackingItem[] = [];
+  const rainy = current.precipitation >= 0.3 || (current.precipitationProbability ?? 0) >= 60;
+  const bright = current.hour >= 8 && current.hour <= 18 && current.uvIndex >= 3;
+  const dark = current.hour <= 6 || current.hour >= 19 || current.uvIndex <= 1;
+  const hot = current.apparentTemperature >= 23;
+  const coldOrWindy = current.apparentTemperature < 10 || current.windSpeed >= 8;
+  const dusty = current.pm25 !== null && current.pm25 > 35;
+
+  if (activity === "run") {
+    essential.push(
+      { id: "run-shoes", emoji: "👟", label: "러닝화", detail: "쿠션 러닝화", reason: "발·무릎 부담을 줄이는 가장 기본 장비예요." },
+      { id: "run-belt", emoji: "🎽", label: "러닝 벨트", detail: "휴대폰·열쇠 수납", reason: "주머니를 비우면 자세와 리듬이 편해져요." }
+    );
+  } else if (activity === "bike") {
+    essential.push(
+      { id: "bike-helmet", emoji: "⛑️", label: "헬멧", detail: "턱끈까지 확인", reason: "짧은 라이딩도 헬멧은 가장 먼저 챙겨요." },
+      { id: "bike-check", emoji: "🛞", label: "출발 점검", detail: "브레이크·공기압", reason: "출발 전 30초 점검이 고장을 줄여줘요." }
+    );
+  } else if (activity === "hike") {
+    essential.push(
+      { id: "hike-water", emoji: "💧", label: "물·행동식", detail: "물 + 간식", reason: "산에서는 수분과 에너지가 곧 안전이에요." },
+      { id: "hike-foot", emoji: "🥾", label: "등산화·스틱", detail: "접지·무릎 보호", reason: "오르내릴 때 미끄럼과 무릎 부담을 줄여줘요." }
+    );
+  } else if (activity === "dog") {
+    essential.push(
+      { id: "dog-leash", emoji: "🦮", label: "리드줄·배변봉투", detail: "산책 기본", reason: "안전한 거리 유지와 기본 매너에 필요해요." },
+      { id: "dog-water", emoji: "🥣", label: "물·접이식 그릇", detail: "강아지 수분", reason: "더위가 아니어도 중간 수분 보충이 좋아요." }
+    );
+  } else {
+    essential.push(
+      { id: "walk-shoes", emoji: "👟", label: "편한 운동화", detail: "접지 좋은 신발", reason: "발 피로와 젖은 길 미끄럼을 줄여줘요." },
+      { id: "walk-carry", emoji: "👜", label: "가벼운 소지품", detail: "휴대폰·물", reason: "주머니를 가볍게 하고 수분만 챙기면 충분해요." }
+    );
+  }
+
+  if (hot) {
+    conditional.push({
+      id: "hot-hydration",
+      emoji: "💧",
+      label: activity === "dog" ? "보호자·강아지 물" : "물·전해질",
+      detail: activity === "hike" ? "평소보다 1.5배" : activity === "run" ? "물 500ml 이상" : "물 넉넉히",
+      reason: "체감이 높아 땀으로 잃는 수분과 염분을 미리 보충해야 해요."
+    });
+  }
+
+  if (bright) {
+    conditional.push({
+      id: "sun-eye",
+      emoji: "🕶️",
+      label: activity === "bike" ? "라이딩 고글" : activity === "run" ? "러닝 고글" : "선글라스·모자",
+      detail: current.uvIndex >= 6 ? "선크림도 함께" : "눈부심 대비",
+      reason: "지금 출발 시간의 자외선과 눈부심을 줄여줘요."
+    });
+  }
+
+  if (rainy) {
+    conditional.push({
+      id: "rain-gear",
+      emoji: "🌧️",
+      label: activity === "run" ? "방수 재킷·챙 모자" : activity === "bike" ? "방수 재킷·라이트" : activity === "hike" ? "방수 재킷·배낭 커버" : activity === "dog" ? "우산·강아지 우비" : "우산·방수 신발",
+      detail: `비 가능성 ${Math.round(current.precipitationProbability ?? 0)}%`,
+      reason: "젖은 옷과 노면은 체온·시야·접지에 모두 불리해요."
+    });
+  }
+
+  if (coldOrWindy) {
+    conditional.push({
+      id: "wind-layer",
+      emoji: "💨",
+      label: activity === "bike" ? "방풍 자켓·장갑" : activity === "hike" ? "정상용 겉옷" : "얇은 바람막이",
+      detail: `체감 ${Math.round(current.apparentTemperature)}° · 바람 ${current.windSpeed.toFixed(1)}m/s`,
+      reason: "출발 뒤 식거나 바람을 맞으면 체감이 빠르게 떨어져요."
+    });
+  }
+
+  if (dark) {
+    conditional.push({
+      id: "visibility",
+      emoji: activity === "hike" ? "🔦" : "✨",
+      label: activity === "bike" ? "전조등·후미등" : activity === "hike" ? "헤드랜턴" : "반사 소품·라이트",
+      detail: "보이고, 보이게",
+      reason: "해가 낮거나 어두우면 시야와 존재 알림이 안전을 좌우해요."
+    });
+  }
+
+  if (dusty) {
+    conditional.push({
+      id: "dust-mask",
+      emoji: "😷",
+      label: "마스크·짧은 코스",
+      detail: `미세먼지 ${Math.round(current.pm25 ?? 0)}`,
+      reason: "공기가 나쁜 날은 장비보다 강도와 시간을 줄이는 게 우선이에요."
+    });
+  }
+
+  if (!rainy) skip.push({ id: "skip-rain", emoji: "☂️", label: "방수 겉옷", detail: "우선순위 낮음", reason: "출발 시간에 비 소식이 뚜렷하지 않아요." });
+  if (!bright) skip.push({ id: "skip-sun", emoji: "🕶️", label: "고글·모자", detail: "우선순위 낮음", reason: "출발 시간의 자외선이 낮아요." });
+  if (!hot) skip.push({ id: "skip-water", emoji: "💧", label: "큰 물통", detail: "필요한 만큼만", reason: "더위가 심하지 않아 필요한 만큼만 챙기면 돼요." });
+
+  return { essential, conditional, skip };
 }
 
 export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activity: ActivityKey = "run"): OutfitPlan {
@@ -355,6 +464,7 @@ export function getOutfitPlan(slots: RunningSlot[], current: RunningSlot, activi
     categories,
     sun,
     changes: changes.slice(0, 4),
-    byTime
+    byTime,
+    packing: getPackingPlan(current, activity)
   };
 }
