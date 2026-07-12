@@ -8813,6 +8813,168 @@ input:focus-visible {
   font-size: 0.74rem;
 }
 
+/* 오늘 단일 카드 — 지표 등급 색점(색+라벨), 흐름 스트립, 일출/일몰 메타 */
+.family-hero-solo {
+  padding-bottom: 24px;
+}
+
+.family-hero-metrics span > i {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.family-hero-metrics span.tone-good > i {
+  background: var(--good);
+}
+.family-hero-metrics span.tone-normal > i {
+  background: var(--brand);
+}
+.family-hero-metrics span.tone-caution > i {
+  background: var(--warn);
+}
+.family-hero-metrics span.tone-bad > i {
+  background: var(--bad);
+}
+
+.family-hero-flow {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+}
+
+.family-hero-flow-label {
+  margin: 0 0 12px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.family-hero-flow-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.family-hero-flow-strip button {
+  min-height: 84px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 12px 6px;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.family-hero-flow-strip button.is-best {
+  color: var(--brand-deep);
+  background: color-mix(in srgb, var(--brand-soft) 88%, var(--card));
+  border-color: color-mix(in srgb, var(--brand) 32%, var(--line));
+}
+
+.family-hero-flow-strip small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.family-hero-flow-strip button.is-best small {
+  color: var(--brand-deep);
+}
+
+.family-hero-flow-strip b {
+  font-size: 1.2rem;
+}
+
+.family-hero-flow-strip span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.family-hero-flow-strip button.is-best span {
+  color: var(--brand-deep);
+}
+
+.family-hero-sun {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.family-hero-sun span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.family-hero-sun b {
+  color: var(--ink);
+}
+
+/* 추천 탭 — 카드로 보기 진입 + 1순위 강조 + 6지표 등급 색 틴트 */
+.family-reel-open {
+  width: 100%;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+  border-radius: 16px;
+  font-weight: 850;
+}
+
+.family-ranked-list article.is-top {
+  position: relative;
+  padding: 6px 6px 6px 14px;
+  background: color-mix(in srgb, var(--brand-soft) 60%, transparent);
+  border-bottom: none;
+  border-radius: 20px;
+}
+
+.family-ranked-list article.is-top::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 4px;
+  border-radius: 99px;
+  background: var(--brand);
+}
+
+.family-ranked-list article.is-top .family-rank-badge {
+  color: #fff;
+  background: var(--brand);
+}
+
+.family-metric-grid button.tone-good {
+  border-color: color-mix(in srgb, var(--good) 34%, var(--line));
+  background: color-mix(in srgb, var(--good) 8%, var(--card));
+}
+
+.family-metric-grid button.tone-caution {
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
+  background: color-mix(in srgb, var(--warn) 10%, var(--card));
+}
+
+.family-metric-grid button.tone-bad {
+  border-color: color-mix(in srgb, var(--bad) 40%, var(--line));
+  background: color-mix(in srgb, var(--bad) 10%, var(--card));
+}
+
 .family-prep-view .prep-view {
   color: var(--ink);
   background: var(--card);
@@ -9110,8 +9272,21 @@ input:focus-visible {
   .location-dialog, .sheet { color: var(--ink); background: var(--card); }
 }
 
-.prep-lite-alert { border-color: #f0c679; background: #fff5df; }
-.prep-lite-alert strong { color: #ad6f00; }.prep-lite-alert span { color: #76520f; }
-.prep-lite-note, .prep-lite-times span { background: #fffdf9; color: var(--ink-2); }
-.prep-lite-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* 준비 탭 — warm-spring 카드 시스템으로 통일(다크 잔재 제거·대비·위계 확보) */
+.prep-lite { gap: 12px; }
+.prep-lite-head span { color: var(--brand-deep); }
+.prep-lite-alert { border-color: #f0c679; background: #fff5df; border-left: 4px solid #e0a72e; }
+.prep-lite-alert strong { color: #ad6f00; }
+.prep-lite-alert span { color: #76520f; }
+.prep-lite-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.prep-lite-card { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); }
+.prep-lite-card span { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 8px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 1.2rem; }
+.prep-lite-card b { color: var(--ink); }
+.prep-lite-card small { color: var(--muted); }
+.prep-lite-note { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--brand); color: var(--ink-2); }
+.prep-lite-note.tone-warn, .prep-lite-note.tone-caution { border-left-color: var(--warn); background: #fff5df; }
+.prep-lite-note.tone-bad { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--card)); }
+.prep-lite-times { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.prep-lite-times span { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--line)); color: var(--ink-2); }
+.prep-lite-times b { color: var(--brand-deep); }
 @media (max-width: 420px) { .family-filter-row { gap: 8px; padding-bottom: 12px; }.activity-menu { max-width: calc(100vw - 28px); }.prep-lite-grid { gap: 7px; }.prep-lite-card { padding: 11px; }.prep-lite-card b { font-size: .88rem; } }
