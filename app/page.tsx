@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
-  Clock,
   CloudRain,
   Code2,
   Droplets,
@@ -739,7 +738,7 @@ function SettingsView() {
 function FamilyBottomNav({ active, onChange }: { active: MainTab; onChange: (tab: MainTab) => void }) {
   const items: Array<{ key: MainTab; label: string; icon: ReactNode }> = [
     { key: "today", label: "오늘", icon: <Sun size={23} /> },
-    { key: "time", label: "시간", icon: <Clock size={23} /> },
+    { key: "time", label: "추천", icon: <Sparkles size={23} /> },
     { key: "prep", label: "준비", icon: <Backpack size={23} /> },
     { key: "settings", label: "설정", icon: <Settings size={23} /> }
   ];
@@ -1862,6 +1861,10 @@ export default function Home() {
   const heroPlan = view && heroSlot ? getOutfitPlan(view.slots, heroSlot, activity) : null;
   const heroAir = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "정보 없음" : gradePm25(heroSlot.pm25).label;
   const heroRain = heroSlot ? `${Math.round(heroSlot.precipitationProbability ?? 0)}%` : "—";
+  // 오늘 카드 지표에 색+라벨(색각 접근성)로 상태를 함께 표기하기 위한 등급 톤
+  const heroAirTone = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "normal" : gradePm25(heroSlot.pm25).tone;
+  const heroFeelTone = heroSlot ? gradeTemperature(heroSlot.apparentTemperature).tone : "normal";
+  const heroRainTone = heroSlot ? gradePrecipitation(heroSlot.precipitation, heroSlot.precipitationProbability ?? 0).tone : "normal";
 
   return (
     <main className="page">
@@ -2097,7 +2100,7 @@ export default function Home() {
             <div className="family-content">
               {activeTab === "today" ? (
                 <>
-                  <section className="family-hero" aria-labelledby="hero-title">
+                  <section className="family-hero family-hero-solo" aria-labelledby="hero-title">
                     <div className="family-hero-accent" aria-hidden="true" />
                     <div className="family-hero-topline">
                       <span><CalendarClock size={17} /> 가장 좋은 때 · {formatHour(heroSlot)}</span>
@@ -2106,32 +2109,39 @@ export default function Home() {
                     <h1 id="hero-title">{heroHeadline(heroSlot, activity)}</h1>
                     <p>{profile.tagline}</p>
                     <div className="family-hero-metrics" aria-label="추천 시간 핵심 정보">
-                      <span><b>{heroAir}</b><small>공기</small></span>
-                      <span><b>{Math.round(heroSlot.apparentTemperature)}°</b><small>체감</small></span>
-                      <span><b>{heroRain}</b><small>비</small></span>
+                      <span className={`tone-${heroAirTone}`}><i aria-hidden="true" /><b>{heroAir}</b><small>공기</small></span>
+                      <span className={`tone-${heroFeelTone}`}><i aria-hidden="true" /><b>{Math.round(heroSlot.apparentTemperature)}°</b><small>체감</small></span>
+                      <span className={`tone-${heroRainTone}`}><i aria-hidden="true" /><b>{heroRain}</b><small>비</small></span>
                     </div>
+
+                    <div className="family-hero-flow" aria-label={`${isTomorrow ? "내일" : "오늘"} 나가기 좋은 흐름`}>
+                      <p className="family-hero-flow-label">{isTomorrow ? "내일" : "오늘"} 나가기 좋은 흐름</p>
+                      {recommendation.entries.length > 0 ? (
+                        <div className="family-hero-flow-strip">
+                          {recommendation.entries.slice(0, 3).map(({ win, start }, index) => (
+                            <button key={win.startHour} type="button" className={index === 0 ? "is-best" : ""} onClick={() => openAlarm({ label: index === 0 ? "가장 좋은 시간" : "추천 시간", best: start, timeLabel: formatTwoHourWindow(win.startHour) })}>
+                              <small>{index === 0 ? "가장 좋음" : "추천"}</small>
+                              <b>{formatHourNum(win.startHour)}</b>
+                              <span>{Math.round(win.score)}점</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="family-empty">남은 추천 시간대가 없어요. 내일 예보를 확인해 보세요.</p>
+                      )}
+                    </div>
+
+                    {sunrise && sunset ? (
+                      <div className="family-hero-sun" aria-label="일출과 일몰">
+                        <span><Sun size={16} aria-hidden="true" /> 일출 <b>{sunrise}</b></span>
+                        <span>일몰 <b>{sunset}</b></span>
+                      </div>
+                    ) : null}
+
                     <div className="family-hero-actions">
                       <span>지금보다 {formatHour(heroSlot)}가 더 편안해요.</span>
                       <button type="button" onClick={() => openAlarm({ label: "추천 시간", best: heroSlot })}><BellRing size={20} /> 추천 시간 알림</button>
                     </div>
-                  </section>
-
-                  <section className="family-flow" aria-labelledby="flow-title">
-                    <div className="family-section-head"><p>{isTomorrow ? "내일" : "오늘"}의 실제 예보 점수예요.</p><h2 id="flow-title">나가기 좋은 흐름</h2></div>
-                    <div className="family-time-strip">
-                      {recommendation.entries.slice(0, 3).map(({ win, start }, index) => (
-                        <button key={win.startHour} type="button" className={index === 0 ? "is-best" : ""} onClick={() => openAlarm({ label: index === 0 ? "가장 좋은 시간" : "추천 시간", best: start, timeLabel: formatTwoHourWindow(win.startHour) })}>
-                          <b>{formatHourNum(win.startHour)}</b><span>{Math.round(win.score)} · {index === 0 ? "가장 좋음" : "추천"}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {recommendation.entries.length === 0 ? <p className="family-empty">남은 추천 시간대가 없어요. 내일 예보를 확인해 보세요.</p> : null}
-                  </section>
-
-                  <section className="family-quick-list" aria-label={`${isTomorrow ? "내일" : "오늘"} 요약`}>
-                    <button type="button" onClick={() => setActiveTab("prep")}><span><Backpack size={22} aria-hidden="true" /><b>준비물</b><small>{heroPlan?.main ?? "예보에 맞는 준비를 확인해요."}</small></span><ChevronRight size={21} /></button>
-                    <button type="button" onClick={() => setIsReelOpen(true)} disabled={!hasRecommendedWindow}><span><Sparkles size={22} aria-hidden="true" /><b>{isTomorrow ? "내일" : "오늘"}의 날씨 카드</b><small>기존 추천 카드 데이터와 세부 순위를 확인해요.</small></span><ChevronRight size={21} /></button>
-                    {sunrise && sunset ? <div className="family-sun-row"><span><Sun size={20} /> 일출 <b>{sunrise}</b></span><span>일몰 <b>{sunset}</b></span></div> : null}
                   </section>
                   <AdSlot />
                 </>
@@ -2140,17 +2150,23 @@ export default function Home() {
               {activeTab === "time" ? (
                 <section className="family-time-view" aria-labelledby="time-title">
                   <div className="family-section-head"><p>{profile.label} 기준으로 모든 지표를 다시 계산했어요.</p><h2 id="time-title">추천 시간과 날씨</h2></div>
+                  {hasRecommendedWindow ? (
+                    <button type="button" className="family-reel-open" onClick={() => setIsReelOpen(true)}>
+                      <Sparkles size={19} aria-hidden="true" /> 오늘의 날씨 카드로 보기
+                    </button>
+                  ) : null}
                   <div className="family-ranked-list">
                     {recommendation.entries.map(({ win, start, label }, index) => (
-                      <article key={win.startHour}>
+                      <article key={win.startHour} className={index === 0 ? "is-top" : ""}>
                         <div className="family-rank-badge"><small>{label}</small><b>{formatHourNum(win.startHour)}</b></div>
                         <div><strong>{formatTwoHourWindow(win.startHour)}</strong><span>점수 {Math.round(win.score)} · 체감 {Math.round(start.apparentTemperature)}° · 비 {Math.round(start.precipitationProbability ?? 0)}%</span></div>
                         <button type="button" onClick={() => openAlarm({ label: `${index + 1}순위`, best: start, timeLabel: formatTwoHourWindow(win.startHour) })} aria-label={`${formatTwoHourWindow(win.startHour)} 알림 켜기`}><BellRing size={20} /></button>
                       </article>
                     ))}
+                    {recommendation.entries.length === 0 ? <p className="family-empty">남은 추천 시간대가 없어요. 내일 예보를 확인해 보세요.</p> : null}
                   </div>
                   <div className="family-metric-grid" aria-label="현재 날씨 상세">
-                    {reasonRows.map((row) => <button key={row.label} type="button" onClick={() => setSheetKey(row.key)}><span className={row.iconClass}>{row.icon}</span><b>{row.value}{row.unit}</b><small>{row.label} · {row.grade.label}</small></button>)}
+                    {reasonRows.map((row) => <button key={row.label} type="button" className={`tone-${row.grade.tone}`} onClick={() => setSheetKey(row.key)}><span className={row.iconClass}>{row.icon}</span><b>{row.value}{row.unit}</b><small>{row.label} · {row.grade.label}</small></button>)}
                   </div>
                 </section>
               ) : null}
