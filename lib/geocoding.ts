@@ -1,8 +1,9 @@
 // 좌표 검증과 OpenStreetMap Nominatim 요청 간격을 관리하는 지오코딩 공용 모듈.
+import packageJson from "@/package.json";
 
 const NOMINATIM_INTERVAL_MS = 1_100;
 const NOMINATIM_USER_AGENT =
-  "outbom/0.13.4 (+https://github.com/robom-labs/outbom)";
+  `outbom/${packageJson.version} (+https://github.com/robom-labs/outbom; contact=hello.robom@gmail.com)`;
 
 let nominatimQueue: Promise<void> = Promise.resolve();
 let lastNominatimStartedAt = 0;

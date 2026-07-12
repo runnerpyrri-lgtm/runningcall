@@ -80,6 +80,30 @@ function numberOrNull(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+export function dateKeyInTimezone(date: Date, timezone: string | undefined): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone && timezone !== "auto" ? timezone : "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  }
+}
+
+export function shiftDateKey(ymd: string, days: number): string {
+  const date = new Date(`${ymd}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function buildUrl(base: string, params: Record<string, string | number>) {
   const url = new URL(base);
   Object.entries(params).forEach(([key, value]) => {
@@ -139,7 +163,7 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
   const airIndexByTime = new Map(airTimes.map((time, index) => [time, index]));
 
   const allInputs = times.map((time, index) => {
-    const airIndex = airIndexByTime.get(time) ?? index;
+    const airIndex = airIndexByTime.get(time);
     const input: HourlyInput = {
       time,
       temperature: ensureNumber(weather.hourly?.temperature_2m?.[index]),
@@ -152,8 +176,8 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
       precipitation: ensureNumber(weather.hourly?.precipitation?.[index]),
       precipitationProbability: numberOrNull(weather.hourly?.precipitation_probability?.[index]),
       windSpeed: ensureNumber(weather.hourly?.wind_speed_10m?.[index]),
-      pm10: numberOrNull(airQuality?.hourly?.pm10?.[airIndex]),
-      pm25: numberOrNull(airQuality?.hourly?.pm2_5?.[airIndex]),
+      pm10: airIndex === undefined ? null : numberOrNull(airQuality?.hourly?.pm10?.[airIndex]),
+      pm25: airIndex === undefined ? null : numberOrNull(airQuality?.hourly?.pm2_5?.[airIndex]),
       windGust: ensureNumber(weather.hourly?.wind_gusts_10m?.[index]),
       weatherCode: ensureNumber(weather.hourly?.weather_code?.[index]),
       visibility: ensureNumber(weather.hourly?.visibility?.[index], 20000),
@@ -168,7 +192,7 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     throw new Error("No hourly forecast data returned");
   }
 
-  // past_days=1 + forecast_days=2 → [어제, 오늘, 내일] 순서의 날짜 그룹
+  // API 배열 순서가 아니라 응답 timezone의 실제 날짜 키로 오늘·어제·내일을 찾는다.
   const byDay = new Map<string, HourlyInput[]>();
   for (const input of allInputs) {
     const day = input.time.slice(0, 10);
@@ -180,14 +204,17 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     }
   }
 
-  const dayKeys = [...byDay.keys()].sort();
-  const todayKey = dayKeys.length >= 2 ? dayKeys[1] : dayKeys[0];
-  const yesterday = dayKeys.length >= 2 ? byDay.get(dayKeys[0]) ?? [] : [];
-  const today = byDay.get(todayKey) ?? allInputs.slice(0, 24);
-  const tomorrow = dayKeys.length >= 3 ? byDay.get(dayKeys[2]) ?? [] : [];
+  const todayKey = dateKeyInTimezone(new Date(), weather.timezone);
+  const yesterdayKey = shiftDateKey(todayKey, -1);
+  const tomorrowKey = shiftDateKey(todayKey, 1);
+  const yesterday = byDay.get(yesterdayKey) ?? [];
+  const today = byDay.get(todayKey) ?? [];
+  const tomorrow = byDay.get(tomorrowKey) ?? [];
+  if (today.length === 0) throw new Error(`No forecast data returned for local date ${todayKey}`);
 
   const dailyTimes = weather.daily?.time ?? [];
-  const todayDailyIndex = Math.max(0, dailyTimes.indexOf(todayKey));
+  const todayDailyIndex = dailyTimes.indexOf(todayKey);
+  const tomorrowDailyIndex = dailyTimes.indexOf(tomorrowKey);
 
   return {
     location,
@@ -196,10 +223,10 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
     today,
     yesterday,
     tomorrow,
-    sunrise: weather.daily?.sunrise?.[todayDailyIndex] ?? null,
-    sunset: weather.daily?.sunset?.[todayDailyIndex] ?? null,
-    sunriseTomorrow: weather.daily?.sunrise?.[todayDailyIndex + 1] ?? null,
-    sunsetTomorrow: weather.daily?.sunset?.[todayDailyIndex + 1] ?? null,
+    sunrise: todayDailyIndex >= 0 ? weather.daily?.sunrise?.[todayDailyIndex] ?? null : null,
+    sunset: todayDailyIndex >= 0 ? weather.daily?.sunset?.[todayDailyIndex] ?? null : null,
+    sunriseTomorrow: tomorrowDailyIndex >= 0 ? weather.daily?.sunrise?.[tomorrowDailyIndex] ?? null : null,
+    sunsetTomorrow: tomorrowDailyIndex >= 0 ? weather.daily?.sunset?.[tomorrowDailyIndex] ?? null : null,
     airQualityAvailable: allInputs.some((input) => input.pm25 !== null || input.pm10 !== null)
   };
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "running-call-v4";
+const CACHE_NAME = "outbom-v0.15.1";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -27,15 +27,24 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
-  );
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
+      return response;
+    } catch (error) {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      if (request.mode === "navigate") {
+        const shell = await caches.match("/");
+        if (shell) return shell;
+      }
+      throw error;
+    }
+  })());
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -46,6 +55,7 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
         if ("focus" in client && client.url.startsWith(self.location.origin)) {
+          if ("navigate" in client) await client.navigate(targetUrl);
           return client.focus();
         }
       }
