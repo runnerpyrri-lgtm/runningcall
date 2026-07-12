@@ -667,13 +667,8 @@ function AlarmSheet({
 }
 
 function AdSlot({ side }: { side?: "left" | "right" }) {
-  return (
-    <aside className={side ? `side-ad side-ad-${side}` : "family-ad-slot"} aria-label="광고 자리, 현재 비활성">
-      <span>광고</span>
-      <strong>{side ? "사이드 배너 준비 중" : "산책·야외용품 추천 자리"}</strong>
-      {!side ? <small>광고 기능은 아직 연결하지 않았어요.</small> : null}
-    </aside>
-  );
+  if (!side) return null;
+  return <aside className={`side-ad side-ad-${side}`} aria-label="광고 자리, 현재 비활성"><span>광고</span><strong>사이드 배너 준비 중</strong></aside>;
 }
 
 function contactHref(kind: "일반 문의" | "광고·제휴 문의") {
@@ -697,7 +692,7 @@ function SettingsView() {
       <section className="settings-card" aria-labelledby="family-apps-title">
         <h3 id="family-apps-title">다른 로봄 앱</h3>
         {familyApps.map((app) => (
-          <a className="settings-row family-app-row" href={app.href} key={app.name}>
+          <a className="settings-row family-app-row" href={app.href} target="_blank" rel="noopener noreferrer" key={app.name}>
             <span className="settings-row-icon" aria-hidden="true"><House size={20} /></span>
             <span><strong>{app.name}</strong><small>{app.description}</small></span>
             <em>{app.status}</em>
