@@ -1929,12 +1929,16 @@ export default function Home() {
 
           {/* 위치 검색 모달 */}
           {isSearchOpen ? (
-            <section className="location-modal" role="dialog" aria-modal="true" aria-label="위치 검색">
+            <section className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-search-title">
               <div className="location-dialog search-dialog">
                 <button className="modal-close" type="button" onClick={() => setIsSearchOpen(false)} aria-label="닫기">
                   <X size={18} />
                 </button>
-                <h2>위치 검색</h2>
+                <div className="search-dialog-head">
+                  <p className="search-dialog-kicker">나갈 곳 설정</p>
+                  <h2 id="location-search-title">어디로 갈까요?</h2>
+                  <p className="search-dialog-copy">동네, 역, 주소를 검색하거나 지금 있는 곳을 바로 사용할 수 있어요.</p>
+                </div>
                 <form
                   className="search-form"
                   onSubmit={(event) => {
@@ -1958,18 +1962,25 @@ export default function Home() {
                 </form>
 
                 <button className="gps-inline" type="button" onClick={startLocate}>
-                  <LocateFixed size={17} />
-                  현재 위치 사용
+                  <span className="gps-inline-icon" aria-hidden="true"><LocateFixed size={18} /></span>
+                  <span className="gps-inline-copy">
+                    <strong>현재 위치로 찾기</strong>
+                    <small>내 주변 날씨와 추천 시간을 바로 볼게요</small>
+                  </span>
+                  <ChevronRight size={18} aria-hidden="true" />
                 </button>
 
                 <div className="saved-block">
-                  <div className="location-shelves" role="tablist" aria-label="저장 위치">
+                  <div className="saved-block-head">
+                    <strong>저장한 위치</strong>
+                    <span>자주 가는 곳을 빠르게</span>
+                  </div>
+                  <div className="location-shelves" aria-label="저장 위치 필터">
                     {locationShelves.map((shelf) => (
                       <button
                         key={shelf.key}
                         type="button"
-                        role="tab"
-                        aria-selected={locationShelf === shelf.key}
+                        aria-pressed={locationShelf === shelf.key}
                         className={`location-shelf ${locationShelf === shelf.key ? "on" : ""}`}
                         onClick={() => setLocationShelf(shelf.key)}
                       >
@@ -2029,11 +2040,14 @@ export default function Home() {
                   )}
                 </div>
 
-                {isSearching ? <p className="search-note">검색 중…</p> : null}
-                {searchNote ? <p className="search-note">{searchNote}</p> : null}
+                {isSearching || searchNote ? (
+                  <p className="search-note" role="status" aria-live="polite" aria-atomic="true">
+                    {isSearching ? "장소를 찾고 있어요…" : searchNote}
+                  </p>
+                ) : null}
 
                 {searchResults.length > 0 ? (
-                  <ul className="search-results">
+                  <ul className="search-results" aria-busy={isSearching}>
                     {searchResults.map((result, index) => {
                       const display = activity === "hike" ? { title: result.name, subtitle: result.detail } : locationDisplay(result.name, result.detail);
                       return (
