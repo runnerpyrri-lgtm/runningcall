@@ -1,4 +1,4 @@
-const CACHE_NAME = "outbom-v0.15.1";
+const CACHE_NAME = "outbom-v0.15.2";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -49,10 +49,16 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  let targetUrl = self.location.origin + "/";
+  try {
+    const candidate = new URL(event.notification.data?.url || "/", self.location.origin);
+    if (candidate.origin === self.location.origin) targetUrl = candidate.href;
+  } catch {
+    // 잘못된 알림 주소는 앱 홈으로 보낸다.
+  }
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {
         if ("focus" in client && client.url.startsWith(self.location.origin)) {
           if ("navigate" in client) await client.navigate(targetUrl);

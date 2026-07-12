@@ -1,6 +1,14 @@
 // 원본 예보(scoreForecast)의 활동별 점수화 + 대기질 결측 전파를 검증하는 테스트
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-import { dateKeyInTimezone, fetchRawForecast, scoreForecast, shiftDateKey, type RawForecast } from "@/lib/weather";
+import {
+  dateKeyInTimezone,
+  fetchRawForecast,
+  hourInTimezone,
+  scoreForecast,
+  shiftDateKey,
+  zonedDateTimeToMs,
+  type RawForecast,
+} from "@/lib/weather";
 import { ACTIVITIES } from "@/lib/activity";
 
 const raw: RawForecast = {
@@ -137,6 +145,23 @@ describe("fetchRawForecast 대기질 결측 처리", () => {
     expect(forecast.today[0].pm10).toBeNull();
     expect(forecast.today[0].pm25).toBeNull();
   });
+
+  it("핵심 기상값이 빠진 시간은 0으로 위장하지 않고 제외한다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes("air-quality")) {
+          return new Response(JSON.stringify({ hourly: { time: weatherBody.hourly.time, pm10: [10, 10, 10], pm2_5: [5, 5, 5] } }));
+        }
+        const incomplete = structuredClone(weatherBody);
+        incomplete.hourly.temperature_2m[1] = null as unknown as number;
+        return new Response(JSON.stringify(incomplete));
+      }),
+    );
+    await expect(
+      fetchRawForecast({ name: "테스트", latitude: 37, longitude: 127, source: "city" }),
+    ).rejects.toThrow("No forecast data returned for local date");
+  });
 });
 
 describe("timezone 날짜 선택", () => {
@@ -145,5 +170,24 @@ describe("timezone 날짜 선택", () => {
     expect(dateKeyInTimezone(now, "Asia/Seoul")).toBe("2026-07-11");
     expect(shiftDateKey("2026-07-11", -1)).toBe("2026-07-10");
     expect(shiftDateKey("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("같은 순간의 현지 시각을 지역별로 정확히 계산한다", () => {
+    const now = new Date("2026-07-10T16:30:00Z");
+    expect(hourInTimezone(now, "Asia/Seoul")).toBe(1);
+    expect(hourInTimezone(now, "UTC")).toBe(16);
+    expect(hourInTimezone(now, "America/New_York")).toBe(12);
+  });
+
+  it("timezone 없는 예보 시각을 해당 지역의 epoch로 변환한다", () => {
+    expect(new Date(zonedDateTimeToMs("2026-07-11T01:30", "Asia/Seoul")).toISOString()).toBe(
+      "2026-07-10T16:30:00.000Z",
+    );
+    expect(new Date(zonedDateTimeToMs("2026-07-10T16:30", "UTC")).toISOString()).toBe(
+      "2026-07-10T16:30:00.000Z",
+    );
+    expect(new Date(zonedDateTimeToMs("2026-07-10T12:30", "America/New_York")).toISOString()).toBe(
+      "2026-07-10T16:30:00.000Z",
+    );
   });
 });
