@@ -2,33 +2,33 @@
 @import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap");
 
 :root {
-  /* v0.13 "골든 카드" — 가챠 다크퍼플 + 골드, 신호등 시그널 유지 */
-  color-scheme: dark;
-  --page: #0a0812;
-  --card: #171326;
-  --ink: #eef0f6;
-  --ink-2: #c9c5da;
-  --muted: #8f88a6;
-  --line: #2a2440;
-  --brand: #a08cff;
-  --brand-deep: #8a6cf0;
-  --brand-soft: rgba(150, 120, 255, 0.16);
-  --gold: #ffce4a;
-  --gold2: #ffb52e;
-  --lime: #5fd23a;
-  --good: #2bd576;
-  --good-deep: #35d07a;
-  --warn: #ffb43d;
-  --warn-deep: #ffc35e;
-  --bad: #ff5a5f;
-  --bad-deep: #ff7a7e;
-  --orange: #ff8a3d;
-  --surface: #181226;
-  --surface-2: #1e1730;
-  /* 층진 소프트 섀도 — 다크에선 깊은 블랙 확산 */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 16px -9px rgba(0, 0, 0, 0.45);
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 18px 46px -20px rgba(0, 0, 0, 0.55);
-  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.35), 0 30px 66px -26px rgba(0, 0, 0, 0.65);
+  /* v0.14 "파스텔 프레시" — 로봄 패밀리 4안. 밝은 청록 틴트 + 신호등 시그널 유지 */
+  color-scheme: light;
+  --page: #f1f7f5;
+  --card: #ffffff;
+  --ink: #1c2b2d;
+  --ink-2: #3e5457;
+  --muted: #5e7376;
+  --line: #d9e6e2;
+  --brand: #2f95a0;
+  --brand-deep: #227784;
+  --brand-soft: rgba(47, 149, 160, 0.14);
+  --gold: #d99a1f;
+  --gold2: #b97f10;
+  --lime: #4aa835;
+  --good: #1e8a52;
+  --good-deep: #176e42;
+  --warn: #a06a10;
+  --warn-deep: #8a5a0c;
+  --bad: #c93a3e;
+  --bad-deep: #a82f33;
+  --orange: #c96a1f;
+  --surface: #e9f3f0;
+  --surface-2: #dfeeea;
+  /* 층진 소프트 섀도 — 라이트에선 옅은 청록 그림자 */
+  --shadow-sm: 0 1px 2px rgba(28, 60, 60, 0.06), 0 6px 16px -9px rgba(28, 60, 60, 0.12);
+  --shadow: 0 2px 6px rgba(28, 60, 60, 0.07), 0 18px 46px -20px rgba(28, 60, 60, 0.16);
+  --shadow-lg: 0 4px 12px rgba(28, 60, 60, 0.08), 0 30px 66px -26px rgba(28, 60, 60, 0.2);
   --r-sm: 12px;
   --r-md: 16px;
   --r-lg: 20px;
@@ -100,8 +100,8 @@ body {
   font-family: var(--sans);
   color: var(--ink);
   background:
-    radial-gradient(1100px 520px at 82% -12%, #1d1633 0%, transparent 60%),
-    radial-gradient(900px 480px at -6% 4%, #131028 0%, transparent 55%),
+    radial-gradient(1100px 520px at 82% -12%, rgba(217, 154, 31, 0.12) 0%, transparent 60%),
+    radial-gradient(900px 480px at -6% 4%, rgba(47, 149, 160, 0.1) 0%, transparent 55%),
     var(--page);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -727,7 +727,7 @@ button {
 }
 
 .status-chip:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline: 2px solid var(--brand-deep);
   outline-offset: 2px;
 }
 
@@ -994,7 +994,7 @@ button {
 }
 
 .cur-bubble {
-  fill: #0a1526;
+  fill: var(--ink);
 }
 
 .cur-text {
@@ -1075,8 +1075,8 @@ button {
 }
 
 .value-bubble rect {
-  fill: #0a1526;
-  opacity: 0.9;
+  fill: var(--ink);
+  opacity: 0.92;
 }
 
 .value-bubble text {
@@ -3190,7 +3190,7 @@ button {
   z-index: 80;
   padding: 12px 20px;
   border-radius: 999px;
-  background: #0a1526;
+  background: var(--ink);
   color: #fff;
   font-size: 0.92rem;
   font-weight: 700;
@@ -8222,3 +8222,24 @@ button {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+
+/* ---------- 로봄 패밀리 (v0.14) ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.brand-cell { display: inline-flex; align-items: baseline; font-size: 1.16rem; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); margin-right: 2px; }
+.brand-cell .bom-mark-svg { height: 1.02em; width: auto; margin-left: 0.06em; transform: translateY(0.12em); overflow: visible; }
+
+.family-footer { margin-top: 14px; border-top: 1px solid var(--line); padding: 18px 4px 8px; display: flex; flex-direction: column; gap: 12px; }
+.ff-title { margin: 0; font-size: 0.82rem; font-weight: 800; color: var(--muted); letter-spacing: 0.04em; }
+.ff-apps { display: flex; flex-direction: column; gap: 8px; }
+.ff-app { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 4px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--ink); font-weight: 800; font-size: 0.95rem; text-decoration: none; box-shadow: var(--shadow-sm); }
+.ff-app small { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+.ff-app em { margin-left: auto; font-style: normal; font-size: 0.78rem; font-weight: 800; color: var(--brand-deep); }
+.ff-dot { width: 11px; height: 11px; flex: none; }
+.ff-dot.home { border-radius: 3px; background: #d99a1f; }
+.ff-dot.run { border-radius: 999px 3px 3px 999px; background: #f35f46; }
+.ff-dot.house { border-radius: 50%; background: conic-gradient(#f35f46 0 40%, #2f95a0 40% 80%, #d99a1f 80% 100%); }
+.ff-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--muted); font-weight: 650; }
+.ff-meta a { color: var(--brand-deep); font-weight: 750; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.ff-legal { display: flex; gap: 16px; font-size: 0.8rem; }
+.ff-legal a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }

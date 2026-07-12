@@ -45,6 +45,7 @@ import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { GachaHero, TimeReel, type ReelRank } from "./gacha";
+import packageInfo from "../package.json";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
 import {
@@ -1724,12 +1725,40 @@ export default function Home() {
 
   const ready = !isLoading && view;
 
+  const BOM_PETAL =
+    "M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z";
+
   return (
     <main className="page">
       <div className="dashboard-frame">
         <section className="app-shell">
           {/* 상단 바 — 활동 선택(좌) · 동네 표시(우) */}
           <header className="top-header">
+            <span className="brand-cell" aria-label="야외봄">
+              야외<span className="sr-only">봄</span>
+              <svg className="bom-mark-svg" viewBox="0 0 200 120" aria-hidden="true" overflow="visible">
+                <g stroke="var(--ink)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" fill="none">
+                  <path d="M28 8 L28 46 M72 8 L72 46 M28 28 L72 28 M28 46 L72 46" />
+                  <path d="M10 64 L142 64 M50 64 L50 47" />
+                  <path d="M28 76 L72 76 L72 110 L28 110 Z" />
+                </g>
+                <g transform="translate(148 60) scale(1.8)" fill="var(--brand)">
+                  {[0, 72, 144, 216, 288].map((deg, i) => (
+                    <path key={deg} d={BOM_PETAL} transform={`rotate(${deg + (i % 2 ? 2 : -2)})`} />
+                  ))}
+                  <circle r="2.4" fill="var(--card)" />
+                  <circle r="1.2" fill="var(--brand)" opacity="0.5" />
+                </g>
+                {[
+                  [96, 58, 15, 0.9],
+                  [120, 52, -20, 1.0],
+                  [164, 46, 50, 1.15],
+                  [172, 62, 80, 1.0],
+                ].map(([x, y, r, k], i) => (
+                  <path key={i} d={BOM_PETAL} fill="var(--brand)" transform={`translate(${x} ${y}) rotate(${r}) scale(${k})`} />
+                ))}
+              </svg>
+            </span>
             <div className="activity-select-wrap">
               <button
                 className="activity-select"
@@ -2119,6 +2148,34 @@ export default function Home() {
               </div>
             </>
           )}
+
+          {/* 로봄 패밀리 푸터 — 에러/로딩 상태에서도 항상 노출한다 */}
+          <footer className="family-footer" aria-label="로봄 패밀리">
+            <p className="ff-title">로봄 패밀리</p>
+            <div className="ff-apps">
+              <a className="ff-app" href="https://robom-labs.github.io/homebom/">
+                <span className="ff-dot home" aria-hidden="true" />
+                청약봄<small>청약 접수 알림</small><em>웹으로 열기</em>
+              </a>
+              <a className="ff-app" href="https://robom-labs.github.io/runningbom/">
+                <span className="ff-dot run" aria-hidden="true" />
+                러닝봄<small>대회 접수 알림</small><em>웹으로 열기</em>
+              </a>
+              <a className="ff-app" href="https://robom.kr">
+                <span className="ff-dot house" aria-hidden="true" />
+                로봄 홈<small>robom.kr</small><em>바로가기</em>
+              </a>
+            </div>
+            <div className="ff-meta">
+              <span>제공: 로봄</span>
+              <span>버전 v{packageInfo.version}</span>
+              <a href="mailto:hello.robom@gmail.com" aria-label="로봄에 이메일 보내기">문의·광고 hello.robom@gmail.com</a>
+            </div>
+            <div className="ff-legal">
+              <a href="https://robom.kr/privacy">개인정보처리방침</a>
+              <a href="https://robom.kr/terms">이용약관</a>
+            </div>
+          </footer>
         </section>
       </div>
 
