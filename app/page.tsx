@@ -1873,7 +1873,7 @@ export default function Home() {
           <header className="family-appbar">
             <div className="family-brand-icon" aria-hidden="true"><Sun size={30} /></div>
             <div className="family-brand-copy">
-              <strong>야외봄 <i aria-hidden="true" /></strong>
+              <strong className="family-wordmark">야외<img className="family-bom" src="/bom-outbom.svg" alt="봄" /></strong>
               <span>robom · 바깥바람이 좋은 때</span>
             </div>
             <button className="family-icon-button" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">

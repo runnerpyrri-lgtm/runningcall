@@ -8319,6 +8319,10 @@ input:focus-visible {
   background: var(--brand);
 }
 
+/* 로봄 패밀리 공통 "봄" 마크 — 마지막 봄만 커스텀 로고, 꽃은 패밀리 톤(야외=청록) */
+.family-wordmark { gap: 2px; }
+.family-brand-copy .family-bom { height: 0.92em; width: auto; overflow: visible; }
+
 .family-brand-copy span {
   display: block;
   margin-top: 7px;
