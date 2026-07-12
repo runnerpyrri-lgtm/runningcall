@@ -550,62 +550,90 @@ function MetricSheet({
 
 // 복장 플랜 본문 — OutfitSheet(모달)과 준비 탭(인라인)에서 공유
 // 준비 탭 — 복장 상세 + 활동별 준비/주의 콘텐츠
-function PrepView({ slot, slots, activity }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey }) {
+function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey; compact?: boolean }) {
   const plan = getOutfitPlan(slots, slot, activity);
   const keyBlock = getDynamicGuideBlock(activity, slot);
-  const essentials = plan.categories.slice(0, 4);
   const keyItems = keyBlock?.items.slice(0, 2) ?? [];
-  const change = plan.changes[0];
-  const times = plan.byTime.slice(0, 3);
+  const [packedIds, setPackedIds] = useState<string[]>([]);
+  const quickItems = [...plan.packing.essential.slice(0, 2), ...plan.packing.conditional.slice(0, 1)];
+  const visibleItems = compact ? quickItems : plan.packing.essential;
+  const safetyWarning =
+    activity === "bike" && (slot.precipitation >= 0.5 || (slot.precipitationProbability ?? 0) >= 60)
+      ? { title: "비 오는 라이딩은 미루는 편이 안전해요", detail: "방수 재킷·라이트를 챙겨도 젖은 노면의 제동거리와 시야 위험은 사라지지 않아요." }
+      : activity === "hike" && (slot.weatherCode === 95 || slot.weatherCode === 96 || slot.weatherCode === 99 || slot.windSpeed >= 12)
+        ? { title: "위험 예보라 산행은 미루세요", detail: "낙뢰·강풍은 장비로 상쇄할 수 없어요. 다음 안전 시간대를 확인하세요." }
+        : null;
+
+  useEffect(() => setPackedIds([]), [activity, slot.time]);
+
+  const togglePacked = (id: string) => {
+    setPackedIds((previous) => (previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]));
+  };
 
   return (
     <section className="prep-view prep-lite" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
       <div className="prep-lite-head">
         <span>
           <Backpack size={18} />
-          오늘 준비
+          출발 전 준비
         </span>
         <b>{plan.main}</b>
         <small>
-          체감 {plan.feels.toFixed(0)}° · {plan.headline}
+          지금 추천 시간 체감 {plan.feels.toFixed(0)}°에 맞춘 최소 준비예요.
         </small>
       </div>
 
-      {keyItems.length > 0 ? (
-        <div className="prep-lite-alert" role="note">
-          <strong>{keyBlock?.heading ?? "오늘 체크"}</strong>
-          {keyItems.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
+      {safetyWarning || keyItems.length > 0 ? (
+        <div className={`prep-lite-alert${safetyWarning ? " tone-bad" : ""}`} role="note">
+          <strong>{safetyWarning?.title ?? keyBlock?.heading ?? "오늘 체크"}</strong>
+          {safetyWarning ? <span>{safetyWarning.detail}</span> : keyItems.map((item) => <span key={item}>{item}</span>)}
         </div>
       ) : null}
 
-      <div className="prep-lite-grid" aria-label="핵심 준비물">
-        {essentials.map((item) => (
-          <div className="prep-lite-card" key={item.label}>
-            <span aria-hidden="true">{item.emoji}</span>
-            <b>{item.value}</b>
-            <small>{item.label}</small>
+      <section className="prep-pack" aria-label="출발 전 체크리스트">
+        <div className="prep-pack-head">
+          <div><strong>{compact ? "이번 출발은 이것만" : "활동에 꼭 필요한 것"}</strong><small>{visibleItems.length}개 중 {visibleItems.filter((item) => packedIds.includes(item.id)).length}개 챙김</small></div>
+          <span>{ACTIVITIES[activity].short}</span>
+        </div>
+        <div className="prep-pack-list">
+          {visibleItems.map((item) => {
+            const checked = packedIds.includes(item.id);
+            return (
+              <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
+                <input type="checkbox" checked={checked} onChange={() => togglePacked(item.id)} />
+                <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
+                <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
+
+      {!compact && plan.packing.conditional.length > 0 ? (
+        <section className="prep-pack prep-pack-extra" aria-label="오늘 날씨에 따라 추가할 준비물">
+          <div className="prep-pack-head"><div><strong>오늘 날씨 때문에 추가</strong><small>현재 추천 시간 기준</small></div></div>
+          <div className="prep-pack-list">
+            {plan.packing.conditional.map((item) => {
+              const checked = packedIds.includes(item.id);
+              return (
+                <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
+                  <input type="checkbox" checked={checked} onChange={() => togglePacked(item.id)} />
+                  <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
+                  <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
+                </label>
+              );
+            })}
           </div>
-        ))}
-      </div>
-
-      {change ? (
-        <div className={`prep-lite-note tone-${change.tone}`}>
-          <span aria-hidden="true">{change.emoji}</span>
-          <b>{change.text}</b>
-        </div>
+        </section>
       ) : null}
 
-      {times.length > 0 ? (
-        <div className="prep-lite-times">
-          {times.map((time) => (
-            <span key={time.label}>
-              <b>{time.label}</b>
-              {time.main}
-            </span>
-          ))}
-        </div>
+      {!compact && plan.packing.skip.length > 0 ? (
+        <section className="prep-pack prep-pack-skip" aria-label="이번에 우선순위가 낮은 준비물">
+          <div className="prep-pack-head"><div><strong>이번엔 우선순위 낮음</strong><small>안전 장비가 불필요하다는 뜻은 아니에요</small></div></div>
+          <div className="prep-skip-list">
+            {plan.packing.skip.map((item) => <span key={item.id}>{item.emoji} {item.label} · {item.detail}</span>)}
+          </div>
+        </section>
       ) : null}
     </section>
   );
@@ -2232,7 +2260,7 @@ export default function Home() {
               {activeTab === "prep" ? (
                 <section className="family-prep-view" aria-labelledby="prep-title">
                   <div className="family-section-head"><p>{formatHour(heroSlot)} 추천 시간의 실제 예보를 기준으로 준비해요.</p><h2 id="prep-title">{isTomorrow ? "내일" : "오늘"}의 준비</h2></div>
-                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} />
+                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} compact />
                   <button ref={prepTriggerRef} className="family-secondary-button" type="button" onClick={() => setIsPrepOpen(true)}><CircleHelp size={20} /> 준비물 크게 보기</button>
                 </section>
               ) : null}

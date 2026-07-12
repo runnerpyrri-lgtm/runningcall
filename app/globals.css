@@ -9290,6 +9290,9 @@ input:focus-visible {
 .prep-lite-alert { border-color: #f0c679; background: #fff5df; border-left: 4px solid #e0a72e; }
 .prep-lite-alert strong { color: #ad6f00; }
 .prep-lite-alert span { color: #76520f; }
+.prep-lite-alert.tone-bad { border-color: color-mix(in srgb, var(--bad) 46%, var(--line)); background: color-mix(in srgb, var(--bad) 9%, var(--card)); }
+.prep-lite-alert.tone-bad strong { color: var(--bad); }
+.prep-lite-alert.tone-bad span { color: var(--ink-2); }
 .prep-lite-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .prep-lite-card { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); }
 .prep-lite-card span { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 8px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 1.2rem; }
@@ -9391,6 +9394,68 @@ input:focus-visible {
   .family-now-metrics span { min-height: 94px; }
   .family-next-best { align-items: flex-start; flex-direction: column; gap: 5px; }
   .family-next-best b { text-align: left; }
+}
+
+/* 출발 전 준비 — 활동 기본 장비와 현재 날씨 조건 장비를 짧은 체크리스트로 정리 */
+.prep-pack {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.prep-pack-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prep-pack-head strong,
+.prep-pack-head small { display: block; }
+.prep-pack-head strong { color: var(--ink); font-size: 0.94rem; font-weight: 900; }
+.prep-pack-head small { margin-top: 3px; color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+.prep-pack-head > span { padding: 5px 8px; color: var(--brand-deep); background: var(--brand-soft); border-radius: 999px; font-size: 0.72rem; font-weight: 850; }
+
+.prep-pack-list { display: grid; gap: 8px; }
+
+.prep-pack-item {
+  position: relative;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.prep-pack-item input { position: absolute; opacity: 0; pointer-events: none; }
+.prep-pack-item:focus-within { outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent); outline-offset: 2px; }
+.prep-pack-check { width: 24px; height: 24px; display: grid; place-items: center; color: white; background: var(--card); border: 2px solid var(--brand); border-radius: 8px; font-size: 0.86rem; font-weight: 950; }
+.prep-pack-copy { min-width: 0; }
+.prep-pack-copy b,
+.prep-pack-copy small { display: block; }
+.prep-pack-copy b { color: var(--ink); font-size: 0.88rem; font-weight: 900; }
+.prep-pack-copy small { margin-top: 3px; color: var(--muted); font-size: 0.73rem; font-weight: 700; line-height: 1.35; }
+.prep-pack-item.is-packed { background: color-mix(in srgb, var(--good) 9%, var(--card)); border-color: color-mix(in srgb, var(--good) 46%, var(--line)); }
+.prep-pack-item.is-packed .prep-pack-check { background: var(--good); border-color: var(--good); }
+.prep-pack-item.is-packed .prep-pack-copy b { text-decoration: line-through; text-decoration-thickness: 1px; color: var(--muted); }
+
+.prep-pack-extra { background: color-mix(in srgb, var(--brand-soft) 40%, var(--surface)); }
+.prep-pack-skip { background: color-mix(in srgb, var(--surface-2) 72%, var(--card)); }
+.prep-skip-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.prep-skip-list span { padding: 7px 9px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; font-size: 0.75rem; font-weight: 750; }
+
+@media (max-width: 420px) {
+  .prep-pack { padding: 12px; }
+  .prep-pack-item { min-height: 66px; padding: 9px 10px; }
 }
 
 /* 위치 검색 모달 — 밝은 야외봄 톤에 맞춘 검색·현재 위치·저장 위치 위계 */
