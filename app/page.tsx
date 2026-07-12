@@ -46,7 +46,9 @@ import {
   compareWithYesterday,
   findBestRemainingSlot,
   findCurrentSlot,
+  hourInTimezone,
   scoreForecast,
+  zonedDateTimeToMs,
   type LocationPoint,
   type RawForecast
 } from "@/lib/weather";
@@ -173,9 +175,9 @@ const LEAD_OPTIONS: Array<{ min: number; label: string }> = [
   { min: 60, label: "1시간 전" }
 ];
 
-// 시간 문자열("2026-07-04T21:00")을 로컬 타임스탬프로
-function slotToMs(time: string) {
-  const ms = new Date(time).getTime();
+// Open-Meteo의 timezone 없는 현지 시각을 예보 지역 기준 타임스탬프로 바꾼다.
+function slotToMs(time: string, timezone: string) {
+  const ms = zonedDateTimeToMs(time, timezone);
   return Number.isNaN(ms) ? 0 : ms;
 }
 
@@ -1307,8 +1309,8 @@ export default function Home() {
   );
   const [firedAlarm, setFiredAlarm] = useState<AlarmConfig | null>(null);
   const [isRestored, setIsRestored] = useState(false);
-  const [nowClock, setNowClock] = useState("");
   const [nowHour, setNowHour] = useState(-1);
+  const [alarmTimerEpoch, setAlarmTimerEpoch] = useState(0);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1412,13 +1414,12 @@ export default function Home() {
 
   useEffect(() => {
     const tick = () => {
-      setNowClock(new Intl.DateTimeFormat("ko-KR", { hour: "numeric", minute: "2-digit" }).format(new Date()));
-      setNowHour(new Date().getHours());
+      setNowHour(hourInTimezone(new Date(), rawForecast?.timezone));
     };
     tick();
     const id = window.setInterval(tick, 30000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [rawForecast?.timezone]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1532,10 +1533,16 @@ export default function Home() {
   // 알림 예약 — 앱이 열려 있는 동안 지정 시각에 발동
   useEffect(() => {
     const now = Date.now();
+    const rearmAfter = 24 * 3600 * 1000;
+    let needsRearm = false;
     const timers = alarms.map((alarm) => {
       const fireAt = alarm.targetMs - alarm.leadMin * 60000;
       const delay = fireAt - now;
-      if (delay <= 0 || delay > 24 * 3600 * 1000) return null;
+      if (delay <= 0) return null;
+      if (delay > rearmAfter) {
+        needsRearm = true;
+        return null;
+      }
       return window.setTimeout(() => {
         setFiredAlarm(alarm);
         if (alarm.popup && typeof Notification !== "undefined" && Notification.permission === "granted") {
@@ -1544,15 +1551,31 @@ export default function Home() {
         setAlarms((prev) => prev.filter((a) => a.id !== alarm.id));
       }, delay);
     });
+    if (needsRearm) {
+      timers.push(window.setTimeout(() => setAlarmTimerEpoch((value) => value + 1), rearmAfter));
+    }
     return () => timers.forEach((t) => (t !== null ? window.clearTimeout(t) : undefined));
-  }, [alarms]);
+  }, [alarms, alarmTimerEpoch]);
+
+  useEffect(() => {
+    const rearm = () => setAlarmTimerEpoch((value) => value + 1);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") rearm();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", rearm);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", rearm);
+    };
+  }, []);
 
   const hasTomorrow = (forecast?.tomorrow.length ?? 0) > 0;
   const isTomorrow = dayMode === "tomorrow" && hasTomorrow;
 
   const view = useMemo(() => {
     if (!forecast || forecast.slots.length === 0) return null;
-    const hour = nowHour >= 0 ? nowHour : new Date().getHours();
+    const hour = nowHour >= 0 ? nowHour : hourInTimezone(new Date(), forecast.timezone);
 
     // 추천 시각은 시간대(아침/낮/저녁) 카드와 항상 일치시킨다
     const pickBest = (parts: ReturnType<typeof getDayParts>, fallback: RunningSlot) => {
@@ -1579,9 +1602,9 @@ export default function Home() {
     }
 
     const slots = forecast.slots;
-    const current = findCurrentSlot(slots);
+    const current = findCurrentSlot(slots, hour);
     const parts = getDayParts(slots, true, hour, activity);
-    const best = pickBest(parts, findBestRemainingSlot(slots));
+    const best = pickBest(parts, findBestRemainingSlot(slots, hour));
     return {
       slots,
       timeline: [...slots, ...forecast.tomorrow], // 자정을 넘어 12시간을 이어보기 위한 연속 타임라인
@@ -1603,7 +1626,7 @@ export default function Home() {
       entries: [] as Array<{ win: RankedWindow; start: RunningSlot; label: string }>
     };
     if (!view) return empty;
-    const hour = nowHour >= 0 ? nowHour : new Date().getHours();
+    const hour = nowHour >= 0 ? nowHour : hourInTimezone(new Date(), forecast?.timezone);
     const rankedWindows = getRankedWindows(view.slots, !isTomorrow, hour, activity);
     const byHour = new Map(view.slots.map((slot) => [slot.hour, slot]));
     const entries = rankedWindows
@@ -1797,7 +1820,7 @@ export default function Home() {
       id: part.best.time,
       label: `${part.label} ${profile.label}`,
       timeLabel: part.timeLabel ?? formatHour(part.best),
-      targetMs: slotToMs(part.best.time)
+      targetMs: slotToMs(part.best.time, forecast?.timezone ?? "Asia/Seoul")
     });
   }
 

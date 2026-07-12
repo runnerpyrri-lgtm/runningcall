@@ -80,6 +80,56 @@ function numberOrNull(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function numberOrUndefined(value: number | null | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+export function hourInTimezone(date: Date, timezone: string | undefined): number {
+  try {
+    const hour = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone && timezone !== "auto" ? timezone : "UTC",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date).find((part) => part.type === "hour")?.value;
+    return Number(hour ?? "0");
+  } catch {
+    return date.getUTCHours();
+  }
+}
+
+/** timezone 없는 Open-Meteo 현지 시각을 해당 지역의 epoch ms로 변환한다. */
+export function zonedDateTimeToMs(value: string, timezone: string | undefined): number {
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) return Date.parse(value);
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return Number.NaN;
+  const [, y, m, d, hh, mm, ss = "00"] = match;
+  const wanted = Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss));
+  const tz = timezone && timezone !== "auto" ? timezone : "UTC";
+
+  try {
+    let candidate = wanted;
+    for (let pass = 0; pass < 2; pass += 1) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date(candidate));
+      const get = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((part) => part.type === type)?.value ?? "0");
+      const represented = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+      candidate += wanted - represented;
+    }
+    return candidate;
+  } catch {
+    return wanted;
+  }
+}
+
 export function dateKeyInTimezone(date: Date, timezone: string | undefined): string {
   try {
     return new Intl.DateTimeFormat("en-CA", {
@@ -162,20 +212,34 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
   const airTimes = airQuality?.hourly?.time ?? [];
   const airIndexByTime = new Map(airTimes.map((time, index) => [time, index]));
 
-  const allInputs = times.map((time, index) => {
+  const allInputs = times.flatMap((time, index) => {
     const airIndex = airIndexByTime.get(time);
+    const temperature = numberOrUndefined(weather.hourly?.temperature_2m?.[index]);
+    const humidity = numberOrUndefined(weather.hourly?.relative_humidity_2m?.[index]);
+    const uvIndex = numberOrUndefined(weather.hourly?.uv_index?.[index]);
+    const precipitation = numberOrUndefined(weather.hourly?.precipitation?.[index]);
+    const windSpeed = numberOrUndefined(weather.hourly?.wind_speed_10m?.[index]);
+    if (
+      temperature === undefined ||
+      humidity === undefined ||
+      uvIndex === undefined ||
+      precipitation === undefined ||
+      windSpeed === undefined
+    ) {
+      return [];
+    }
     const input: HourlyInput = {
       time,
-      temperature: ensureNumber(weather.hourly?.temperature_2m?.[index]),
+      temperature,
       apparentTemperature: ensureNumber(
         weather.hourly?.apparent_temperature?.[index],
-        ensureNumber(weather.hourly?.temperature_2m?.[index])
+        temperature
       ),
-      humidity: ensureNumber(weather.hourly?.relative_humidity_2m?.[index]),
-      uvIndex: ensureNumber(weather.hourly?.uv_index?.[index]),
-      precipitation: ensureNumber(weather.hourly?.precipitation?.[index]),
+      humidity,
+      uvIndex,
+      precipitation,
       precipitationProbability: numberOrNull(weather.hourly?.precipitation_probability?.[index]),
-      windSpeed: ensureNumber(weather.hourly?.wind_speed_10m?.[index]),
+      windSpeed,
       pm10: airIndex === undefined ? null : numberOrNull(airQuality?.hourly?.pm10?.[airIndex]),
       pm25: airIndex === undefined ? null : numberOrNull(airQuality?.hourly?.pm2_5?.[airIndex]),
       windGust: ensureNumber(weather.hourly?.wind_gusts_10m?.[index]),
@@ -185,7 +249,7 @@ export async function fetchRawForecast(location: LocationPoint): Promise<RawFore
       snowfall: ensureNumber(weather.hourly?.snowfall?.[index])
     };
 
-    return input;
+    return [input];
   });
 
   if (allInputs.length === 0) {
@@ -253,8 +317,7 @@ export async function fetchRunningForecast(location: LocationPoint): Promise<Run
   return scoreForecast(await fetchRawForecast(location), ACTIVITIES.run);
 }
 
-export function findCurrentSlot(slots: RunningSlot[]) {
-  const hour = new Date().getHours();
+export function findCurrentSlot(slots: RunningSlot[], hour: number) {
   let candidate = slots[0];
 
   for (const slot of slots) {
@@ -266,8 +329,7 @@ export function findCurrentSlot(slots: RunningSlot[]) {
   return candidate;
 }
 
-export function findBestRemainingSlot(slots: RunningSlot[]) {
-  const hour = new Date().getHours();
+export function findBestRemainingSlot(slots: RunningSlot[], hour: number) {
   const remaining = slots.filter((slot) => slot.hour >= hour);
   const targetSlots = remaining.length > 0 ? remaining : slots;
 
