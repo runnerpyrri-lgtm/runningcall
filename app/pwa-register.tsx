@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { publicPath } from "@/lib/public-path";
 
 export function PwaRegister() {
   useEffect(() => {
@@ -14,7 +15,7 @@ export function PwaRegister() {
       window.location.reload();
     };
     const register = () => {
-      void navigator.serviceWorker.register("/sw.js").then((registration) => {
+      void navigator.serviceWorker.register(publicPath("/sw.js")).then((registration) => {
         if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
         registration.addEventListener("updatefound", () => {
           registration.installing?.addEventListener("statechange", () => {

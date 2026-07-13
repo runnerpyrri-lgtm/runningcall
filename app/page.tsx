@@ -57,6 +57,7 @@ import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { forecastCacheAgeLabel, readForecastCache, saveForecastCache } from "@/lib/forecast-cache";
 import { FamilyWordmark } from "./family-wordmark";
+import { APP_BASE_PATH, apiPath, publicPath } from "@/lib/public-path";
 import packageInfo from "../package.json";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
@@ -202,7 +203,10 @@ function slotToMs(time: string, timezone: string) {
 async function getNotificationRegistration() {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    return (await navigator.serviceWorker.getRegistration("/")) ?? (await navigator.serviceWorker.register("/sw.js"));
+    return (
+      (await navigator.serviceWorker.getRegistration(`${APP_BASE_PATH || ""}/`)) ??
+      (await navigator.serviceWorker.register(publicPath("/sw.js")))
+    );
   } catch {
     return null;
   }
@@ -216,14 +220,14 @@ async function showRunningNotification(alarm: AlarmConfig) {
       body,
       tag: `running-alarm-${alarm.id}`,
       renotify: true,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      data: { url: "/" }
+      icon: publicPath("/icons/icon-192.png"),
+      badge: publicPath("/icons/icon-192.png"),
+      data: { url: `${APP_BASE_PATH || ""}/` }
     } as NotificationOptions;
     await registration.showNotification("야외봄", options);
     return;
   }
-  new Notification("야외봄", { body, icon: "/icons/icon-192.png" });
+  new Notification("야외봄", { body, icon: publicPath("/icons/icon-192.png") });
 }
 
 async function fetchAppForecast(location: LocationPoint) {
@@ -233,7 +237,7 @@ async function fetchAppForecast(location: LocationPoint) {
     longitude: String(location.longitude),
     source: location.source
   });
-  const response = await fetch(`/api/forecast?${params.toString()}`, {
+  const response = await fetch(apiPath(`/api/forecast?${params.toString()}`), {
     cache: "no-store",
     headers: { Accept: "application/json" }
   });
@@ -243,14 +247,14 @@ async function fetchAppForecast(location: LocationPoint) {
 
 async function fetchLocationName(latitude: number, longitude: number) {
   const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude) });
-  const response = await fetch(`/api/reverse-location?${params.toString()}`, { cache: "no-store" });
+  const response = await fetch(apiPath(`/api/reverse-location?${params.toString()}`), { cache: "no-store" });
   if (!response.ok) return "내 위치";
   const data = (await response.json()) as { name?: string };
   return data.name || "내 위치";
 }
 
 async function fetchSearch(query: string, mountainFirst = false) {
-  const response = await fetch(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`, {
+  const response = await fetch(apiPath(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`), {
     cache: "no-store"
   });
   if (response.status === 503) throw new Error("LOCATION_SEARCH_NOT_CONFIGURED");

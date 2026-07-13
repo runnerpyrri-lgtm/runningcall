@@ -1,0 +1,60 @@
+# main 반영 후 야외봄 프런트를 GitHub Pages에 배포하고 기존 Vercel API를 안전하게 재사용한다.
+name: Deploy outbom Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm typecheck && pnpm test
+
+      - name: Build GitHub Pages frontend
+        env:
+          GITHUB_PAGES: "true"
+          NEXT_PUBLIC_APP_BASE_PATH: /outbom
+          NEXT_PUBLIC_PUBLIC_ORIGIN: https://robom-labs.github.io/outbom
+          NEXT_PUBLIC_API_ORIGIN: https://outbom.robom.kr
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          mv app/api .pages-api
+          trap 'mv .pages-api app/api' EXIT
+          pnpm build
+
+      - name: Verify Pages base path
+        run: |
+          test -f out/index.html
+          grep -q '/outbom/_next/' out/index.html
+          grep -q 'https://robom-labs.github.io/outbom/' out/index.html
+
+      - name: Deploy out to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: out

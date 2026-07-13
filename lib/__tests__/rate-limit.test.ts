@@ -57,6 +57,13 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin(request)).toBe(false);
   });
 
+  it("야외봄 GitHub Pages Origin은 기존 API 호출을 허용한다", () => {
+    const request = new Request("https://outbom.robom.kr/api/forecast", {
+      headers: { host: "outbom.robom.kr", origin: "https://robom-labs.github.io" }
+    });
+    expect(isAllowedOrigin(request)).toBe(true);
+  });
+
   it("Referer만 있고 host와 일치하면 true", () => {
     const request = new Request("https://example.com/api/forecast", {
       headers: { host: "example.com", referer: "https://example.com/page" }

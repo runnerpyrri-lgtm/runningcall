@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1] - 2026-07-13
+
+- 공식 운영 화면을 `https://robom-labs.github.io/outbom/`으로 통일하고 기존 Vercel 배포는 API와 설치 사용자 호환용으로 유지했다.
+- GitHub Pages 하위 경로에서 API, PWA manifest, 서비스워커, 아이콘, 커스텀 `봄` 자산이 모두 정상 동작하도록 공개 경로를 정규화했다.
+- 앱 전체 글꼴을 Pretendard Variable로 통일하고 `야외` 접두를 브랜드 정본의 굵기 900·자간 -0.04em, `봄` 마크를 1.18em baseline 규격으로 맞췄다.
+- 서비스워커 캐시를 `outbom-v0.18.1`로 갱신했다.
+
 ## [0.18.0] - 2026-07-13
 
 ### Changed

@@ -1,22 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import { PwaRegister } from "@/app/pwa-register";
+import { PUBLIC_ORIGIN, publicPath } from "@/lib/public-path";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://outbom.robom.kr"),
+  metadataBase: new URL(`${PUBLIC_ORIGIN}/`),
   title: "야외봄 — 걷기·등산·산책·러닝·자전거, 나가기 좋은 시간",
   description:
     "기온·체감·미세먼지·자외선·강수·바람을 종합해 걷기·애견산책·러닝·등산·자전거 점수와 나가기 좋은 시간을 알려드려요.",
   applicationName: "야외봄",
   alternates: {
-    canonical: "/"
+    canonical: `${PUBLIC_ORIGIN}/`
   },
   openGraph: {
-    url: "https://outbom.robom.kr/",
+    url: `${PUBLIC_ORIGIN}/`,
     title: "야외봄 — 나가기 좋은 시간",
     description: "걷기·등산·산책·러닝·자전거에 좋은 시간과 준비물을 알려드려요."
   },
-  manifest: "/manifest.webmanifest",
+  manifest: publicPath("/manifest.webmanifest"),
   appleWebApp: {
     capable: true,
     title: "야외봄",
@@ -24,10 +25,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
+      { url: publicPath("/icons/icon-192.png"), sizes: "192x192", type: "image/png" },
+      { url: publicPath("/icons/icon-512.png"), sizes: "512x512", type: "image/png" }
     ],
-    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }]
+    apple: [{ url: publicPath("/icons/icon-192.png"), sizes: "192x192", type: "image/png" }]
   }
 };
 
@@ -39,6 +40,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        />
+      </head>
       <body>
         <PwaRegister />
         {children}

@@ -1,6 +1,6 @@
 {
   "name": "outbom",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "private": true,
   "packageManager": "pnpm@10.17.1",
   "scripts": {

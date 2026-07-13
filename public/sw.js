@@ -1,6 +1,7 @@
-const CACHE_NAME = "outbom-v0.18.0";
+const CACHE_NAME = "outbom-v0.18.1";
 const CACHE_PREFIX = "outbom-v";
-const APP_SHELL = ["/", "/manifest.webmanifest"];
+const SCOPE_PATH = new URL(self.registration.scope).pathname;
+const APP_SHELL = [SCOPE_PATH, `${SCOPE_PATH}manifest.webmanifest`];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -27,7 +28,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith(`${SCOPE_PATH}api/`)) return;
 
   event.respondWith((async () => {
     try {
@@ -41,7 +42,7 @@ self.addEventListener("fetch", (event) => {
       const cached = await caches.match(request);
       if (cached) return cached;
       if (request.mode === "navigate") {
-        const shell = await caches.match("/");
+        const shell = await caches.match(SCOPE_PATH);
         if (shell) return shell;
       }
       throw error;
@@ -51,9 +52,9 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  let targetUrl = self.location.origin + "/";
+  let targetUrl = self.registration.scope;
   try {
-    const candidate = new URL(event.notification.data?.url || "/", self.location.origin);
+    const candidate = new URL(event.notification.data?.url || SCOPE_PATH, self.location.origin);
     if (candidate.origin === self.location.origin) targetUrl = candidate.href;
   } catch {
     // 잘못된 알림 주소는 앱 홈으로 보낸다.

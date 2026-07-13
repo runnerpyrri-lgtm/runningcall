@@ -15,10 +15,10 @@
 
 ## 1단계 — 웹 상시 배포 (핵심) 🔨 거의 완료
 > 목표: **컴퓨터 꺼져도 24시간 작동.** ✅ 달성.
-> 🌐 공식 주소: **https://outbom.robom.kr**
+> 🌐 공식 주소: **https://robom-labs.github.io/outbom/**
 - ✅ GitHub 저장소 운영. 로봄 포트폴리오에서는 `robom-labs/outbom`을 정식 위치로 사용한다.
 - ✅ Vercel 연결 (push마다 자동 재배포)
-- ✅ 공식 주소 https://outbom.robom.kr 연결 (HTTPS, API·manifest 정상)
+- ✅ 공식 주소 https://robom-labs.github.io/outbom/ 연결 (HTTPS, PWA·Vercel API 정상)
 - ⏳ 카카오 REST 키 발급 → Vercel 환경변수 `KAKAO_REST_API_KEY` 등록
 - ⏳ 배포본 폰에서 접속·PWA 설치 확인
 

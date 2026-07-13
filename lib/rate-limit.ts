@@ -38,7 +38,8 @@ export function isAllowedOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (origin) {
     try {
-      return new URL(origin).host === host;
+      const originUrl = new URL(origin);
+      return originUrl.host === host || originUrl.origin === "https://robom-labs.github.io";
     } catch {
       return false;
     }
@@ -47,7 +48,8 @@ export function isAllowedOrigin(request: Request): boolean {
   const referer = request.headers.get("referer");
   if (referer) {
     try {
-      return new URL(referer).host === host;
+      const refererUrl = new URL(referer);
+      return refererUrl.host === host || refererUrl.origin === "https://robom-labs.github.io";
     } catch {
       return false;
     }
