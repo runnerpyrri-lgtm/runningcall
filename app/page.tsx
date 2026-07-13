@@ -736,6 +736,57 @@ function contactHref(kind: "일반 문의" | "광고·제휴 문의") {
   return `mailto:hello.robom@gmail.com?subject=${encodeURIComponent(subject)}`;
 }
 
+// 폰 설정 딥링크(웹 최선책): Android Chrome 계열은 intent: URI로 일부 시스템 설정을 열 수 있다.
+// 화면이 전환되지 않으면(비Android·미지원) 기기별 안내 문구로 폴백한다.
+function openAndroidSetting(action: string, onFallback: () => void) {
+  if (!/android/i.test(navigator.userAgent)) {
+    onFallback();
+    return;
+  }
+  const timer = window.setTimeout(onFallback, 1600);
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.hidden) window.clearTimeout(timer);
+    },
+    { once: true }
+  );
+  window.location.href = `intent:#Intent;action=${action};end`;
+}
+
+function SettingsDeepLinks() {
+  const [guide, setGuide] = useState<string | null>(null);
+  return (
+    <>
+      <div className="settings-deeplinks">
+        <button
+          type="button"
+          className="ghost-action"
+          onClick={() =>
+            openAndroidSetting("android.settings.APP_NOTIFICATION_SETTINGS", () =>
+              setGuide("폰 설정 → 애플리케이션 → 사용 중인 브라우저(또는 야외봄) → 알림에서 허용으로 바꿔주세요.")
+            )
+          }
+        >
+          폰 알림 설정 열기
+        </button>
+        <button
+          type="button"
+          className="ghost-action"
+          onClick={() =>
+            openAndroidSetting("android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS", () =>
+              setGuide("폰 설정 → 배터리 → 배터리 최적화(앱 절전)에서 사용 중인 브라우저를 예외로 지정하면 알림 지연이 줄어요.")
+            )
+          }
+        >
+          배터리 예외 설정 열기
+        </button>
+      </div>
+      {guide ? <p className="settings-note settings-guide" role="status">{guide}</p> : null}
+    </>
+  );
+}
+
 function SettingsView() {
   const familyApps = [
     { name: "청약봄", description: "청약 공고와 마감 알림", href: "https://robom.kr/apps/homebom", status: "웹으로 이용" },
@@ -743,12 +794,7 @@ function SettingsView() {
   ];
 
   return (
-    <div className="family-settings" aria-labelledby="settings-title">
-      <div className="family-section-head">
-        <p>앱과 로봄 패밀리 정보를 한곳에서 확인해요.</p>
-        <h2 id="settings-title">설정과 앱 정보</h2>
-      </div>
-
+    <div className="family-settings" aria-label="설정과 앱 정보">
       <section className="settings-card" aria-labelledby="about-outbom-title">
         <h3 id="about-outbom-title">야외봄은</h3>
         <p className="settings-note">
@@ -767,6 +813,7 @@ function SettingsView() {
           현재 위치는 위치 이름 확인과 날씨 조회에만 쓰이고 별도로 저장하지 않아요. 위치 권한은
           브라우저 사이트 설정에서 언제든 바꿀 수 있어요.
         </p>
+        <SettingsDeepLinks />
       </section>
 
       <section className="settings-card" aria-labelledby="family-apps-title">
@@ -798,6 +845,14 @@ function SettingsView() {
           <span><strong>광고·제휴 문의</strong><small>앱명·용도·버전이 제목에 포함돼요.</small></span>
           <ChevronRight size={19} aria-hidden="true" />
         </a>
+      </section>
+
+      <section className="settings-card" aria-labelledby="source-title">
+        <h3 id="source-title">데이터 출처</h3>
+        <p className="settings-note">
+          날씨·대기질은 Open-Meteo, 위치 검색은 Kakao Local, 지도 데이터는 OpenStreetMap
+          기여자들의 자료를 사용합니다. 예보는 참고용이며 실제 날씨와 다를 수 있어요.
+        </p>
       </section>
 
       <section className="settings-card" aria-labelledby="policy-title">
@@ -1790,6 +1845,7 @@ export default function Home() {
             </div>
           </header>
 
+          {activeTab !== "settings" ? (
           <div className="family-filter-row" aria-label="조회 조건">
             <div className="activity-select-wrap">
               <button
@@ -1841,6 +1897,7 @@ export default function Home() {
             </div>
             <LocationBar display={locationModel} pending={isLocating} onOpen={openLocationSearch} />
           </div>
+          ) : null}
 
           {/* 위치 검색 모달 */}
           {isSearchOpen ? (

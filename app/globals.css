@@ -3133,3 +3133,44 @@ input:focus-visible {
   .family-filter-row .family-day-filter { order: 3; margin-left: 0; }
   .location-bar { order: 2; flex: 1 1 auto; }
 }
+
+/* ── 로봄 패밀리 공통 설정 화면 v2 ──
+   브랜드 헤더 아래 구분선(러닝봄식), 딥링크 버튼 행, 폴백 안내, PC 2열 그리드 */
+.family-appbar {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.settings-deeplinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 18px 16px;
+}
+
+.settings-deeplinks .ghost-action {
+  min-height: 44px;
+}
+
+.settings-guide {
+  border-radius: 12px;
+  margin: 0 18px 16px;
+  padding: 10px 12px;
+  background: var(--brand-soft);
+  color: var(--ink-2);
+  font-size: 13.5px;
+}
+
+@media (min-width: 900px) {
+  .family-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 16px;
+    align-items: start;
+  }
+
+  .family-settings > .app-meta-card {
+    grid-column: 1 / -1;
+  }
+}
