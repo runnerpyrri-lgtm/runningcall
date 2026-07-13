@@ -1,4 +1,4 @@
-const CACHE_NAME = "outbom-v0.17.0";
+const CACHE_NAME = "outbom-v0.17.1";
 const CACHE_PREFIX = "outbom-v";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 

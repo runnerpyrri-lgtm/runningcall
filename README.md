@@ -4,7 +4,9 @@
 
 로봄의 야외활동 앱입니다. 기존 러닝콜의 기능과 사용자 설정을 그대로 이어받습니다.
 
-배포: https://runningcall.vercel.app
+공식 배포: https://outbom.robom.kr
+
+호환 주소: https://runningcall.vercel.app
 
 ## 실행
 
