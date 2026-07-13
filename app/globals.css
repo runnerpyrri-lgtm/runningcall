@@ -57,10 +57,7 @@ body {
 body {
   font-family: var(--sans);
   color: var(--ink);
-  background:
-    radial-gradient(1100px 520px at 82% -12%, #1d1633 0%, transparent 60%),
-    radial-gradient(900px 480px at -6% 4%, #131028 0%, transparent 55%),
-    var(--page);
+  background: var(--page);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
@@ -105,65 +102,6 @@ button {
 /* ---------- header ---------- */
 
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-}
-
-
-.brand p {
-  margin: 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.brand strong {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 1.08rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.22;
-  word-break: keep-all;
-}
-
-
-.select-wrap {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 42px;
-  min-width: 132px;
-  padding: 0 12px;
-  border-radius: 13px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
-  color: var(--brand);
-}
-
-.select-wrap select {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-weight: 700;
-  color: var(--ink);
-  min-width: 0;
-  outline-offset: 3px;
-}
-
-
-.select-wrap select:focus-visible,
 .primary-action:focus-visible,
 .ghost-action:focus-visible,
 .modal-close:focus-visible {
@@ -190,36 +128,7 @@ button {
 }
 
 /* ---------- ads ---------- */
-.side-ad {
-  border: 1.5px dashed #c3cfe2;
-  border-radius: 15px;
-  background: repeating-linear-gradient(135deg, var(--surface-2), var(--surface-2) 10px, var(--surface-2) 10px, var(--surface-2) 20px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: #93a1b8;
-  font-weight: 700;
-  font-size: 0.78rem;
-}
 
-.side-ad {
-  position: sticky;
-  top: 22px;
-  min-height: 520px;
-  flex-direction: column;
-}
-
-
-.side-ad span {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.12em;
-  color: #aab6cc;
-  border: 1px solid #cfd9ea;
-  padding: 2px 7px;
-  border-radius: 6px;
-}
 
 /* ---------- notices ---------- */
 .notice {
@@ -971,19 +880,10 @@ button {
 }
 
 /* ---------- responsive ---------- */
-.side-ad {
-  display: none;
-}
 
 @media (max-width: 620px) {
   .page {
     padding: 14px 12px 34px;
-  }
-
-
-  .brand strong {
-    max-width: calc(100vw - 184px);
-    font-size: 1.05rem;
   }
 
 
@@ -1279,13 +1179,6 @@ button {
 
 
 /* ---------- drawer (좌측 메뉴) ---------- */
-
-
-@keyframes slide-right {
-  from {
-    transform: translateX(-100%);
-  }
-}
 
 
 /* ---------- guide sheet ---------- */

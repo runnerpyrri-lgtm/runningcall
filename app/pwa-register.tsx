@@ -8,9 +8,12 @@ export function PwaRegister() {
     if (!("serviceWorker" in navigator)) return;
     if (process.env.NODE_ENV !== "production") return;
 
+    // 첫 방문 설치(clients.claim) 때도 controllerchange가 발생한다 —
+    // 이미 controller가 있던 세션(=실제 새 버전 교체)에서만 리로드한다.
+    const hadController = Boolean(navigator.serviceWorker.controller);
     let refreshing = false;
     const onControllerChange = () => {
-      if (refreshing) return;
+      if (!hadController || refreshing) return;
       refreshing = true;
       window.location.reload();
     };

@@ -1,4 +1,4 @@
-const CACHE_NAME = "outbom-v0.22.0";
+const CACHE_NAME = "outbom-v0.22.1";
 const CACHE_PREFIX = "outbom-v";
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const APP_SHELL = [SCOPE_PATH, `${SCOPE_PATH}manifest.webmanifest`];
@@ -33,9 +33,14 @@ self.addEventListener("fetch", (event) => {
   event.respondWith((async () => {
     try {
       const response = await fetch(request);
-      if (response.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put(request, response.clone());
+      if (response.ok && response.status === 200) {
+        // 캐시 저장 실패(quota 초과·206 부분응답 등)가 성공한 네트워크 응답까지 망치지 않게 한다.
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        } catch {
+          // 저장만 건너뛴다.
+        }
       }
       return response;
     } catch (error) {

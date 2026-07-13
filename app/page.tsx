@@ -35,7 +35,6 @@ import { getOutfitPlan, getPackingPlan, type ActivityDuration, type PackingCateg
 import {
   buildActivityDaySummary,
   fmtAmPm,
-  formatHourNum,
   formatTwoHourWindow,
   getDayParts,
   getMetricDetail,
@@ -225,6 +224,14 @@ async function showRunningNotification(alarm: AlarmConfig) {
   new Notification("야외봄", { body, icon: publicPath("/icons/icon-192.png") });
 }
 
+// 서버 라우트에는 타임아웃이 있지만 클라이언트에도 상한을 둔다 —
+// 연결이 매달리면 스켈레톤이 브라우저 기본 타임아웃(수 분)까지 지속되는 것을 막는다.
+function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer));
+}
+
 async function fetchAppForecast(location: LocationPoint) {
   const params = new URLSearchParams({
     name: location.name,
@@ -232,7 +239,7 @@ async function fetchAppForecast(location: LocationPoint) {
     longitude: String(location.longitude),
     source: location.source
   });
-  const response = await fetch(apiPath(`/api/forecast?${params.toString()}`), {
+  const response = await fetchWithTimeout(apiPath(`/api/forecast?${params.toString()}`), {
     cache: "no-store",
     headers: { Accept: "application/json" }
   });
@@ -242,14 +249,14 @@ async function fetchAppForecast(location: LocationPoint) {
 
 async function fetchLocationName(latitude: number, longitude: number) {
   const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude) });
-  const response = await fetch(apiPath(`/api/reverse-location?${params.toString()}`), { cache: "no-store" });
+  const response = await fetchWithTimeout(apiPath(`/api/reverse-location?${params.toString()}`), { cache: "no-store" });
   if (!response.ok) return { name: "내 위치", detail: undefined };
   const data = (await response.json()) as ReverseLocationResponse;
   return readReverseLocation(data);
 }
 
 async function fetchSearch(query: string, mountainFirst = false) {
-  const response = await fetch(apiPath(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`), {
+  const response = await fetchWithTimeout(apiPath(`/api/search-location?query=${encodeURIComponent(query)}${mountainFirst ? "&mountain=1" : ""}`), {
     cache: "no-store"
   });
   if (response.status === 503) throw new Error("LOCATION_SEARCH_NOT_CONFIGURED");
@@ -294,167 +301,42 @@ function windowSlots(timeline: RunningSlot[], currentTime: string | null) {
   return win.length >= 6 ? win : timeline.slice(Math.max(0, timeline.length - 13));
 }
 
-function TimelineChart({
-  slots,
-  metric,
-  currentTime,
-  bestTime,
-  worstTime,
-  selectedTime,
-  onSelectTime
-}: {
-  slots: RunningSlot[];
-  metric: (typeof METRICS)[number];
-  currentTime: string | null;
-  bestTime: string | null;
-  worstTime: string | null;
-  selectedTime?: string;
-  onSelectTime?: (time: string) => void;
-}) {
-  const width = 346;
-  const height = 224;
-  const padL = 30;
-  const padR = 16;
-  const top = 30;
-  const bottom = 34;
-  const chartHeight = height - top - bottom;
-  const baseY = height - bottom;
-
-  const values = slots.map((slot) => metric.read(slot));
-  const nonNegative = Math.min(...values) >= 0;
-  let min = Math.min(...values);
-  let max = Math.max(...values);
-  if (max - min < 0.8) {
-    const mid = (min + max) / 2;
-    min = nonNegative ? Math.max(0, mid - 2) : mid - 2;
-    max = mid + 2;
-  } else {
-    const pad = (max - min) * 0.18;
-    min -= pad;
-    max += pad;
-    if (nonNegative && min < 0) min = 0;
-  }
-  const span = max - min || 1;
-  const yTicks = [0, 0.5, 1].map((r) => ({ y: top + chartHeight - r * chartHeight, v: Math.round(min + span * r) }));
-
-  const step = (width - padL - padR) / Math.max(slots.length - 1, 1);
-  const points = slots.map((slot, index) => {
-    const value = metric.read(slot);
-    const x = padL + index * step;
-    const y = top + chartHeight - ((value - min) / span) * chartHeight;
-    return { x, y, slot, value };
-  });
-
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baseY} L ${points[0].x.toFixed(1)} ${baseY} Z`;
-
-  const currentPoint = currentTime ? points.find((p) => p.slot.time === currentTime) ?? null : null;
-  const bestPoint = bestTime ? points.find((p) => p.slot.time === bestTime) ?? null : null;
-  const worstPoint = worstTime ? points.find((p) => p.slot.time === worstTime) ?? null : null;
-  const selPoint = selectedTime ? points.find((p) => p.slot.time === selectedTime) ?? null : null;
-  const labelEvery = points.length > 9 ? 3 : 2;
-  const fmtVal = (v: number) => (Math.abs(v) < 12 ? v.toFixed(1) : Math.round(v).toString());
-
-  const bubble = (p: { x: number; y: number; value: number }, cls: string, above: boolean) => (
-    <g
-      transform={`translate(${Math.min(Math.max(p.x, 24), width - 24)}, ${
-        above ? Math.max(p.y - 13, 15) : Math.min(p.y + 27, baseY - 2)
-      })`}
-    >
-      <rect className={cls} x="-21" y="-14" width="42" height="19" rx="7" />
-      <text className="bubble-text" x="0" y="-0.5" textAnchor="middle">
-        {fmtVal(p.value)}
-      </text>
-    </g>
-  );
-
-  return (
-    <div className="graph-wrap">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${metric.label} 시간대별 그래프`}>
-        <defs>
-          <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#2f6bff" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#2f6bff" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-
-        {yTicks.map((tick) => (
-          <g key={tick.y}>
-            <line className="grid-line" x1={padL} x2={width - padR} y1={tick.y} y2={tick.y} />
-            <text className="axis-label" x={padL - 7} y={tick.y + 3.5} textAnchor="end">
-              {tick.v}
-            </text>
-          </g>
-        ))}
-
-        {currentPoint ? (
-          <line className="current-line" x1={currentPoint.x} x2={currentPoint.x} y1={top - 4} y2={baseY} />
-        ) : null}
-
-        <path className="chart-area" d={areaPath} fill="url(#areaFill)" />
-        <path className="chart-line" d={linePath} stroke="#2f6bff" />
-
-        {points.map((p) => (
-          <circle key={p.slot.time} className="dot" cx={p.x} cy={p.y} r="2.4" />
-        ))}
-
-        {points.map((p, index) =>
-          index % labelEvery === 0 || index === points.length - 1 ? (
-            <text key={`x-${p.slot.time}`} className="hour-label" x={p.x} y={baseY + 17} textAnchor="middle">
-              {String(p.slot.hour).padStart(2, "0")}
-            </text>
-          ) : null
-        )}
-
-        {worstPoint ? (
-          <>
-            <circle className="mark-halo mark-worst" cx={worstPoint.x} cy={worstPoint.y} r="11" />
-            <circle className="mark-dot mark-worst" cx={worstPoint.x} cy={worstPoint.y} r="4.5" />
-            {bubble(worstPoint, "bubble-worst", false)}
-          </>
-        ) : null}
-
-        {bestPoint ? (
-          <>
-            <circle className="mark-halo mark-best" cx={bestPoint.x} cy={bestPoint.y} r="11" />
-            <circle className="mark-dot mark-best" cx={bestPoint.x} cy={bestPoint.y} r="4.5" />
-            {bubble(bestPoint, "bubble-best", true)}
-          </>
-        ) : null}
-
-        {currentPoint ? (
-          <text className="now-tag" x={currentPoint.x} y={top - 8} textAnchor="middle">
-            지금
-          </text>
-        ) : null}
-
-        {/* 선택한 시각 = 움직이는 세로 바 + 값 말풍선 */}
-        {selPoint ? (
-          <>
-            <line className="sel-line" x1={selPoint.x} x2={selPoint.x} y1={top - 4} y2={baseY} />
-            <circle className="sel-dot" cx={selPoint.x} cy={selPoint.y} r="6" />
-            {bubble(selPoint, "sel-bubble", selPoint.y > top + chartHeight / 2)}
-          </>
-        ) : null}
-
-        {/* 탭 영역 — 시간을 눌러 값 확인 */}
-        {onSelectTime
-          ? points.map((p) => (
-              <rect
-                key={`tap-${p.slot.time}`}
-                x={p.x - step / 2}
-                y={top - 8}
-                width={step}
-                height={chartHeight + 16}
-                fill="transparent"
-                style={{ cursor: "pointer" }}
-                onClick={() => onSelectTime(p.slot.time)}
-              />
-            ))
-          : null}
-      </svg>
-    </div>
-  );
+// 바텀시트 공용 접근성 — 열릴 때 시트로 focus 이동, Tab 순환, Escape 닫기, 닫히면 연 요소로 복귀.
+// (PrecipitationSheet와 동일한 규칙 — 시트 간 접근성 불일치 방지)
+function useSheetA11y(sheetRef: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const sheet = sheetRef.current;
+    const first = sheet?.querySelector<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])');
+    first?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = Array.from(
+        sheetRef.current?.querySelectorAll<HTMLElement>('button, [href], input, select, [tabindex]:not([tabindex="-1"])') ?? []
+      );
+      if (items.length === 0) return;
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 function MetricSheet({
@@ -484,10 +366,12 @@ function MetricSheet({
   const isNowSel = currentTime != null && selTime === currentTime;
   const detail = getMetricDetail(sheetKey, selSlot, activity);
   const metricSummary = summarizeMetric(chart, metric, activity);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useSheetA11y(sheetRef, onClose);
 
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={`${detail.title} 상세`} onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
+      <div ref={sheetRef} className="sheet" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-topbar">
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
@@ -665,10 +549,12 @@ function AlarmSheet({
   const [popup, setPopup] = useState(existing ? existing.popup : false);
   const fireMs = target.targetMs - leadMin * 60000;
   const tooLate = fireMs <= Date.now();
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useSheetA11y(sheetRef, onClose);
 
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="알림 설정" onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
+      <div ref={sheetRef} className="sheet" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-topbar">
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" type="button" onClick={onClose} aria-label="닫기">
@@ -725,11 +611,6 @@ function AlarmSheet({
       </div>
     </div>
   );
-}
-
-function AdSlot({ side }: { side?: "left" | "right" }) {
-  if (!side) return null;
-  return <aside className={`side-ad side-ad-${side}`} aria-label="광고 자리, 현재 비활성"><span>광고</span><strong>사이드 배너 준비 중</strong></aside>;
 }
 
 function contactHref(kind: "일반 문의" | "광고·제휴 문의") {
@@ -1127,6 +1008,7 @@ export default function Home() {
   const [activityLocationsRestored, setActivityLocationsRestored] = useState(false);
 
   const forecastReqId = useRef(0);
+  const searchReqId = useRef(0);
   const activityMenuRef = useRef<HTMLDivElement | null>(null);
   const activityTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchDialogRef = useRef<HTMLDivElement | null>(null);
@@ -1278,7 +1160,9 @@ export default function Home() {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  // 저장된 알림 복원 (지난 것 정리)
+  // 저장된 알림 복원 (지난 것 정리). 복원이 끝나기 전에는 저장하지 않는다 —
+  // 첫 커밋의 빈 배열이 저장값을 덮어써 복원 실패 시 알림이 영구 소실되는 것을 막는다.
+  const alarmsRestored = useRef(false);
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(ALARM_KEY);
@@ -1289,10 +1173,13 @@ export default function Home() {
       }
     } catch {
       // 무시
+    } finally {
+      alarmsRestored.current = true;
     }
   }, []);
 
   useEffect(() => {
+    if (!alarmsRestored.current) return;
     try {
       window.localStorage.setItem(ALARM_KEY, JSON.stringify(alarms));
     } catch {
@@ -1300,7 +1187,8 @@ export default function Home() {
     }
   }, [alarms]);
 
-  // 저장한 위치(즐겨찾기·최근) 복원·저장
+  // 저장한 위치(즐겨찾기·최근) 복원·저장 — 복원 완료 전 저장 금지(알림과 동일한 이유)
+  const savedRestored = useRef(false);
   useEffect(() => {
     try {
       const s = window.localStorage.getItem(SAVED_KEY);
@@ -1310,10 +1198,13 @@ export default function Home() {
       }
     } catch {
       // 무시
+    } finally {
+      savedRestored.current = true;
     }
   }, []);
 
   useEffect(() => {
+    if (!savedRestored.current) return;
     try {
       window.localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
     } catch {
@@ -1593,21 +1484,25 @@ export default function Home() {
       setSearchNote("두 글자 이상 입력해 주세요.");
       return;
     }
+    // 연속 검색 시 늦게 도착한 이전 쿼리 응답이 최신 결과를 덮지 않게 한다.
+    const reqId = ++searchReqId.current;
     setIsSearching(true);
     setSearchNote("");
     try {
       // 동네명 게이트 제거 — 역명·도로명·건물명도 그대로 검색한다 (서버가 주소·키워드 검색을 함께 수행).
       const results = await fetchSearch(trimmed, activity === "hike");
+      if (searchReqId.current !== reqId) return;
       setSearchResults(results);
       setSearchNote(results.length === 0 ? "검색 결과가 없어요. 다른 검색어로 시도해 보세요." : "");
     } catch (searchError) {
+      if (searchReqId.current !== reqId) return;
       setSearchNote(
         searchError instanceof Error && searchError.message === "LOCATION_SEARCH_NOT_CONFIGURED"
           ? "위치 검색 연결을 준비 중이에요. 현재 위치 버튼을 사용해 주세요."
           : "위치 검색이 일시적으로 불안정해요. 잠시 후 다시 시도해 주세요."
       );
     } finally {
-      setIsSearching(false);
+      if (searchReqId.current === reqId) setIsSearching(false);
     }
   }
 
@@ -1806,9 +1701,14 @@ export default function Home() {
     blocked: "권한 차단됨"
   };
 
-  // 일출·일몰은 기기 시간대가 아니라 예보 지역 시각으로 표기한다.
-  const sunrise = forecast ? formatLocalClock(forecast.sunrise, forecast.timezone) : null;
-  const sunset = forecast ? formatLocalClock(forecast.sunset, forecast.timezone) : null;
+  // 일출·일몰은 기기 시간대가 아니라 예보 지역 시각으로 표기하고,
+  // 내일 탭에서는 내일 값을 쓴다 (하산 시간 판단이 하루 어긋나지 않게).
+  const sunrise = forecast
+    ? formatLocalClock(isTomorrow ? forecast.sunriseTomorrow : forecast.sunrise, forecast.timezone)
+    : null;
+  const sunset = forecast
+    ? formatLocalClock(isTomorrow ? forecast.sunsetTomorrow : forecast.sunset, forecast.timezone)
+    : null;
   const locationModel = buildLocationDisplay(location.name, location.detail);
   const locationLabel = locationModel.title;
   const ready = Boolean(view);
@@ -1825,7 +1725,6 @@ export default function Home() {
       sunsetLabel: sunset
     });
   }, [activity, isTomorrow, recommendation.entries, sunset, view]);
-  const heroPlan = view && heroSlot ? getOutfitPlan(view.slots, heroSlot, activity) : null;
   const nowSlot = !isTomorrow && view ? view.reference : heroSlot;
   const nowDecision = nowSlot ? getGoNowDecision(nowSlot, profile) : null;
   const nowRainProbability = nowSlot?.precipitationProbability ?? null;
@@ -1835,12 +1734,6 @@ export default function Home() {
   const nowAirDetail = nowSlot?.pm25 === null || nowSlot?.pm25 === undefined ? "미세먼지" : `미세먼지 · ${gradePm25(nowSlot.pm25).label}`;
   const nowFeelGrade = nowSlot ? gradeTemperature(nowSlot.apparentTemperature) : { label: "정보 없음", tone: "normal" as const };
   const nowWindGrade = nowSlot ? gradeWind(nowSlot.windSpeed) : { label: "정보 없음", tone: "normal" as const };
-  const heroAir = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "정보 없음" : gradePm25(heroSlot.pm25).label;
-  const heroRain = heroSlot ? `${Math.round(heroSlot.precipitationProbability ?? 0)}%` : "—";
-  // 오늘 카드 지표에 색+라벨(색각 접근성)로 상태를 함께 표기하기 위한 등급 톤
-  const heroAirTone = heroSlot?.pm25 === null || heroSlot?.pm25 === undefined ? "normal" : gradePm25(heroSlot.pm25).tone;
-  const heroFeelTone = heroSlot ? gradeTemperature(heroSlot.apparentTemperature).tone : "normal";
-  const heroRainTone = heroSlot ? gradePrecipitation(heroSlot.precipitation, heroSlot.precipitationProbability ?? 0).tone : "normal";
 
   return (
     <main className="page">
@@ -2140,7 +2033,6 @@ export default function Home() {
                       <button type="button" onClick={() => openAlarm({ label: "추천 시간", best: heroSlot })}><BellRing size={20} /> 추천 시간 알림</button>
                     </div>
                   </section>
-                  <AdSlot />
                 </>
               ) : null}
 
