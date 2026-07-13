@@ -34,7 +34,7 @@ describe("활동별 최적 준비물", () => {
     const slot = makeSlot({ apparentTemperature: 29, uvIndex: 7 });
     const plan = getOutfitPlan([slot], slot, "run");
 
-    expect(plan.packing.essential.map((item) => item.id)).toEqual(["run-shoes", "run-belt"]);
+    expect(plan.packing.essential.map((item) => item.id)).toEqual(["run-shoes", "run-socks", "run-belt"]);
     expect(plan.packing.conditional.map((item) => item.id)).toContain("hot-hydration");
     expect(plan.packing.conditional.some((item) => item.label === "러닝 고글")).toBe(true);
   });
@@ -52,7 +52,7 @@ describe("활동별 최적 준비물", () => {
     const slot = makeSlot({ apparentTemperature: 4, windSpeed: 9 });
     const plan = getOutfitPlan([slot], slot, "hike");
 
-    expect(plan.packing.essential.map((item) => item.id)).toEqual(["hike-water", "hike-foot"]);
+    expect(plan.packing.essential.map((item) => item.id)).toEqual(["hike-water", "hike-foot", "hike-route"]);
     expect(plan.packing.conditional.some((item) => item.label === "정상용 겉옷")).toBe(true);
   });
 

@@ -202,27 +202,32 @@ function getPackingPlan(current: RunningSlot, activity: ActivityKey): PackingPla
   if (activity === "run") {
     essential.push(
       { id: "run-shoes", emoji: "👟", label: "러닝화", detail: "쿠션 러닝화", reason: "발·무릎 부담을 줄이는 가장 기본 장비예요." },
-      { id: "run-belt", emoji: "🎽", label: "러닝 벨트", detail: "휴대폰·열쇠 수납", reason: "주머니를 비우면 자세와 리듬이 편해져요." }
+      { id: "run-socks", emoji: "🧦", label: "기능성 양말", detail: "땀 배출·쓸림 예방", reason: "발이 젖거나 쓸리는 불편을 줄여줘요." },
+      { id: "run-belt", emoji: "🎽", label: "러닝 벨트", detail: "휴대폰·신분·열쇠", reason: "비상 연락 수단을 챙기고 주머니는 가볍게 유지해요." }
     );
   } else if (activity === "bike") {
     essential.push(
       { id: "bike-helmet", emoji: "⛑️", label: "헬멧", detail: "턱끈까지 확인", reason: "짧은 라이딩도 헬멧은 가장 먼저 챙겨요." },
-      { id: "bike-check", emoji: "🛞", label: "출발 점검", detail: "브레이크·공기압", reason: "출발 전 30초 점검이 고장을 줄여줘요." }
+      { id: "bike-check", emoji: "🛞", label: "출발 점검", detail: "브레이크·공기압", reason: "출발 전 30초 점검이 고장을 줄여줘요." },
+      { id: "bike-repair", emoji: "🧰", label: "기본 수리 도구", detail: "펑크 패치·펌프", reason: "장거리에서는 작은 펑크도 귀가를 어렵게 만들 수 있어요." }
     );
   } else if (activity === "hike") {
     essential.push(
       { id: "hike-water", emoji: "💧", label: "물·행동식", detail: "물 + 간식", reason: "산에서는 수분과 에너지가 곧 안전이에요." },
-      { id: "hike-foot", emoji: "🥾", label: "등산화·스틱", detail: "접지·무릎 보호", reason: "오르내릴 때 미끄럼과 무릎 부담을 줄여줘요." }
+      { id: "hike-foot", emoji: "🥾", label: "등산화·스틱", detail: "접지·무릎 보호", reason: "오르내릴 때 미끄럼과 무릎 부담을 줄여줘요." },
+      { id: "hike-route", emoji: "🗺️", label: "경로·비상 준비", detail: "오프라인 지도·보조배터리", reason: "통신이 불안한 구간에서도 길과 연락 수단을 지켜줘요." }
     );
   } else if (activity === "dog") {
     essential.push(
-      { id: "dog-leash", emoji: "🦮", label: "리드줄·배변봉투", detail: "산책 기본", reason: "안전한 거리 유지와 기본 매너에 필요해요." },
+      { id: "dog-leash", emoji: "🦮", label: "리드줄·하네스", detail: "연결부까지 확인", reason: "사람과 차량에서 안전한 거리를 유지해요." },
+      { id: "dog-waste", emoji: "🧻", label: "배변봉투", detail: "여분까지", reason: "산책 기본 매너를 지키는 필수 준비예요." },
       { id: "dog-water", emoji: "🥣", label: "물·접이식 그릇", detail: "강아지 수분", reason: "더위가 아니어도 중간 수분 보충이 좋아요." }
     );
   } else {
     essential.push(
       { id: "walk-shoes", emoji: "👟", label: "편한 운동화", detail: "접지 좋은 신발", reason: "발 피로와 젖은 길 미끄럼을 줄여줘요." },
-      { id: "walk-carry", emoji: "👜", label: "가벼운 소지품", detail: "휴대폰·물", reason: "주머니를 가볍게 하고 수분만 챙기면 충분해요." }
+      { id: "walk-carry", emoji: "📱", label: "휴대폰·신분", detail: "비상 연락", reason: "가까운 산책도 연락 수단은 챙겨요." },
+      { id: "walk-water", emoji: "💧", label: "작은 물병", detail: "필요한 만큼", reason: "오래 걷거나 더운 날 수분을 바로 보충해요." }
     );
   }
 

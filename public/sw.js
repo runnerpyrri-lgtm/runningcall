@@ -1,4 +1,4 @@
-const CACHE_NAME = "outbom-v0.15.2";
+const CACHE_NAME = "outbom-v0.16.0";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

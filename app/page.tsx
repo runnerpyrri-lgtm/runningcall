@@ -39,6 +39,7 @@ import {
   getMetricDetail,
   getRankedWindows,
   heroHeadline,
+  isUnsafeOutdoorSlot,
   type MetricKey as DetailKey,
   type RankedWindow
 } from "@/lib/insights";
@@ -66,6 +67,7 @@ import {
   gradeTemperature,
   gradeUv,
   gradeWind,
+  scoreTone,
   type RunningSlot
 } from "@/lib/scoring";
 
@@ -86,6 +88,18 @@ const DEFAULT_LOCATION: LocationPoint = {
 
 // 현재 시각의 예보를 점수와 별개로 짧게 설명해, 바로 출발해도 되는지 먼저 판단하게 한다.
 function getGoNowDecision(slot: RunningSlot, profile: (typeof ACTIVITIES)[ActivityKey]): GoNowDecision {
+  if (isUnsafeOutdoorSlot(slot, profile.key)) {
+    if ((slot.weatherCode ?? 0) >= 95) {
+      return { tone: "bad", title: "낙뢰 예보라 오늘은 미루세요", detail: "낙뢰는 장비로 상쇄할 수 없어요. 실내 활동이나 다음 안전 시간대를 선택하세요." };
+    }
+    if ((slot.windGust ?? slot.windSpeed) >= 14) {
+      return { tone: "bad", title: "돌풍이 강해 지금은 미루세요", detail: "균형과 시야가 흔들릴 수 있어요. 바람이 잦아든 뒤 다시 확인하세요." };
+    }
+    if (slot.apparentTemperature >= 38) {
+      return { tone: "bad", title: "위험한 더위라 지금은 쉬세요", detail: "그늘과 수분을 먼저 확보하고, 훨씬 선선한 시간으로 미루세요." };
+    }
+    return { tone: "bad", title: "공기 상태가 나빠 지금은 미루세요", detail: "장비보다 활동 시간과 강도를 줄이는 것이 우선이에요." };
+  }
   const rainProbability = slot.precipitationProbability;
   if (slot.precipitation >= 0.5 || (rainProbability !== null && rainProbability >= 70)) {
     return { tone: "bad", title: "비 때문에 지금은 미루세요", detail: "노면과 시야가 불편할 수 있어요. 비가 약해진 뒤 출발하세요." };
@@ -249,6 +263,31 @@ function fmtAmPm(hour: number) {
   const ap = h < 12 ? "오전" : "오후";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${ap} ${h12}시`;
+}
+
+function formatForecastMoment(time: string, tomorrow: boolean) {
+  const hour = Number(time.match(/T(\d{2}):/)?.[1]);
+  return `${tomorrow ? "내일" : "오늘"} · ${Number.isFinite(hour) ? fmtAmPm(hour) : "시각 확인"} 예보`;
+}
+
+function scoreLabel(score: number) {
+  return {
+    excellent: "매우 좋음",
+    good: "좋음",
+    fair: "보통",
+    caution: "주의",
+    bad: "나쁨"
+  }[scoreTone(score)];
+}
+
+function packingPriority(id: string) {
+  if (id === "rain-gear") return 100;
+  if (id === "visibility") return 95;
+  if (id === "wind-layer") return 90;
+  if (id === "dust-mask") return 85;
+  if (id === "hot-hydration") return 80;
+  if (id === "sun-eye") return 70;
+  return 0;
 }
 
 function formatClock(value: string | null) {
@@ -552,12 +591,28 @@ function MetricSheet({
 
 // 복장 플랜 본문 — OutfitSheet(모달)과 준비 탭(인라인)에서 공유
 // 준비 탭 — 복장 상세 + 활동별 준비/주의 콘텐츠
-function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlot; slots: RunningSlot[]; activity: ActivityKey; compact?: boolean }) {
+function PrepView({
+  slot,
+  slots,
+  activity,
+  packedIds,
+  onTogglePacked,
+  compact = false
+}: {
+  slot: RunningSlot;
+  slots: RunningSlot[];
+  activity: ActivityKey;
+  packedIds: string[];
+  onTogglePacked: (id: string) => void;
+  compact?: boolean;
+}) {
   const plan = getOutfitPlan(slots, slot, activity);
   const keyBlock = getDynamicGuideBlock(activity, slot);
   const keyItems = keyBlock?.items.slice(0, 2) ?? [];
-  const [packedIds, setPackedIds] = useState<string[]>([]);
-  const quickItems = [...plan.packing.essential.slice(0, 2), ...plan.packing.conditional.slice(0, 1)];
+  const prioritizedConditional = [...plan.packing.conditional].sort((a, b) => packingPriority(b.id) - packingPriority(a.id));
+  const safetyItems = prioritizedConditional.filter((item) => packingPriority(item.id) >= 85);
+  const weatherItems = prioritizedConditional.filter((item) => packingPriority(item.id) < 85);
+  const quickItems = [...plan.packing.essential.slice(0, 2), ...prioritizedConditional.slice(0, 1)];
   const visibleItems = compact ? quickItems : plan.packing.essential;
   const safetyWarning =
     activity === "bike" && (slot.precipitation >= 0.5 || (slot.precipitationProbability ?? 0) >= 60)
@@ -565,12 +620,6 @@ function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlo
       : activity === "hike" && (slot.weatherCode === 95 || slot.weatherCode === 96 || slot.weatherCode === 99 || slot.windSpeed >= 12)
         ? { title: "위험 예보라 산행은 미루세요", detail: "낙뢰·강풍은 장비로 상쇄할 수 없어요. 다음 안전 시간대를 확인하세요." }
         : null;
-
-  useEffect(() => setPackedIds([]), [activity, slot.time]);
-
-  const togglePacked = (id: string) => {
-    setPackedIds((previous) => (previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]));
-  };
 
   return (
     <section className="prep-view prep-lite" aria-label={`${ACTIVITIES[activity].terms.outfitTitle}`}>
@@ -594,7 +643,7 @@ function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlo
 
       <section className="prep-pack" aria-label="출발 전 체크리스트">
         <div className="prep-pack-head">
-          <div><strong>{compact ? "이번 출발은 이것만" : "활동에 꼭 필요한 것"}</strong><small>{visibleItems.length}개 중 {visibleItems.filter((item) => packedIds.includes(item.id)).length}개 챙김</small></div>
+          <div><strong>{compact ? "먼저 챙길 3가지" : "항상 필수"}</strong><small>{compact ? `전체 ${plan.packing.essential.length + plan.packing.conditional.length}개` : `${visibleItems.length}개 중 ${visibleItems.filter((item) => packedIds.includes(item.id)).length}개 챙김`}</small></div>
           <span>{ACTIVITIES[activity].short}</span>
         </div>
         <div className="prep-pack-list">
@@ -602,7 +651,7 @@ function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlo
             const checked = packedIds.includes(item.id);
             return (
               <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
-                <input type="checkbox" checked={checked} onChange={() => togglePacked(item.id)} />
+                <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
                 <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
                 <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
               </label>
@@ -611,15 +660,33 @@ function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlo
         </div>
       </section>
 
-      {!compact && plan.packing.conditional.length > 0 ? (
+      {!compact && weatherItems.length > 0 ? (
         <section className="prep-pack prep-pack-extra" aria-label="오늘 날씨에 따라 추가할 준비물">
           <div className="prep-pack-head"><div><strong>오늘 날씨 때문에 추가</strong><small>현재 추천 시간 기준</small></div></div>
           <div className="prep-pack-list">
-            {plan.packing.conditional.map((item) => {
+            {weatherItems.map((item) => {
               const checked = packedIds.includes(item.id);
               return (
                 <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
-                  <input type="checkbox" checked={checked} onChange={() => togglePacked(item.id)} />
+                  <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
+                  <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
+                  <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
+                </label>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {!compact && safetyItems.length > 0 ? (
+        <section className="prep-pack prep-pack-safety" aria-label="안전과 야간 준비물">
+          <div className="prep-pack-head"><div><strong>안전·야간</strong><small>비·바람·시야·공기 상태 기준</small></div></div>
+          <div className="prep-pack-list">
+            {safetyItems.map((item) => {
+              const checked = packedIds.includes(item.id);
+              return (
+                <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
+                  <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
                   <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
                   <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
                 </label>
@@ -631,7 +698,7 @@ function PrepView({ slot, slots, activity, compact = false }: { slot: RunningSlo
 
       {!compact && plan.packing.skip.length > 0 ? (
         <section className="prep-pack prep-pack-skip" aria-label="이번에 우선순위가 낮은 준비물">
-          <div className="prep-pack-head"><div><strong>이번엔 우선순위 낮음</strong><small>안전 장비가 불필요하다는 뜻은 아니에요</small></div></div>
+          <div className="prep-pack-head"><div><strong>선택·편의</strong><small>오늘은 꼭 필요하지 않은 후보예요</small></div></div>
           <div className="prep-skip-list">
             {plan.packing.skip.map((item) => <span key={item.id}>{item.emoji} {item.label} · {item.detail}</span>)}
           </div>
@@ -1181,12 +1248,6 @@ function buildRainOverview(slots: RunningSlot[], dayLabel: string) {
   };
 }
 
-function rainSignalPercent(slot: RunningSlot) {
-  const byAmount = Math.min(100, slot.precipitation * 24);
-  const byProb = Math.min(100, (slot.precipitationProbability ?? 0) * 0.86);
-  return Math.round(Math.max(8, Math.min(100, Math.max(byAmount, byProb))));
-}
-
 function rainNowTitle(slot: RunningSlot) {
   const prob = Math.round((slot.precipitationProbability ?? 0));
   if (slot.precipitation >= 3) return "지금 꽤 와요";
@@ -1236,7 +1297,7 @@ function RainDetailPanel({
   const selectedDecision = rainDecision(selected);
   const dayLabel = currentTime ? "오늘" : "내일";
   const flow = rainFlowSummary(slots);
-  const flowSlots = slots.slice(0, 24);
+  const dayBoards = buildRainDayBoards(slots, currentTime);
 
   return (
     <div className="rain-panel">
@@ -1259,25 +1320,30 @@ function RainDetailPanel({
         <span>{flow.body}</span>
       </div>
 
-      <div className="rain-hour-flow" aria-label={`${dayLabel} 시간별 비 흐름`}>
-        {flowSlots.map((slot) => {
-          const decision = rainDecision(slot);
-          const active = slot.time === selected.time;
-          return (
-            <button
-              type="button"
-              key={slot.time}
-              className={`rain-hour tone-${decision.tone}${active ? " active" : ""}`}
-              style={{ "--rain-signal": `${rainSignalPercent(slot)}%` } as React.CSSProperties}
-              onClick={() => onSelectTime(slot.time)}
-            >
-              <span>{fmtAmPm(slot.hour)}</span>
-              <i aria-hidden="true" />
-              <b>{Math.round((slot.precipitationProbability ?? 0))}%</b>
-              <small>{rainAmountText(slot.precipitation)}</small>
-            </button>
-          );
-        })}
+      <div className="rain-day-boards" aria-label={`${dayLabel} 시간대별 비 흐름`}>
+        {dayBoards.map((board) => (
+          <section className={`rain-day-board tone-${board.tone}`} key={board.key}>
+            <div className="rain-day-head"><span>{board.label}</span><b>{board.headline}</b><small>{board.summary}</small></div>
+            <div className="rain-period-grid">
+              {board.cells.map((cell) => {
+                const active = cell.focus.time === selected.time;
+                return (
+                  <button
+                    type="button"
+                    key={cell.key}
+                    className={`rain-period tone-${cell.decision.tone}${active ? " active" : ""}`}
+                    onClick={() => onSelectTime(cell.focus.time)}
+                  >
+                    <span>{cell.label}</span>
+                    <b>{cell.decision.short}</b>
+                    <strong>{cell.prob}%</strong>
+                    <small>{cell.range} · {cell.amount}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
 
       <div className={`rain-selected-note tone-${selectedDecision.tone}`}>
@@ -1321,6 +1387,7 @@ export default function Home() {
   const [locationShelf, setLocationShelf] = useState<LocationShelf>("fav");
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isPrepOpen, setIsPrepOpen] = useState(false);
+  const [packedIds, setPackedIds] = useState<string[]>([]);
   const [isReelOpen, setIsReelOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
 
@@ -1860,6 +1927,12 @@ export default function Home() {
 
   // 새 히어로·상세·준비물은 모두 같은 추천 시각을 기준으로 설명한다.
   const heroSlot = view?.best ?? null;
+
+  useEffect(() => setPackedIds([]), [activity, heroSlot?.time]);
+
+  const togglePacked = useCallback((id: string) => {
+    setPackedIds((previous) => (previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]));
+  }, []);
   const metricRef = heroSlot;
   const reasonRows =
     metricRef
@@ -2203,13 +2276,17 @@ export default function Home() {
               {activeTab === "today" ? (
                 <>
                   <section className="family-hero family-hero-solo" aria-labelledby="hero-title">
-                    <p className="family-now-kicker">지금 바로 출발 판단 · {view.currentTime ?? "현재"}</p>
+                    <p className="family-now-kicker">지금 출발 판단 · {formatForecastMoment(view.reference.time, isTomorrow)}</p>
                     <div className={`family-now-head tone-${nowDecision.tone}`}>
                       <div>
                         <h1 id="hero-title">{nowDecision.title}</h1>
                         <p>{nowDecision.detail}</p>
                       </div>
-                      <strong aria-label={`현재 ${Math.round(nowSlot.totalScore)}점`}>{Math.round(nowSlot.totalScore)}</strong>
+                      <div className="family-score" aria-label={`${profile.label} 야외활동 점수 ${Math.round(nowSlot.totalScore)}점, ${scoreLabel(nowSlot.totalScore)}`}>
+                        <span>{scoreLabel(nowSlot.totalScore)}</span>
+                        <strong>{Math.round(nowSlot.totalScore)}</strong>
+                        <small>/100</small>
+                      </div>
                     </div>
                     <div className="family-now-metrics" aria-label="현재 출발 판단 근거">
                       <span className={`now-rain tone-${gradePrecipitation(nowSlot.precipitation, nowRainProbability ?? 0).tone}`}><CloudRain size={18} aria-hidden="true" /><b>{nowRainValue}</b><small>비 가능성 · {nowRainDetail}</small></span>
@@ -2268,7 +2345,7 @@ export default function Home() {
                     {recommendation.entries.map(({ win, start, label }, index) => (
                       <article key={win.startHour} className={index === 0 ? "is-top" : ""}>
                         <div className="family-rank-badge"><small>{label}</small><b>{formatHourNum(win.startHour)}</b></div>
-                        <div><strong>{formatTwoHourWindow(win.startHour)}</strong><span>점수 {Math.round(win.score)} · 체감 {Math.round(start.apparentTemperature)}° · 비 {Math.round(start.precipitationProbability ?? 0)}%</span></div>
+                        <div><strong>{formatTwoHourWindow(win.startHour)}</strong><span>2시간 평균 {Math.round(win.score)}점 · 체감 {Math.round(start.apparentTemperature)}° · 비 {Math.round(start.precipitationProbability ?? 0)}%</span></div>
                         <button type="button" onClick={() => openAlarm({ label: `${index + 1}순위`, best: start, timeLabel: formatTwoHourWindow(win.startHour) })} aria-label={`${formatTwoHourWindow(win.startHour)} 알림 켜기`}><BellRing size={20} /></button>
                       </article>
                     ))}
@@ -2283,8 +2360,8 @@ export default function Home() {
               {activeTab === "prep" ? (
                 <section className="family-prep-view" aria-labelledby="prep-title">
                   <div className="family-section-head"><p>{formatHour(heroSlot)} 추천 시간의 실제 예보를 기준으로 준비해요.</p><h2 id="prep-title">{isTomorrow ? "내일" : "오늘"}의 준비</h2></div>
-                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} compact />
-                  <button ref={prepTriggerRef} className="family-secondary-button" type="button" onClick={() => setIsPrepOpen(true)}><CircleHelp size={20} /> 준비물 크게 보기</button>
+                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} packedIds={packedIds} onTogglePacked={togglePacked} compact />
+                  {!isPrepOpen ? <button ref={prepTriggerRef} className="family-secondary-button" type="button" onClick={() => setIsPrepOpen(true)}><CircleHelp size={20} /> 준비물 크게 보기</button> : null}
                 </section>
               ) : null}
 
@@ -2340,7 +2417,7 @@ export default function Home() {
                 <X size={18} />
               </button>
             </div>
-            <PrepView slot={heroSlot ?? view.reference} slots={view.slots} activity={activity} />
+            <PrepView slot={heroSlot ?? view.reference} slots={view.slots} activity={activity} packedIds={packedIds} onTogglePacked={togglePacked} />
           </div>
         </div>
       ) : null}

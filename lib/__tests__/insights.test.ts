@@ -1,7 +1,7 @@
 // lib/insights.ts 순수함수(추천 시간대·조건 칩·지표 상세) 단위 테스트.
 // 문구 테이블(HEADLINE_SCORE 등) 전체가 아니라, 선택/필터/정렬 로직을 검증한다.
 import { describe, it, expect } from "vitest";
-import { getRankedWindows, getDayParts, getConditionChips, getMetricDetail } from "@/lib/insights";
+import { getRankedWindows, getDayParts, getConditionChips, getMetricDetail, isUnsafeOutdoorSlot } from "@/lib/insights";
 import type { RunningSlot } from "@/lib/scoring";
 
 function makeSlot(hour: number, overrides: Partial<RunningSlot> = {}): RunningSlot {
@@ -72,6 +72,19 @@ describe("getRankedWindows", () => {
     const slots = [makeSlot(4, { totalScore: 90 }), makeSlot(5, { totalScore: 90 })];
     expect(getRankedWindows(slots, false, 0, "hike")).toHaveLength(1);
     expect(getRankedWindows(slots, false, 0, "run")).toHaveLength(0);
+  });
+
+  it("낙뢰·강한 돌풍은 점수가 높아도 추천 시간에서 제외한다", () => {
+    const lightning = [makeSlot(9, { totalScore: 95, weatherCode: 95 }), makeSlot(10, { totalScore: 95 })];
+    const gust = [makeSlot(9, { totalScore: 95, windGust: 16 }), makeSlot(10, { totalScore: 95 })];
+    expect(getRankedWindows(lightning, false, 0, "hike")).toHaveLength(0);
+    expect(getRankedWindows(gust, false, 0, "bike")).toHaveLength(0);
+    expect(isUnsafeOutdoorSlot(lightning[0], "hike")).toBe(true);
+  });
+
+  it("자전거의 강한 비와 위험 폭염은 점수와 별개로 출발 불가다", () => {
+    expect(isUnsafeOutdoorSlot(makeSlot(9, { precipitation: 0.6, precipitationProbability: 80 }), "bike")).toBe(true);
+    expect(isUnsafeOutdoorSlot(makeSlot(9, { apparentTemperature: 39 }), "walk")).toBe(true);
   });
 });
 

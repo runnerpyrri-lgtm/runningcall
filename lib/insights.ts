@@ -51,8 +51,19 @@ const HIKE_DAY_PARTS: Array<{ key: DayPartKey; label: string; icon: string; desc
 ];
 
 // 강수 1mm 이상이면 러닝 불가로 보고 추천에서 제외. 약한 비(우중런)는 점수와 함께 표시.
-function isRunnable(slot: RunningSlot) {
-  return slot.precipitation < 1 && slot.totalScore >= 42;
+export function isUnsafeOutdoorSlot(slot: RunningSlot, activity: ActivityKey = "run") {
+  const gust = slot.windGust ?? slot.windSpeed;
+  if ((slot.weatherCode ?? 0) >= 95) return true;
+  if (gust >= 14) return true;
+  if (slot.apparentTemperature >= 38) return true;
+  if (slot.pm25 !== null && slot.pm25 >= 76) return true;
+  if (activity === "bike" && (slot.precipitation >= 0.5 || (slot.precipitationProbability ?? 0) >= 70)) return true;
+  if (activity === "hike" && (slot.snowfall ?? 0) > 0 && slot.temperature <= 0) return true;
+  return false;
+}
+
+function isRunnable(slot: RunningSlot, activity: ActivityKey) {
+  return !isUnsafeOutdoorSlot(slot, activity) && slot.precipitation < 1 && slot.totalScore >= 42;
 }
 
 function isRainy(slot: RunningSlot) {
@@ -93,6 +104,7 @@ export function getRankedWindows(
     const rainy =
       a.precipitation >= 0.2 || b.precipitation >= 0.2 || (a.precipitationProbability ?? 0) >= 60 || (b.precipitationProbability ?? 0) >= 60;
     if (rainy) continue;
+    if (isUnsafeOutdoorSlot(a, activity) || isUnsafeOutdoorSlot(b, activity)) continue;
     if (a.totalScore < WIN_MIN_EACH || b.totalScore < WIN_MIN_EACH) continue;
     const avg = (a.totalScore + b.totalScore) / 2;
     if (avg < WIN_MIN_AVG) continue;
@@ -130,7 +142,7 @@ export function getDayParts(slots: RunningSlot[], isToday: boolean, nowHour: num
     const desc = DAY_PART_DESC[activity][index] ?? part.desc;
     // 각 구간의 진짜 최적 시각이 이미 지났다면 늦은 시간대를 억지 추천하지 않는다.
     const inRange = slots.filter((slot) => slot.hour >= part.range[0] && slot.hour <= part.range[1]);
-    const runnable = inRange.filter(isRunnable);
+    const runnable = inRange.filter((slot) => isRunnable(slot, activity));
     const bestInRange =
       runnable.length > 0
         ? runnable.reduce((prev, slot) => (slot.totalScore > prev.totalScore ? slot : prev), runnable[0])
