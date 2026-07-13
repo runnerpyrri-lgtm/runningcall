@@ -3174,3 +3174,30 @@ input:focus-visible {
     grid-column: 1 / -1;
   }
 }
+
+/* 설정 카드 헤더: 아이콘 칩 + 잉크 제목 (패밀리 공통 규격) */
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 18px 10px;
+}
+
+.settings-card-head h3 {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.settings-chip {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  border-radius: 10px;
+}

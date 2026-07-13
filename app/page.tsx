@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   CloudRain,
+  Database,
   Code2,
   Droplets,
   ExternalLink,
@@ -754,6 +755,15 @@ function openAndroidSetting(action: string, onFallback: () => void) {
   window.location.href = `intent:#Intent;action=${action};end`;
 }
 
+function SettingsCardHead({ icon, title, id }: { icon: ReactNode; title: string; id: string }) {
+  return (
+    <div className="settings-card-head">
+      <span className="settings-chip" aria-hidden="true">{icon}</span>
+      <h3 id={id}>{title}</h3>
+    </div>
+  );
+}
+
 function SettingsDeepLinks() {
   const [guide, setGuide] = useState<string | null>(null);
   return (
@@ -796,7 +806,7 @@ function SettingsView() {
   return (
     <div className="family-settings" aria-label="설정과 앱 정보">
       <section className="settings-card" aria-labelledby="about-outbom-title">
-        <h3 id="about-outbom-title">야외봄은</h3>
+        <SettingsCardHead icon={<Sun size={16} strokeWidth={1.9} />} title="야외봄은" id="about-outbom-title" />
         <p className="settings-note">
           날씨와 대기질로 걷기·러닝·자전거·등산·애견산책하기 좋은 시간을 알려주는 앱입니다.
           오늘·내일 예보를 활동별 점수로 정리하고, 좋은 시간대와 준비물을 함께 챙겨드려요.
@@ -804,7 +814,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="perm-outbom-title">
-        <h3 id="perm-outbom-title">알림과 위치</h3>
+        <SettingsCardHead icon={<BellRing size={16} strokeWidth={1.9} />} title="알림과 위치" id="perm-outbom-title" />
         <p className="settings-note">
           알림은 야외봄 화면이 열려 있을 때 동작해요. 앱을 닫거나 기기가 절전 상태면 울리지
           않을 수 있어요.
@@ -817,7 +827,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="family-apps-title">
-        <h3 id="family-apps-title">다른 로봄 앱</h3>
+        <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="다른 로봄 앱" id="family-apps-title" />
         {familyApps.map((app) => (
           <a className="settings-row family-app-row" href={app.href} target="_blank" rel="noopener noreferrer" key={app.name}>
             <span className="settings-row-icon" aria-hidden="true"><House size={20} /></span>
@@ -834,7 +844,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="contact-title">
-        <h3 id="contact-title">문의</h3>
+        <SettingsCardHead icon={<Mail size={16} strokeWidth={1.9} />} title="문의" id="contact-title" />
         <a className="settings-row" href={contactHref("일반 문의")}>
           <span className="settings-row-icon" aria-hidden="true"><Mail size={20} /></span>
           <span><strong>일반 문의</strong><small>hello.robom@gmail.com</small></span>
@@ -848,7 +858,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="source-title">
-        <h3 id="source-title">데이터 출처</h3>
+        <SettingsCardHead icon={<Database size={16} strokeWidth={1.9} />} title="데이터 출처" id="source-title" />
         <p className="settings-note">
           날씨·대기질은 Open-Meteo, 위치 검색은 Kakao Local, 지도 데이터는 OpenStreetMap
           기여자들의 자료를 사용합니다. 예보는 참고용이며 실제 날씨와 다를 수 있어요.
@@ -856,7 +866,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="policy-title">
-        <h3 id="policy-title">정책과 정보</h3>
+        <SettingsCardHead icon={<ShieldCheck size={16} strokeWidth={1.9} />} title="정책과 정보" id="policy-title" />
         <a className="settings-row" href="https://robom.kr/privacy/outbom"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/terms"><span className="settings-row-icon" aria-hidden="true"><FileText size={20} /></span><span><strong>이용약관</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/open-source"><span className="settings-row-icon" aria-hidden="true"><Code2 size={20} /></span><span><strong>오픈소스 라이선스</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
