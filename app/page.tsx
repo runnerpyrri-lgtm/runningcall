@@ -20,7 +20,6 @@ import {
   MapPin,
   RefreshCw,
   Search,
-  Settings,
   ShieldCheck,
   Sparkles,
   Star,
@@ -786,6 +785,26 @@ function SettingsView() {
         <h2 id="settings-title">설정과 앱 정보</h2>
       </div>
 
+      <section className="settings-card" aria-labelledby="about-outbom-title">
+        <h3 id="about-outbom-title">야외봄은</h3>
+        <p className="settings-note">
+          날씨와 대기질로 걷기·러닝·자전거·등산·애견산책하기 좋은 시간을 알려주는 앱입니다.
+          오늘·내일 예보를 활동별 점수로 정리하고, 좋은 시간대와 준비물을 함께 챙겨드려요.
+        </p>
+      </section>
+
+      <section className="settings-card" aria-labelledby="perm-outbom-title">
+        <h3 id="perm-outbom-title">알림과 위치</h3>
+        <p className="settings-note">
+          알림은 야외봄 화면이 열려 있을 때 동작해요. 앱을 닫거나 기기가 절전 상태면 울리지
+          않을 수 있어요.
+        </p>
+        <p className="settings-note">
+          현재 위치는 위치 이름 확인과 날씨 조회에만 쓰이고 별도로 저장하지 않아요. 위치 권한은
+          브라우저 사이트 설정에서 언제든 바꿀 수 있어요.
+        </p>
+      </section>
+
       <section className="settings-card" aria-labelledby="family-apps-title">
         <h3 id="family-apps-title">다른 로봄 앱</h3>
         {familyApps.map((app) => (
@@ -833,12 +852,21 @@ function SettingsView() {
   );
 }
 
+// 설정 기어는 로봄 패밀리 정본 아이콘(청약봄 BottomNav와 동일 path)을 쓴다.
+const FAMILY_GEAR_ICON = (
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+    <path d="M9.8 3.9 10.5 2h3l.7 1.9 1.8.8 1.9-.8 2.1 2.1-.8 1.9.8 1.8 2 .7v3l-2 .7-.8 1.8.8 1.9-2.1 2.1-1.9-.8-1.8.8-.7 2h-3l-.7-2-1.8-.8-1.9.8L4 17.8l.8-1.9-.8-1.8-2-.7v-3l2-.7.8-1.8L4 6l2.1-2.1 1.9.8 1.8-.8Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <circle cx="12" cy="11.9" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
 function FamilyBottomNav({ active, onChange }: { active: MainTab; onChange: (tab: MainTab) => void }) {
+  // 패밀리 아이콘 규격: 24px, 선 1.9 라운드 (청약봄 기준)
   const items: Array<{ key: MainTab; label: string; icon: ReactNode }> = [
-    { key: "today", label: "오늘", icon: <Sun size={23} /> },
-    { key: "time", label: "추천", icon: <Sparkles size={23} /> },
-    { key: "prep", label: "준비", icon: <Backpack size={23} /> },
-    { key: "settings", label: "설정", icon: <Settings size={23} /> }
+    { key: "today", label: "오늘", icon: <Sun size={24} strokeWidth={1.9} /> },
+    { key: "time", label: "추천", icon: <Sparkles size={24} strokeWidth={1.9} /> },
+    { key: "prep", label: "준비", icon: <Backpack size={24} strokeWidth={1.9} /> },
+    { key: "settings", label: "설정", icon: FAMILY_GEAR_ICON }
   ];
 
   return (

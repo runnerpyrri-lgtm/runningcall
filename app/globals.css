@@ -7056,6 +7056,18 @@ input:focus-visible {
   letter-spacing: 0.04em;
 }
 
+.settings-note {
+  margin: 0;
+  padding: 4px 18px 16px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+.settings-note + .settings-note {
+  padding-top: 0;
+}
+
 .settings-row {
   min-height: 68px;
   display: grid;
@@ -7168,21 +7180,22 @@ input:focus-visible {
   backdrop-filter: blur(18px);
 }
 
+/* 로봄 패밀리 공통 탭 규격: 64px·라운드 18px·라벨 12px 800 (청약봄 기준) */
 .family-bottom-nav button {
   min-width: 0;
-  min-height: 58px;
+  min-height: 64px;
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 4px;
+  gap: 3px;
   color: var(--muted);
   background: transparent;
-  border-radius: 19px;
+  border-radius: 18px;
   font-weight: 800;
 }
 
 .family-bottom-nav button span {
-  font-size: 0.76rem;
+  font-size: 12px;
 }
 
 .family-bottom-nav button.is-active {
