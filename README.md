@@ -31,6 +31,7 @@ pnpm typecheck
 - 날씨: Open-Meteo Forecast API (체감온도·강수·바람·자외선·낙뢰·돌풍·시정·적설 등)
 - 대기질: Open-Meteo Air Quality API (PM2.5/PM10)
 - 위치 검색: Kakao Local API — `KAKAO_REST_API_KEY`가 없으면 검색이 비활성화되고(503) 화면에 안내가 표시됩니다. 텍스트 검색 폴백은 없습니다. (Nominatim은 좌표→동네명 역지오코딩에만 사용)
+- 장애 복원: 위치 좌표별로 최근 예보를 최대 5곳, 6시간 동안만 보관하며 실시간 요청 실패 시 같은 좌표의 저장 데이터와 경과 시간을 표시합니다.
 
 ## 주요 라우트
 
@@ -44,4 +45,4 @@ pnpm typecheck
 
 ## 배포
 
-GitHub push → Vercel 자동 배포. 카카오 검색을 쓰려면 Vercel 환경변수에 `KAKAO_REST_API_KEY`를 추가한다.
+GitHub push → Vercel 자동 배포. 카카오 검색을 쓰려면 Vercel 환경변수에 `KAKAO_REST_API_KEY`를 추가한다. 설정 화면의 버전·빌드 SHA·PWA 캐시로 실제 반영 상태를 확인한다.

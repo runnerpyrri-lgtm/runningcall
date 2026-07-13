@@ -1340,7 +1340,7 @@ button {
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1352,12 +1352,14 @@ button {
 .sheet {
   position: relative;
   width: min(480px, 100%);
-  padding: 14px 22px 26px;
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)));
+  padding: 14px 22px calc(26px + env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
   background: var(--card);
   box-shadow: 0 -20px 50px -20px rgba(12, 28, 64, 0.4);
   animation: slide-up 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @media (min-width: 560px) {
@@ -1634,7 +1636,7 @@ button {
 .location-modal {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 80;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -3111,7 +3113,7 @@ button {
 
 /* ---------- guide sheet ---------- */
 .sheet {
-  max-height: 88vh;
+  max-height: min(88dvh, calc(100dvh - max(16px, env(safe-area-inset-top))));
   overflow-y: auto;
 }
 
@@ -9109,6 +9111,10 @@ input:focus-visible {
   font-size: 0.78rem;
 }
 
+.app-build {
+  overflow-wrap: anywhere;
+}
+
 .family-data-notice {
   color: var(--muted);
   background: transparent;
@@ -9577,7 +9583,7 @@ input:focus-visible {
 }
 
 .search-form:focus-within { border-color: var(--brand); background: var(--card); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-soft) 78%, transparent); }
-.search-form input { font-size: 0.96rem; }
+.search-form input { font-size: 1rem; }
 .search-go { min-width: 48px; height: 44px; padding: 0 14px; border-radius: 13px; box-shadow: 0 8px 16px -12px color-mix(in srgb, var(--brand-deep) 62%, transparent); }
 
 .gps-inline {

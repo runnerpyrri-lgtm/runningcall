@@ -56,6 +56,7 @@ import {
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
+import { forecastCacheAgeLabel, readForecastCache, saveForecastCache } from "@/lib/forecast-cache";
 import { TimeReel, type ReelRank } from "./gacha";
 import packageInfo from "../package.json";
 
@@ -78,6 +79,9 @@ type SearchResult = { name: string; detail: string; latitude: number; longitude:
 type GoNowDecision = { tone: "good" | "normal" | "caution" | "bad"; title: string; detail: string };
 
 const STORAGE_KEY = "running-alarm:location";
+const ACTIVITY_LOCATION_KEY = "running-alarm:activity-location:v1";
+const BUILD_SHA = process.env.NEXT_PUBLIC_BUILD_SHA || "local";
+const PWA_CACHE = `outbom-v${packageInfo.version}`;
 
 const DEFAULT_LOCATION: LocationPoint = {
   name: DEFAULT_CITY.name,
@@ -853,7 +857,7 @@ function SettingsView() {
 
       <section className="app-meta-card" aria-label="앱 정보">
         <span className="app-meta-icon" aria-hidden="true"><Sun size={26} /></span>
-        <div><strong>야외봄</strong><small>개발자 · 로봄</small></div>
+        <div><strong>야외봄</strong><small>개발자 · 로봄</small><small className="app-build">빌드 {BUILD_SHA.slice(0, 7)} · PWA {PWA_CACHE}</small></div>
         <span className="app-version">v{packageInfo.version}</span>
       </section>
     </div>
@@ -1390,10 +1394,15 @@ export default function Home() {
   const [packedIds, setPackedIds] = useState<string[]>([]);
   const [isReelOpen, setIsReelOpen] = useState(false);
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
+  const [activityLocationsRestored, setActivityLocationsRestored] = useState(false);
 
   const forecastReqId = useRef(0);
   const prepDialogRef = useRef<HTMLDivElement | null>(null);
   const prepTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const activityMenuRef = useRef<HTMLDivElement | null>(null);
+  const activityTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchDialogRef = useRef<HTMLDivElement | null>(null);
+  const searchTriggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!isPrepOpen) return;
@@ -1427,19 +1436,93 @@ export default function Home() {
     };
   }, [isPrepOpen]);
 
+  const openLocationSearch = useCallback((trigger: HTMLElement) => {
+    searchTriggerRef.current = trigger;
+    setIsSearchOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isActivityOpen) return;
+    const menu = activityMenuRef.current;
+    const items = () => Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const selected = menu?.querySelector<HTMLButtonElement>(`[data-activity="${activity}"]`);
+    (selected ?? items()[0])?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      const menuItems = items();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsActivityOpen(false);
+        return;
+      }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || menuItems.length === 0) return;
+      event.preventDefault();
+      const current = Math.max(0, menuItems.indexOf(document.activeElement as HTMLButtonElement));
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? menuItems.length - 1
+          : (current + (event.key === "ArrowDown" ? 1 : -1) + menuItems.length) % menuItems.length;
+      menuItems[nextIndex]?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      activityTriggerRef.current?.focus();
+    };
+  }, [activity, isActivityOpen]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const dialog = searchDialogRef.current;
+    if (!dialog) return;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsSearchOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      searchTriggerRef.current?.focus();
+    };
+  }, [isSearchOpen]);
+
   const loadForecast = useCallback(async (target: LocationPoint) => {
     // 위치를 빠르게 바꾸면 여러 요청이 겹친다. 가장 최근 요청의 결과만 반영해
     // 늦게 도착한 이전 위치 응답이 새 위치를 덮어쓰는 경합을 막는다.
     const reqId = ++forecastReqId.current;
     setIsLoading(true);
     setError("");
+    setRawForecast(null);
     try {
       const data = await fetchAppForecast(target);
       if (forecastReqId.current !== reqId) return;
       setRawForecast(data);
+      saveForecastCache(window.localStorage, target, data);
     } catch {
       if (forecastReqId.current !== reqId) return;
-      setError("데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+      const cached = readForecastCache(window.localStorage, target);
+      if (cached) {
+        setRawForecast(cached.forecast);
+        setError(`실시간 연결이 불안정해 ${forecastCacheAgeLabel(cached.savedAt)} 저장한 같은 위치 예보를 보여드려요.`);
+      } else {
+        setError("데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+      }
     } finally {
       if (forecastReqId.current === reqId) setIsLoading(false);
     }
@@ -1540,20 +1623,32 @@ export default function Home() {
   // 활동별 마지막 위치 복원
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem("running-alarm:activity-location:v1");
-      if (raw) setActivityLocations(JSON.parse(raw));
+      const raw = window.localStorage.getItem(ACTIVITY_LOCATION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Record<ActivityKey | "commute", LocationPoint>>;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const migrated: Partial<Record<ActivityKey, LocationPoint>> = { ...parsed };
+          if (parsed.commute && !parsed.walk) migrated.walk = parsed.commute;
+          delete (migrated as Partial<Record<ActivityKey | "commute", LocationPoint>>).commute;
+          setActivityLocations(migrated);
+          if (parsed.commute) window.localStorage.setItem(ACTIVITY_LOCATION_KEY, JSON.stringify(migrated));
+        }
+      }
     } catch {
       // 무시
+    } finally {
+      setActivityLocationsRestored(true);
     }
   }, []);
 
   useEffect(() => {
+    if (!activityLocationsRestored) return;
     try {
-      window.localStorage.setItem("running-alarm:activity-location:v1", JSON.stringify(activityLocations));
+      window.localStorage.setItem(ACTIVITY_LOCATION_KEY, JSON.stringify(activityLocations));
     } catch {
       // 무시
     }
-  }, [activityLocations]);
+  }, [activityLocations, activityLocationsRestored]);
 
   // 활동 선택 복원·저장
   useEffect(() => {
@@ -1561,6 +1656,9 @@ export default function Home() {
       const stored = window.localStorage.getItem(ACTIVITY_KEY);
       if (stored === "walk" || stored === "run" || stored === "dog" || stored === "hike" || stored === "bike") {
         setActivity(stored);
+      } else if (stored === "commute") {
+        setActivity("walk");
+        window.localStorage.setItem(ACTIVITY_KEY, "walk");
       }
     } catch {
       // 무시
@@ -2037,7 +2135,7 @@ export default function Home() {
               <strong className="family-wordmark">야외<svg className="family-bom" viewBox="0 0 200 120" role="img" aria-label="봄"><g fill="none" stroke="currentColor" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round"><path d="M28 8 L28 46" /><path d="M72 8 L72 46" /><path d="M28 28 L72 28" /><path d="M28 46 L72 46" /><path d="M10 64 L142 64" /><path d="M50 64 L50 47" /><path d="M28 76 L72 76 L72 110 L28 110 Z" /></g><g transform="translate(148 60) scale(1.8)" fill="#2f95a0"><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(-2)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(74)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(142)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(218)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(286)" /><circle r={2.4} fill="var(--surface)" /><circle r={1.2} fill="#2f95a0" opacity={0.5} /></g><g fill="#2f95a0"><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(96 58) rotate(15)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(120 52) rotate(-20) scale(1.1)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(164 46) rotate(50) scale(1.3)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(172 62) rotate(80) scale(1.1)" /></g></svg></strong>
               <span>robom · 바깥바람이 좋은 때</span>
             </div>
-            <button className="family-icon-button" type="button" onClick={() => setIsSearchOpen(true)} aria-label="위치 변경">
+            <button className="family-icon-button" type="button" onClick={(event) => openLocationSearch(event.currentTarget)} aria-label="위치 변경">
               <MapPin size={23} />
             </button>
           </header>
@@ -2045,9 +2143,16 @@ export default function Home() {
           <div className="family-filter-row" aria-label="조회 조건">
             <div className="activity-select-wrap">
               <button
+                ref={activityTriggerRef}
                 className="activity-select"
                 type="button"
                 onClick={() => setIsActivityOpen((v) => !v)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setIsActivityOpen(true);
+                  }
+                }}
                 aria-haspopup="menu"
                 aria-expanded={isActivityOpen}
                 aria-label="활동 선택"
@@ -2059,12 +2164,13 @@ export default function Home() {
               {isActivityOpen ? (
                 <>
                   <div className="as-backdrop" onClick={() => setIsActivityOpen(false)} aria-hidden="true" />
-                  <div className="activity-menu" role="menu">
+                  <div ref={activityMenuRef} className="activity-menu" role="menu" aria-label="활동 목록">
                     {ACTIVITY_ORDER.map((key) => (
                       <button
                         key={key}
                         type="button"
                         role="menuitem"
+                        data-activity={key}
                         className={`as-item${key === activity ? " on" : ""}`}
                         onClick={() => {
                           changeActivity(key);
@@ -2079,7 +2185,7 @@ export default function Home() {
                 </>
               ) : null}
             </div>
-            <button className="family-filter-chip" type="button" onClick={() => setIsSearchOpen(true)} aria-label={`위치 변경, 현재 ${locationLabel}`}>
+            <button className="family-filter-chip" type="button" onClick={(event) => openLocationSearch(event.currentTarget)} aria-label={`위치 변경, 현재 ${locationLabel}`}>
               {locationLabel}
             </button>
             <div className="family-day-filter" role="tablist" aria-label="날짜 선택">
@@ -2091,7 +2197,7 @@ export default function Home() {
           {/* 위치 검색 모달 */}
           {isSearchOpen ? (
             <section className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-search-title">
-              <div className="location-dialog search-dialog">
+              <div ref={searchDialogRef} className="location-dialog search-dialog">
                 <button className="modal-close" type="button" onClick={() => setIsSearchOpen(false)} aria-label="닫기">
                   <X size={18} />
                 </button>
