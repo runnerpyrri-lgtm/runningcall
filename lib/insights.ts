@@ -743,6 +743,219 @@ export function getConditionChips(slot: RunningSlot): ConditionChip[] {
 }
 
 /* ------------------------------------------------------------------ *
+ * 공용 시각 표기 — 화면·시트가 같은 시간 문구를 쓴다
+ * ------------------------------------------------------------------ */
+export function fmtAmPm(hour: number) {
+  const h = ((hour % 24) + 24) % 24;
+  if (h === 0 || h === 24) return "자정";
+  if (h === 12) return "정오";
+  const ap = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${ap} ${h12}시`;
+}
+
+export function formatHourNum(hour: number) {
+  return `${String(((hour % 24) + 24) % 24).padStart(2, "0")}:00`;
+}
+
+export function formatTwoHourWindow(startHour: number) {
+  return `${formatHourNum(startHour)}~${formatHourNum(startHour + 2)}`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 강수 해석 — 양(mm)을 행동 문장으로, 하루 흐름을 시작·절정·약화로
+ * ------------------------------------------------------------------ */
+export function rainInfo(mm: number): { label: string; desc: string; tone: GradeTone } {
+  if (mm <= 0) return { label: "비 양은 0mm", desc: "확률만 높을 수 있어요. 아래 우산 판단을 보세요.", tone: "good" };
+  if (mm < 0.1) return { label: "빗방울", desc: "공식 예보상 비로 잡히기 전, 살짝 떨어지는 정도예요.", tone: "normal" };
+  if (mm < 1) return { label: "흩뿌림", desc: "바닥이 살짝 젖는 정도. 짧은 이동은 가능해요.", tone: "normal" };
+  if (mm < 3) return { label: "약한 비", desc: "우산이 있으면 편하고, 없으면 조금 젖어요.", tone: "caution" };
+  if (mm < 15) return { label: "보통 비", desc: "우산 없이는 꽤 젖어요. 야외 활동은 줄이는 편이 좋아요.", tone: "bad" };
+  if (mm < 30) return { label: "강한 비", desc: "짧은 외출도 불편해요. 실내 대안을 보세요.", tone: "bad" };
+  return { label: "매우 강한 비", desc: "외출보다 안전이 먼저예요.", tone: "bad" };
+}
+
+export function rainAmountText(mm: number) {
+  if (mm <= 0) return "0mm";
+  return `${mm.toFixed(1)}mm`;
+}
+
+export function rainDecision(slot: RunningSlot): { action: string; short: string; body: string; tone: GradeTone } {
+  const mm = slot.precipitation;
+  const prob = Math.round(slot.precipitationProbability ?? 0);
+  const info = rainInfo(mm);
+
+  if (mm >= 3) {
+    return { action: "우산 꼭 필요", short: "우산", body: `${info.label}예요. ${fmtAmPm(slot.hour)} 전후 야외 일정은 줄이세요.`, tone: "bad" };
+  }
+  if (mm >= 1 || prob >= 75) {
+    return {
+      action: "우산 챙기기",
+      short: "우산",
+      body: mm >= 1 ? `${info.label}가 잡혔어요. 우산 없이는 젖을 수 있어요.` : `비가 올 가능성이 높아요. 아직 양이 작아도 우산을 챙기는 쪽이 안전해요.`,
+      tone: "caution"
+    };
+  }
+  if (mm >= 0.1 || prob >= 55) {
+    return {
+      action: "접이식 우산",
+      short: "접이식",
+      body: mm >= 0.1 ? `${info.label} 수준이에요. 오래 걷는다면 접이식 우산이 편해요.` : `비 가능성이 있어요. 긴 외출이면 작은 우산을 넣어두세요.`,
+      tone: "normal"
+    };
+  }
+  if (prob >= 35) {
+    return { action: "하늘 확인", short: "확인", body: "비 신호가 약해요. 나가기 직전 하늘만 한번 확인하면 충분해요.", tone: "normal" };
+  }
+  return { action: "우산 불필요", short: "없음", body: "비 가능성이 낮아요. 비 때문에 일정을 바꿀 정도는 아니에요.", tone: "good" };
+}
+
+export type RainState = "none" | "possible" | "active";
+
+export type RainAnalysis = {
+  state: RainState;
+  start: RunningSlot | null; // 처음 비가 잡히는 시각 (possible이면 확률 최고 시각)
+  peak: RunningSlot | null;
+  weaken: RunningSlot | null;
+  maxProbability: number;
+  maxAmount: number;
+};
+
+// 하루 슬롯에서 비 시작·절정·약화를 한 번만 계산해 결론 카드와 강수 시트가 공유한다.
+export function analyzeRain(slots: RunningSlot[]): RainAnalysis {
+  const maxProbability = Math.round(slots.reduce((max, slot) => Math.max(max, slot.precipitationProbability ?? 0), 0));
+  const maxAmount = slots.reduce((max, slot) => Math.max(max, slot.precipitation), 0);
+  const wet = slots.filter((slot) => slot.precipitation >= 0.1);
+  if (wet.length > 0) {
+    const start = wet[0];
+    const peak = wet.reduce((a, b) => (b.precipitation > a.precipitation ? b : a), wet[0]);
+    const weaken =
+      slots.find((slot) => slot.time > peak.time && slot.precipitation < 0.1 && (slot.precipitationProbability ?? 0) < 35) ?? null;
+    return { state: "active", start, peak, weaken, maxProbability, maxAmount };
+  }
+  if (maxProbability >= 45) {
+    const probable = slots.reduce(
+      (a, b) => ((b.precipitationProbability ?? 0) > (a.precipitationProbability ?? 0) ? b : a),
+      slots[0]
+    );
+    return { state: "possible", start: probable, peak: probable, weaken: null, maxProbability, maxAmount };
+  }
+  return { state: "none", start: null, peak: null, weaken: null, maxProbability, maxAmount };
+}
+
+/* ------------------------------------------------------------------ *
+ * 활동별 오늘의 결론 — "오늘 한눈에" 5칸 grid를 대체하는 단일 카드 모델
+ * ------------------------------------------------------------------ */
+export type ActivityDaySummary = {
+  title: string;
+  bestWindow: string | null;
+  bestStartHour: number | null;
+  reason: string;
+  caution: null | { time: string; label: string; reason: string; tone: "caution" | "bad" };
+  rain: { state: RainState; headline: string; detail: string | null };
+  daylight: string | null;
+};
+
+const SUMMARY_TITLE: Record<ActivityKey, string> = {
+  walk: "걷기 좋은 시간",
+  run: "러닝하기 좋은 시간",
+  dog: "산책하기 좋은 시간",
+  hike: "등산 출발 추천",
+  bike: "라이딩하기 좋은 시간"
+};
+
+// 추천 시각이 왜 좋은지 — 좋은 조건 두 가지로 한 문장을 만든다.
+function summaryReason(slot: RunningSlot | null): string {
+  if (!slot) return "남은 시간대의 점수가 낮아 내일 예보를 함께 확인해 보세요.";
+  const clauses: string[] = [];
+  if (slot.precipitation < 0.1 && (slot.precipitationProbability ?? 0) < 30) clauses.push("비 걱정이 낮고");
+  if (slot.windSpeed < 4) clauses.push("바람이 약해요.");
+  else if (slot.apparentTemperature >= 8 && slot.apparentTemperature <= 22) clauses.push("체감온도가 편해요.");
+  else if (slot.pm25 !== null && slot.pm25 <= 15) clauses.push("공기가 깨끗해요.");
+  else if (slot.humidity <= 60) clauses.push("습도가 쾌적해요.");
+  if (clauses.length >= 2) return clauses.join(" ");
+  if (clauses.length === 1) {
+    return clauses[0].endsWith("고") ? `${clauses[0]} 하루 중 점수가 가장 좋아요.` : `하루 중 점수가 가장 좋고 ${clauses[0]}`;
+  }
+  return "하루 중 이 시간대의 종합 점수가 가장 좋아요.";
+}
+
+// 주의 시간 — 단순 최저 점수가 아니라 실제로 나쁠 때(unsafe·bad 등급)만 만든다.
+function summaryCaution(slots: RunningSlot[], activity: ActivityKey): ActivityDaySummary["caution"] {
+  const risky = slots.filter((slot) => isUnsafeOutdoorSlot(slot, activity) || slot.totalScore < 38);
+  const softRisky = slots.filter((slot) => !risky.includes(slot) && slot.totalScore < 48);
+  const target =
+    risky.length > 0
+      ? risky.reduce((a, b) => (b.totalScore < a.totalScore ? b : a))
+      : softRisky.length > 0
+        ? softRisky.reduce((a, b) => (b.totalScore < a.totalScore ? b : a))
+        : null;
+  if (!target) return null;
+  const hard = risky.length > 0;
+  const reason = isUnsafeOutdoorSlot(target, activity)
+    ? (target.weatherCode ?? 0) >= 95
+      ? "낙뢰 예보가 있어요"
+      : (target.windGust ?? target.windSpeed) >= 14
+        ? "돌풍이 강해요"
+        : target.apparentTemperature >= 38
+          ? "위험한 더위예요"
+          : "공기 상태가 나빠요"
+    : target.precipitation >= 0.5 || (target.precipitationProbability ?? 0) >= 60
+      ? "비 신호가 있어요"
+      : target.apparentTemperature >= 30
+        ? "더위가 남아 있어요"
+        : target.apparentTemperature <= 0
+          ? "추위가 강해요"
+          : target.pm25 !== null && target.pm25 > 35
+            ? "미세먼지가 아쉬워요"
+            : "종합 점수가 낮아요";
+  return {
+    time: `${fmtAmPm(target.hour)} 전후`,
+    label: hard ? "주의할 시간" : "덜 편한 시간",
+    reason,
+    tone: hard ? "bad" : "caution"
+  };
+}
+
+function summaryRain(analysis: RainAnalysis): ActivityDaySummary["rain"] {
+  if (analysis.state === "active" && analysis.start && analysis.peak) {
+    const weakenText = analysis.weaken ? ` · ${fmtAmPm(analysis.weaken.hour)} 약화` : "";
+    return {
+      state: "active",
+      headline: `${fmtAmPm(analysis.start.hour)} 비 시작${weakenText}`,
+      detail: `최대 ${rainAmountText(analysis.maxAmount)}/h · ${rainDecision(analysis.peak).action}`
+    };
+  }
+  if (analysis.state === "possible" && analysis.peak) {
+    return {
+      state: "possible",
+      headline: `${fmtAmPm(analysis.peak.hour)} 비 가능성`,
+      detail: `최대 ${analysis.maxProbability}% · ${rainDecision(analysis.peak).action}`
+    };
+  }
+  return { state: "none", headline: "비 걱정 낮음", detail: null };
+}
+
+export function buildActivityDaySummary(input: {
+  activity: ActivityKey;
+  slots: RunningSlot[]; // 오늘이면 현재 시각 이후 슬롯만
+  bestStartHour: number | null;
+  bestSlot: RunningSlot | null;
+  sunsetLabel: string | null;
+}): ActivityDaySummary {
+  const { activity, slots, bestStartHour, bestSlot, sunsetLabel } = input;
+  return {
+    title: SUMMARY_TITLE[activity],
+    bestWindow: bestStartHour !== null ? formatTwoHourWindow(bestStartHour) : null,
+    bestStartHour,
+    reason: summaryReason(bestSlot),
+    caution: summaryCaution(slots, activity),
+    rain: summaryRain(analyzeRain(slots)),
+    daylight: sunsetLabel
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * 근거 카드 상세 (바텀시트용) — 등급 스케일 + 러닝 의미 + 팁
  * ------------------------------------------------------------------ */
 export type MetricKey = "feel" | "precip" | "dust" | "uv" | "wind" | "humidity";

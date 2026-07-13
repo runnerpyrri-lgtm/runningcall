@@ -98,6 +98,30 @@ export function hourInTimezone(date: Date, timezone: string | undefined): number
   }
 }
 
+/**
+ * 예보 지역 기준 시각 표기 — Open-Meteo의 offset 없는 현지 시각 문자열은 그대로 잘라 쓰고,
+ * offset이 있는 값만 지정 timezone으로 변환한다. 기기 timezone에 좌우되지 않는다.
+ */
+export function formatLocalClock(value: string | null, timezone?: string): string | null {
+  if (!value) return null;
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) {
+    const match = value.match(/T(\d{2}):(\d{2})/);
+    if (match) return `${match[1]}:${match[2]}`;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      timeZone: timezone && timezone !== "auto" ? timezone : undefined,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
+  }
+}
+
 /** timezone 없는 Open-Meteo 현지 시각을 해당 지역의 epoch ms로 변환한다. */
 export function zonedDateTimeToMs(value: string, timezone: string | undefined): number {
   if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) return Date.parse(value);

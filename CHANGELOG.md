@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.20.0] - 2026-07-13
+
+### Changed
+
+- 위치 표시를 `고척동 · 서울 구로구` 한 줄 전체 폭 bar로 정리했다. 활동·오늘/내일은 같은 줄에 두고, 앱바의 중복 위치 아이콘은 제거해 위치 변경 행동을 한 곳으로 모았다. 세부 지역이 없거나 확인 중일 때 빈 줄·layout shift가 생기지 않는다.
+- reverse-location API가 동·구·시와 축약 지역(`서울 구로구`), 전체 주소를 구조화해 반환한다. 기존 `{ name }` 소비자와 저장된 위치는 그대로 호환된다.
+- 추천 탭의 `오늘 한눈에` 5칸 grid를 활동별 결론 카드(`걷기 좋은 시간` 등)로 교체했다. best 시간은 카드에서 한 번만 보여주고 아래에는 `다른 추천 시간`(2·3순위)만 표시한다.
+- 단순 최저 점수를 `피하면 좋은 때`로 표시하던 규칙을 없앴다. unsafe·bad 등급일 때만 `주의할 시간`, 그 외 낮은 점수는 `덜 편한 시간`으로 완화하거나 숨긴다.
+- 비 없는 날의 `비 시작 없음`·`비 약화 해당 없음` 중복 문구를 제거하고 `비 걱정 낮음` 하나로 답한다. 비 가능/비 예상은 시작·절정·약화·양·우산 판단을 조건부로 표시한다.
+- 강수 상세를 전용 PrecipitationSheet로 재설계했다. generic 등급 스케일·요약 카드와 RainDetailPanel 중복 렌더를 없애고, 상단 결론 문장 + 24시간 확률(선)·강수량(막대) 차트(모바일 한 화면 폭, 가로 스크롤 0) + 새벽·오전·오후·저녁·밤 5개 기간 요약(탭하면 해당 기간 hourly만 확장)으로 구성했다. 열릴 때 제목 focus, focus trap, Escape 닫기, 닫은 뒤 focus 복귀를 지원한다.
+- 일출·일몰을 기기 시간대가 아닌 예보 지역 시각으로 표기한다(`formatLocalClock`).
+- 과거 다크·가챠 테마와 미사용 selector를 제거하고 패밀리 warm paper 테마를 파일 상단 정본 한 곳으로 이동했다. CSS raw 114.8KB→52.8KB(-54%), gzip 20.9KB→10.8KB(-48%). 미사용 Black Han Sans 웹폰트 import도 제거했다.
+- `LocationControls`·`ActivityDaySummary`·`RecommendationList`·`PrecipitationSheet`를 components/로 분리하고 결론·강수 도메인 계산(`buildActivityDaySummary`·`analyzeRain`)을 `lib/insights.ts` 순수 함수로 옮겼다. 새 chart 의존성 없음.
+- 서비스워커 캐시를 `outbom-v0.20.0`으로 갱신했다. 저장 키·점수 계산·알림 로직은 불변.
+
 ## [0.19.0] - 2026-07-13
 
 ### Changed
