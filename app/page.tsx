@@ -8,7 +8,6 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronRight,
-  CircleHelp,
   CloudRain,
   Code2,
   Droplets,
@@ -33,7 +32,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_CITY } from "@/lib/cities";
 import { ActivityPictogram } from "@/lib/pictograms";
-import { getOutfitPlan } from "@/lib/outfit";
+import { getOutfitPlan, getPackingPlan, type ActivityDuration, type PackingCategory } from "@/lib/outfit";
 import {
   getDayParts,
   getMetricDetail,
@@ -57,7 +56,7 @@ import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { neighborhoodMatch } from "@/lib/search";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { forecastCacheAgeLabel, readForecastCache, saveForecastCache } from "@/lib/forecast-cache";
-import { TimeReel, type ReelRank } from "./gacha";
+import { FamilyWordmark } from "./family-wordmark";
 import packageInfo from "../package.json";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
@@ -80,6 +79,7 @@ type GoNowDecision = { tone: "good" | "normal" | "caution" | "bad"; title: strin
 
 const STORAGE_KEY = "running-alarm:location";
 const ACTIVITY_LOCATION_KEY = "running-alarm:activity-location:v1";
+const ACTIVITY_DURATION_KEY = "outbom:activity-duration:v1";
 const BUILD_SHA = process.env.NEXT_PUBLIC_BUILD_SHA || "local";
 const PWA_CACHE = `outbom-v${packageInfo.version}`;
 
@@ -139,8 +139,8 @@ const METRICS: Array<{
 }> = [
   { key: "feel", label: "체감", unit: "°", read: (s) => s.apparentTemperature, score: (s) => s.temperatureScore },
   { key: "precip", label: "강수", unit: "mm", read: (s) => s.precipitation, score: (s) => s.precipitationScore },
-  // 대기질 결측(null)은 차트에선 0으로 그리되, 결측 배지·"정보 없음" 등급으로 정직하게 안내한다.
-  { key: "dust", label: "미세먼지", unit: "㎍", read: (s) => s.pm25 ?? 0, score: (s) => s.dustScore ?? 0 },
+  // 대기질 결측은 0으로 위장하지 않고 NaN으로 전달해 요약·최고·최저 계산에서 제외한다.
+  { key: "dust", label: "미세먼지", unit: "㎍", read: (s) => s.pm25 ?? Number.NaN, score: (s) => s.dustScore ?? Number.NaN },
   { key: "uv", label: "자외선", unit: "", read: (s) => s.uvIndex, score: (s) => s.uvScore },
   { key: "wind", label: "바람", unit: "㎧", read: (s) => s.windSpeed, score: (s) => s.windScore },
   { key: "humidity", label: "습도", unit: "%", read: (s) => s.humidity, score: (s) => s.humidityScore }
@@ -282,16 +282,6 @@ function scoreLabel(score: number) {
     caution: "주의",
     bad: "나쁨"
   }[scoreTone(score)];
-}
-
-function packingPriority(id: string) {
-  if (id === "rain-gear") return 100;
-  if (id === "visibility") return 95;
-  if (id === "wind-layer") return 90;
-  if (id === "dust-mask") return 85;
-  if (id === "hot-hydration") return 80;
-  if (id === "sun-eye") return 70;
-  return 0;
 }
 
 function formatClock(value: string | null) {
@@ -601,23 +591,28 @@ function PrepView({
   activity,
   packedIds,
   onTogglePacked,
-  compact = false
+  duration,
+  onDurationChange
 }: {
   slot: RunningSlot;
   slots: RunningSlot[];
   activity: ActivityKey;
   packedIds: string[];
   onTogglePacked: (id: string) => void;
-  compact?: boolean;
+  duration: ActivityDuration;
+  onDurationChange: (duration: ActivityDuration) => void;
 }) {
   const plan = getOutfitPlan(slots, slot, activity);
+  const packing = getPackingPlan(slot, activity, duration);
   const keyBlock = getDynamicGuideBlock(activity, slot);
   const keyItems = keyBlock?.items.slice(0, 2) ?? [];
-  const prioritizedConditional = [...plan.packing.conditional].sort((a, b) => packingPriority(b.id) - packingPriority(a.id));
-  const safetyItems = prioritizedConditional.filter((item) => packingPriority(item.id) >= 85);
-  const weatherItems = prioritizedConditional.filter((item) => packingPriority(item.id) < 85);
-  const quickItems = [...plan.packing.essential.slice(0, 2), ...prioritizedConditional.slice(0, 1)];
-  const visibleItems = compact ? quickItems : plan.packing.essential;
+  const categoryLabels: Record<PackingCategory, { title: string; note: string }> = {
+    required: { title: "필수", note: "활동 자체에 꼭 필요한 준비" },
+    weather: { title: "날씨", note: "추천 시간의 기온·비·햇빛 기준" },
+    safety: { title: "안전", note: "시야·연락·노면 위험 대비" },
+    optional: { title: "선택", note: "거리와 개인 상황에 따라 추가" }
+  };
+  const categories: PackingCategory[] = ["required", "weather", "safety", "optional"];
   const safetyWarning =
     activity === "bike" && (slot.precipitation >= 0.5 || (slot.precipitationProbability ?? 0) >= 60)
       ? { title: "비 오는 라이딩은 미루는 편이 안전해요", detail: "방수 재킷·라이트를 챙겨도 젖은 노면의 제동거리와 시야 위험은 사라지지 않아요." }
@@ -638,6 +633,15 @@ function PrepView({
         </small>
       </div>
 
+      <fieldset className="prep-duration">
+        <legend>활동 시간</legend>
+        {(["short", "normal", "long"] as ActivityDuration[]).map((value) => (
+          <button key={value} type="button" className={duration === value ? "on" : ""} aria-pressed={duration === value} onClick={() => onDurationChange(value)}>
+            {value === "short" ? "짧게" : value === "normal" ? "보통" : "길게"}
+          </button>
+        ))}
+      </fieldset>
+
       {safetyWarning || keyItems.length > 0 ? (
         <div className={`prep-lite-alert${safetyWarning ? " tone-bad" : ""}`} role="note">
           <strong>{safetyWarning?.title ?? keyBlock?.heading ?? "오늘 체크"}</strong>
@@ -645,69 +649,30 @@ function PrepView({
         </div>
       ) : null}
 
-      <section className="prep-pack" aria-label="출발 전 체크리스트">
-        <div className="prep-pack-head">
-          <div><strong>{compact ? "먼저 챙길 3가지" : "항상 필수"}</strong><small>{compact ? `전체 ${plan.packing.essential.length + plan.packing.conditional.length}개` : `${visibleItems.length}개 중 ${visibleItems.filter((item) => packedIds.includes(item.id)).length}개 챙김`}</small></div>
-          <span>{ACTIVITIES[activity].short}</span>
-        </div>
-        <div className="prep-pack-list">
-          {visibleItems.map((item) => {
-            const checked = packedIds.includes(item.id);
-            return (
-              <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
-                <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
-                <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
-                <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
-              </label>
-            );
-          })}
-        </div>
-      </section>
-
-      {!compact && weatherItems.length > 0 ? (
-        <section className="prep-pack prep-pack-extra" aria-label="오늘 날씨에 따라 추가할 준비물">
-          <div className="prep-pack-head"><div><strong>오늘 날씨 때문에 추가</strong><small>현재 추천 시간 기준</small></div></div>
-          <div className="prep-pack-list">
-            {weatherItems.map((item) => {
-              const checked = packedIds.includes(item.id);
-              return (
-                <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
-                  <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
-                  <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
-                  <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      {!compact && safetyItems.length > 0 ? (
-        <section className="prep-pack prep-pack-safety" aria-label="안전과 야간 준비물">
-          <div className="prep-pack-head"><div><strong>안전·야간</strong><small>비·바람·시야·공기 상태 기준</small></div></div>
-          <div className="prep-pack-list">
-            {safetyItems.map((item) => {
-              const checked = packedIds.includes(item.id);
-              return (
-                <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
-                  <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
-                  <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
-                  <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      {!compact && plan.packing.skip.length > 0 ? (
-        <section className="prep-pack prep-pack-skip" aria-label="이번에 우선순위가 낮은 준비물">
-          <div className="prep-pack-head"><div><strong>선택·편의</strong><small>오늘은 꼭 필요하지 않은 후보예요</small></div></div>
-          <div className="prep-skip-list">
-            {plan.packing.skip.map((item) => <span key={item.id}>{item.emoji} {item.label} · {item.detail}</span>)}
-          </div>
-        </section>
-      ) : null}
+      <div className="prep-all-groups" aria-label="출발 전 전체 체크리스트">
+        {categories.map((category) => {
+          const items = packing.items.filter((item) => item.category === category);
+          if (items.length === 0) return null;
+          const checkedCount = items.filter((item) => packedIds.includes(item.id)).length;
+          return (
+            <section className={`prep-pack prep-pack-${category}`} key={category} aria-label={`${categoryLabels[category].title} 준비물`}>
+              <div className="prep-pack-head"><div><strong>{categoryLabels[category].title}</strong><small>{categoryLabels[category].note} · {checkedCount}/{items.length}</small></div></div>
+              <div className="prep-pack-list">
+                {items.map((item) => {
+                  const checked = packedIds.includes(item.id);
+                  return (
+                    <label className={`prep-pack-item${checked ? " is-packed" : ""}`} key={item.id}>
+                      <input type="checkbox" checked={checked} onChange={() => onTogglePacked(item.id)} />
+                      <span className="prep-pack-check" aria-hidden="true">{checked ? "✓" : ""}</span>
+                      <span className="prep-pack-copy"><b>{item.emoji} {item.label}</b><small>{item.detail} · {item.reason}</small></span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -984,9 +949,17 @@ function rainWindowSlots(slots: RunningSlot[], currentTime: string | null) {
 }
 
 function summarizeMetric(slots: RunningSlot[], metric: (typeof METRICS)[number], activity: ActivityKey) {
-  const best = slots.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a), slots[0]);
-  const worst = slots.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a), slots[0]);
-  const avg = slots.reduce((sum, slot) => sum + metric.read(slot), 0) / Math.max(slots.length, 1);
+  const available = slots.filter((slot) => Number.isFinite(metric.read(slot)) && Number.isFinite(metric.score(slot)));
+  if (available.length === 0) {
+    return [
+      { label: "요약", value: "정보 없음", note: `${metric.label} 데이터를 불러오지 못했어요.` },
+      { label: "가장 좋은 때", value: "—", note: "결측 시간은 순위에서 제외했어요." },
+      { label: "평균 흐름", value: "—", note: "값이 들어오면 다시 계산해요." }
+    ];
+  }
+  const best = available.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a));
+  const worst = available.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a));
+  const avg = available.reduce((sum, slot) => sum + metric.read(slot), 0) / available.length;
   const unit = metric.unit;
   const fmt = (value: number) => (Math.abs(value) < 10 && unit !== "%" ? value.toFixed(1) : Math.round(value).toString());
 
@@ -1027,9 +1000,14 @@ function humidityHuman(value: number) {
 }
 
 function metricPeriodSummary(metric: (typeof METRICS)[number], group: RunningSlot[], activity: ActivityKey) {
-  const best = group.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a), group[0]);
-  const worst = group.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a), group[0]);
-  const avg = group.reduce((sum, slot) => sum + metric.read(slot), 0) / Math.max(group.length, 1);
+  const available = group.filter((slot) => Number.isFinite(metric.read(slot)) && Number.isFinite(metric.score(slot)));
+  const fallback = group[0];
+  if (available.length === 0) {
+    return { primary: "정보 없음", value: "—", note: `${metric.label} 데이터가 없어 계산에서 제외했어요.`, tone: "normal" as PanelTone, focus: fallback };
+  }
+  const best = available.reduce((a, b) => (metric.score(b) > metric.score(a) ? b : a));
+  const worst = available.reduce((a, b) => (metric.score(b) < metric.score(a) ? b : a));
+  const avg = available.reduce((sum, slot) => sum + metric.read(slot), 0) / available.length;
   const focus = worst;
 
   if (metric.key === "feel") {
@@ -1042,14 +1020,15 @@ function metricPeriodSummary(metric: (typeof METRICS)[number], group: RunningSlo
   }
 
   if (metric.key === "dust") {
-    const worstDust = group.reduce((a, b) => ((b.pm25 ?? -1) > (a.pm25 ?? -1) ? b : a), group[0]);
-    if (worstDust.pm25 === null) {
-      return { primary: "미세 정보 없음", value: "—", note: "대기질 데이터를 못 불러왔어요.", tone: "normal" as PanelTone, focus: worstDust };
-    }
-    const grade = gradePm25(worstDust.pm25);
+    const dustSlots = group.filter((slot) => slot.pm25 !== null);
+    if (dustSlots.length === 0) return { primary: "미세 정보 없음", value: "—", note: "대기질 데이터를 못 불러왔어요.", tone: "normal" as PanelTone, focus: fallback };
+    const worstDust = dustSlots.reduce((a, b) => ((b.pm25 ?? -1) > (a.pm25 ?? -1) ? b : a));
+    const dustValue = worstDust.pm25;
+    if (dustValue === null) return { primary: "미세 정보 없음", value: "—", note: "대기질 데이터를 못 불러왔어요.", tone: "normal" as PanelTone, focus: fallback };
+    const grade = gradePm25(dustValue);
     const tone: PanelTone = grade.label === "좋음" ? "good" : grade.label === "보통" ? "normal" : grade.label === "나쁨" ? "caution" : "bad";
     const note = grade.label === "좋음" ? "호흡 부담이 낮아요." : grade.label === "보통" ? "민감하면 강도만 살짝 낮추세요." : "오래 뛰기보다 짧게 움직이세요.";
-    return { primary: `미세 ${grade.label}`, value: `${Math.round(worstDust.pm25)}㎍`, note, tone, focus: worstDust };
+    return { primary: `미세 ${grade.label}`, value: `${Math.round(dustValue)}㎍`, note, tone, focus: worstDust };
   }
 
   if (metric.key === "uv") {
@@ -1390,51 +1369,16 @@ export default function Home() {
   const [saved, setSaved] = useState<SavedLocation[]>([]);
   const [locationShelf, setLocationShelf] = useState<LocationShelf>("fav");
   const [isActivityOpen, setIsActivityOpen] = useState(false);
-  const [isPrepOpen, setIsPrepOpen] = useState(false);
   const [packedIds, setPackedIds] = useState<string[]>([]);
-  const [isReelOpen, setIsReelOpen] = useState(false);
+  const [activityDuration, setActivityDuration] = useState<ActivityDuration>("normal");
   const [activityLocations, setActivityLocations] = useState<Partial<Record<ActivityKey, LocationPoint>>>({});
   const [activityLocationsRestored, setActivityLocationsRestored] = useState(false);
 
   const forecastReqId = useRef(0);
-  const prepDialogRef = useRef<HTMLDivElement | null>(null);
-  const prepTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activityMenuRef = useRef<HTMLDivElement | null>(null);
   const activityTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchDialogRef = useRef<HTMLDivElement | null>(null);
   const searchTriggerRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!isPrepOpen) return;
-    const dialog = prepDialogRef.current;
-    if (!dialog) return;
-    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
-    focusable()[0]?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setIsPrepOpen(false);
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      prepTriggerRef.current?.focus();
-    };
-  }, [isPrepOpen]);
 
   const openLocationSearch = useCallback((trigger: HTMLElement) => {
     searchTriggerRef.current = trigger;
@@ -1508,7 +1452,11 @@ export default function Home() {
     const reqId = ++forecastReqId.current;
     setIsLoading(true);
     setError("");
-    setRawForecast(null);
+    setRawForecast((previous) => {
+      if (!previous) return null;
+      const sameLocation = Math.abs(previous.location.latitude - target.latitude) < 0.001 && Math.abs(previous.location.longitude - target.longitude) < 0.001;
+      return sameLocation ? previous : null;
+    });
     try {
       const data = await fetchAppForecast(target);
       if (forecastReqId.current !== reqId) return;
@@ -1540,6 +1488,7 @@ export default function Home() {
         ) {
           setLocation({
             name: parsed.name,
+            detail: typeof parsed.detail === "string" ? parsed.detail : undefined,
             latitude: parsed.latitude,
             longitude: parsed.longitude,
             source: parsed.source === "gps" || parsed.source === "search" ? parsed.source : "city"
@@ -1673,12 +1622,28 @@ export default function Home() {
     }
   }, [activity]);
 
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(ACTIVITY_DURATION_KEY);
+      if (stored === "short" || stored === "normal" || stored === "long") setActivityDuration(stored);
+    } catch {
+      // 저장 불가 환경은 보통 시간으로 유지
+    }
+  }, []);
+
+  const changeActivityDuration = useCallback((next: ActivityDuration) => {
+    setActivityDuration(next);
+    try {
+      window.localStorage.setItem(ACTIVITY_DURATION_KEY, next);
+    } catch {
+      // 저장 불가 환경은 현재 세션 상태만 유지
+    }
+  }, []);
+
   // 활동 전환 — 열린 시트를 닫고 즉시(재요청 없이) 재계산
   const changeActivity = useCallback(
     (next: ActivityKey) => {
       setSheetKey(null);
-      setIsPrepOpen(false);
-      setIsReelOpen(false);
       setDayMode("today");
       setActivity(next);
       const remembered = activityLocations[next];
@@ -1782,12 +1747,9 @@ export default function Home() {
     };
   }, [forecast, isTomorrow, nowHour, activity]);
 
-  // 추천 시간대 계산을 한 번만 수행한다. 모바일 CTA 노출 조건과 릴 가드가 각각 getRankedWindows를
-  // 따로 호출하면 정시 경계나 인자 차이로 갈려 "버튼은 보이는데 안 열리는" 문제가 생길 수 있어 일원화한다.
+  // 추천 시간대 계산을 한 번만 수행해 목록과 결정형 요약이 같은 결과를 사용한다.
   const recommendation = useMemo(() => {
     const empty = {
-      ranks: [] as ReelRank[],
-      pool: [] as Array<{ time: string; score: number }>,
       entries: [] as Array<{ win: RankedWindow; start: RunningSlot; label: string }>
     };
     if (!view) return empty;
@@ -1802,20 +1764,7 @@ export default function Home() {
         return { win, start, label };
       })
       .filter((item): item is { win: RankedWindow; start: RunningSlot; label: string } => item !== null);
-    const ranks: ReelRank[] = entries.map(({ win, label }) => ({
-      key: `${win.startHour}`,
-      label,
-      time: formatTwoHourWindow(win.startHour),
-      score: win.score,
-      chips: [
-        `🌡️ 체감 ${win.feel}°`,
-        `🌧️ 강수 ${win.precipProb}%`,
-        `🙂 미세 ${win.dustLabel}`,
-        `🍃 바람 ${win.windLabel}`
-      ]
-    }));
-    const pool = entries.map(({ win }) => ({ time: formatTwoHourWindow(win.startHour), score: win.score }));
-    return { ranks, pool, entries };
+    return { entries };
   }, [view, isTomorrow, nowHour, activity]);
 
 
@@ -1858,9 +1807,10 @@ export default function Home() {
   }
 
   function chooseLocation(next: LocationPoint, detail?: string) {
-    const normalized = activity === "hike" ? next : { ...next, name: displayLocationName(next.name, detail) };
+    const display = activity === "hike" ? { title: next.name, subtitle: detail ?? "" } : locationDisplay(next.name, detail);
+    const normalized = { ...next, name: display.title, detail: display.subtitle || detail || undefined };
     setLocation(normalized);
-    rememberLocation(normalized, detail);
+    rememberLocation(normalized, normalized.detail);
     setActivityLocations((prev) => ({ ...prev, [activity]: normalized }));
     setDayMode("today");
     setIsSearchOpen(false);
@@ -1920,7 +1870,6 @@ export default function Home() {
       return;
     }
 
-    setIsSearchOpen(false);
     setIsLocating(true);
     setLocationStep("checking");
     setError("");
@@ -2104,10 +2053,22 @@ export default function Home() {
 
   const sunrise = forecast ? formatClock(forecast.sunrise) : null;
   const sunset = forecast ? formatClock(forecast.sunset) : null;
-  const locationLabel = displayLocationName(location.name);
-  const hasRecommendedWindow = recommendation.ranks.length > 0;
-
-  const ready = !isLoading && view;
+  const locationLabel = displayLocationName(location.name, location.detail);
+  const ready = Boolean(view);
+  const todaySummary = useMemo(() => {
+    if (!view) return [];
+    const ordered = view.slots.filter((slot) => isTomorrow || view.currentTime === null || slot.time >= view.currentTime);
+    const avoid = ordered.length > 0 ? ordered.reduce((a, b) => (b.totalScore < a.totalScore ? b : a)) : null;
+    const rainStart = ordered.find((slot) => slot.precipitation >= 0.1 || (slot.precipitationProbability ?? 0) >= 55) ?? null;
+    const rainWeaken = rainStart ? ordered.find((slot) => slot.time > rainStart.time && slot.precipitation < 0.1 && (slot.precipitationProbability ?? 0) < 35) ?? null : null;
+    return [
+      { label: "가장 편안한 2시간", value: recommendation.entries[0] ? formatTwoHourWindow(recommendation.entries[0].win.startHour) : "남은 추천 없음" },
+      { label: "피하면 좋은 때", value: avoid ? `${fmtAmPm(avoid.hour)} · ${Math.round(avoid.totalScore)}점` : "정보 없음" },
+      { label: "비 시작", value: rainStart ? fmtAmPm(rainStart.hour) : "뚜렷한 비 없음" },
+      { label: "비 약화", value: rainWeaken ? fmtAmPm(rainWeaken.hour) : rainStart ? "예보 범위 밖" : "해당 없음" },
+      { label: "일몰", value: sunset ?? "정보 없음" }
+    ];
+  }, [isTomorrow, recommendation.entries, sunset, view]);
   const heroPlan = view && heroSlot ? getOutfitPlan(view.slots, heroSlot, activity) : null;
   const nowSlot = !isTomorrow && view ? view.reference : heroSlot;
   const nowDecision = nowSlot ? getGoNowDecision(nowSlot, profile) : null;
@@ -2132,7 +2093,7 @@ export default function Home() {
           <header className="family-appbar">
             <div className="family-brand-icon" aria-hidden="true"><Sun size={30} /></div>
             <div className="family-brand-copy">
-              <strong className="family-wordmark">야외<svg className="family-bom" viewBox="0 0 200 120" role="img" aria-label="봄"><g fill="none" stroke="currentColor" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round"><path d="M28 8 L28 46" /><path d="M72 8 L72 46" /><path d="M28 28 L72 28" /><path d="M28 46 L72 46" /><path d="M10 64 L142 64" /><path d="M50 64 L50 47" /><path d="M28 76 L72 76 L72 110 L28 110 Z" /></g><g transform="translate(148 60) scale(1.8)" fill="#2f95a0"><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(-2)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(74)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(142)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(218)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="rotate(286)" /><circle r={2.4} fill="var(--surface)" /><circle r={1.2} fill="#2f95a0" opacity={0.5} /></g><g fill="#2f95a0"><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(96 58) rotate(15)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(120 52) rotate(-20) scale(1.1)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(164 46) rotate(50) scale(1.3)" /><path d="M0 -1.4 C -4.6 -1.8 -6 -6.2 -3.7 -9.2 C -2.5 -10.7 -1.2 -9.4 0 -7.7 C 1.2 -9.4 2.5 -10.7 3.7 -9.2 C 6 -6.2 4.6 -1.8 0 -1.4 Z" transform="translate(172 62) rotate(80) scale(1.1)" /></g></svg></strong>
+              <FamilyWordmark />
               <span>robom · 바깥바람이 좋은 때</span>
             </div>
             <button className="family-icon-button" type="button" onClick={(event) => openLocationSearch(event.currentTarget)} aria-label="위치 변경">
@@ -2185,8 +2146,8 @@ export default function Home() {
                 </>
               ) : null}
             </div>
-            <button className="family-filter-chip" type="button" onClick={(event) => openLocationSearch(event.currentTarget)} aria-label={`위치 변경, 현재 ${locationLabel}`}>
-              {locationLabel}
+            <button className="family-filter-chip family-location-chip" type="button" onClick={(event) => openLocationSearch(event.currentTarget)} aria-label={`위치 변경, 현재 ${locationLabel}${location.detail ? ` ${location.detail}` : ""}`}>
+              <span>{locationLabel}</span>{location.detail ? <small>{location.detail}</small> : null}
             </button>
             <div className="family-day-filter" role="tablist" aria-label="날짜 선택">
               <button type="button" role="tab" aria-selected={!isTomorrow} className={!isTomorrow ? "is-active" : ""} onClick={() => setDayMode("today")}>오늘</button>
@@ -2228,7 +2189,10 @@ export default function Home() {
                   </button>
                 </form>
 
-                <button className="gps-inline" type="button" onClick={startLocate}>
+                {isLocating ? <div className="location-step" role="status" aria-live="polite"><RefreshCw className="spin" size={17} /><strong>{locationStepText[locationStep]}</strong><small>위치 확인부터 날씨 계산까지 이 화면에서 이어집니다.</small></div> : null}
+                {!isLocating && error ? <p className="search-note" role="alert">{error}</p> : null}
+
+                <button className="gps-inline" type="button" onClick={startLocate} disabled={isLocating}>
                   <span className="gps-inline-icon" aria-hidden="true"><LocateFixed size={18} /></span>
                   <span className="gps-inline-copy">
                     <strong>현재 위치로 찾기</strong>
@@ -2365,7 +2329,7 @@ export default function Home() {
 
           {error && forecast ? <div className="notice" role="alert">{error}</div> : null}
           {rawForecast && rawForecast.airQualityAvailable === false ? <div className="notice" role="status">대기질 정보를 불러오지 못했어요. 점수에는 반영하지 않았어요.</div> : null}
-          {isLocating ? <div className="locating-bar"><RefreshCw className="spin" size={16} />{locationStepText[locationStep]}</div> : null}
+          {isLoading && ready ? <div className="updating-bar" role="status" aria-live="polite"><RefreshCw className="spin" size={15} /> 최신 예보로 업데이트 중</div> : null}
 
           {activeTab === "settings" ? (
             <SettingsView />
@@ -2376,7 +2340,11 @@ export default function Home() {
               <button className="primary-action" type="button" onClick={() => loadForecast(location)}>다시 시도</button>
             </section>
           ) : !ready || !view || !heroSlot || !nowSlot || !nowDecision ? (
-            <section className="loading-panel" role="status" aria-live="polite"><RefreshCw className="spin" size={28} /><p>{profile.label} 점수를 계산하고 있어요</p></section>
+            <section className="forecast-skeleton" role="status" aria-live="polite" aria-label={`${profile.label} 예보 불러오는 중`}>
+              <span className="skeleton-line is-short" /><span className="skeleton-line is-title" />
+              <div className="skeleton-card"><span /><span /><span /></div>
+              <div className="skeleton-grid"><span /><span /><span /><span /></div>
+            </section>
           ) : (
             <div className="family-content">
               {activeTab === "today" ? (
@@ -2442,11 +2410,10 @@ export default function Home() {
               {activeTab === "time" ? (
                 <section className="family-time-view" aria-labelledby="time-title">
                   <div className="family-section-head"><p>{profile.label} 기준으로 모든 지표를 다시 계산했어요.</p><h2 id="time-title">추천 시간과 날씨</h2></div>
-                  {hasRecommendedWindow ? (
-                    <button type="button" className="family-reel-open" onClick={() => setIsReelOpen(true)}>
-                      <Sparkles size={19} aria-hidden="true" /> 오늘의 날씨 카드로 보기
-                    </button>
-                  ) : null}
+                  <section className="today-summary" aria-label="오늘 한눈에">
+                    <h3>오늘 한눈에</h3>
+                    <div>{todaySummary.map((item) => <span key={item.label}><small>{item.label}</small><b>{item.value}</b></span>)}</div>
+                  </section>
                   <div className="family-ranked-list">
                     {recommendation.entries.map(({ win, start, label }, index) => (
                       <article key={win.startHour} className={index === 0 ? "is-top" : ""}>
@@ -2466,24 +2433,9 @@ export default function Home() {
               {activeTab === "prep" ? (
                 <section className="family-prep-view" aria-labelledby="prep-title">
                   <div className="family-section-head"><p>{formatHour(heroSlot)} 추천 시간의 실제 예보를 기준으로 준비해요.</p><h2 id="prep-title">{isTomorrow ? "내일" : "오늘"}의 준비</h2></div>
-                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} packedIds={packedIds} onTogglePacked={togglePacked} compact />
-                  {!isPrepOpen ? <button ref={prepTriggerRef} className="family-secondary-button" type="button" onClick={() => setIsPrepOpen(true)}><CircleHelp size={20} /> 준비물 크게 보기</button> : null}
+                  <PrepView slot={heroSlot} slots={view.slots} activity={activity} packedIds={packedIds} onTogglePacked={togglePacked} duration={activityDuration} onDurationChange={changeActivityDuration} />
                 </section>
               ) : null}
-
-              <TimeReel
-                open={isReelOpen && recommendation.ranks.length > 0}
-                title={`${isTomorrow ? "내일" : "오늘"}의 추천 ${profile.label} 시간대`}
-                ranks={recommendation.ranks}
-                pool={recommendation.pool}
-                onClose={() => setIsReelOpen(false)}
-                onPick={(rank) => {
-                  const target = recommendation.entries.find((item) => `${item.win.startHour}` === rank.key);
-                  if (!target) return;
-                  setIsReelOpen(false);
-                  openAlarm({ label: rank.label, best: target.start, timeLabel: rank.time });
-                }}
-              />
             </div>
           )}
 
@@ -2509,23 +2461,6 @@ export default function Home() {
           activity={activity}
           onClose={() => setSheetKey(null)}
         />
-      ) : null}
-
-      {isPrepOpen && view ? (
-        <div
-          className="sheet-backdrop"
-          onClick={() => setIsPrepOpen(false)}
-        >
-          <div ref={prepDialogRef} className="sheet" role="dialog" aria-modal="true" aria-label="준비물" onClick={(event) => event.stopPropagation()}>
-            <div className="sheet-topbar">
-              <div className="sheet-grip" aria-hidden="true" />
-              <button className="sheet-close" type="button" onClick={() => setIsPrepOpen(false)} aria-label="닫기">
-                <X size={18} />
-              </button>
-            </div>
-            <PrepView slot={heroSlot ?? view.reference} slots={view.slots} activity={activity} packedIds={packedIds} onTogglePacked={togglePacked} />
-          </div>
-        </div>
       ) : null}
 
       {alarmTarget ? (

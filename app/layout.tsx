@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/"
   },
+  openGraph: {
+    url: "https://outbom.robom.kr/",
+    title: "야외봄 — 나가기 좋은 시간",
+    description: "걷기·등산·산책·러닝·자전거에 좋은 시간과 준비물을 알려드려요."
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

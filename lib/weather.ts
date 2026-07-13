@@ -3,6 +3,7 @@ import { ACTIVITIES, type ActivityProfile } from "@/lib/activity";
 
 export type LocationPoint = {
   name: string;
+  detail?: string;
   latitude: number;
   longitude: number;
   source: "city" | "gps" | "search";
