@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Backpack,
   BellRing,
-  CalendarClock,
   ChevronDown,
   ChevronRight,
   CloudRain,
@@ -39,7 +38,6 @@ import {
   getDayParts,
   getMetricDetail,
   getRankedWindows,
-  heroHeadline,
   isUnsafeOutdoorSlot,
   type MetricKey as DetailKey,
   type RankedWindow
@@ -60,6 +58,7 @@ import { ActivityDaySummaryCard } from "@/components/ActivityDaySummary";
 import { LocationBar } from "@/components/LocationControls";
 import { PrecipitationSheet } from "@/components/PrecipitationSheet";
 import { RecommendationList } from "@/components/RecommendationList";
+import { TodayHero } from "@/components/TodayHero";
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { forecastCacheAgeLabel, readForecastCache, saveForecastCache } from "@/lib/forecast-cache";
@@ -1734,6 +1733,11 @@ export default function Home() {
   const nowAirDetail = nowSlot?.pm25 === null || nowSlot?.pm25 === undefined ? "미세먼지" : `미세먼지 · ${gradePm25(nowSlot.pm25).label}`;
   const nowFeelGrade = nowSlot ? gradeTemperature(nowSlot.apparentTemperature) : { label: "정보 없음", tone: "normal" as const };
   const nowWindGrade = nowSlot ? gradeWind(nowSlot.windSpeed) : { label: "정보 없음", tone: "normal" as const };
+  // 오늘 히어로 스크러버용: 낮 시간대(오전 6시~밤 9시) 점수 배열
+  const heroDaySlots = useMemo(
+    () => (view ? view.slots.filter((s) => s.hour >= 6 && s.hour <= 21).sort((a, b) => a.hour - b.hour) : []),
+    [view]
+  );
 
   return (
     <main className="page">
@@ -1995,7 +1999,17 @@ export default function Home() {
           ) : (
             <div className="family-content">
               {activeTab === "today" ? (
-                <>
+                heroDaySlots.length >= 3 ? (
+                  <TodayHero
+                    daySlots={heroDaySlots}
+                    initialHour={(isTomorrow ? heroSlot.hour : nowSlot.hour)}
+                    activityLabel={profile.label}
+                    dayLabel={isTomorrow ? "내일" : "오늘"}
+                    sunrise={sunrise}
+                    sunset={sunset}
+                    onAlarm={(slot, windowLabel) => openAlarm({ label: "베스트 시간", best: slot, timeLabel: windowLabel })}
+                  />
+                ) : (
                   <section className="family-hero family-hero-solo" aria-labelledby="hero-title">
                     <p className="family-now-kicker">지금 출발 판단 · {formatForecastMoment(view.reference.time, isTomorrow)}</p>
                     <div className={`family-now-head tone-${nowDecision.tone}`}>
@@ -2015,25 +2029,18 @@ export default function Home() {
                       <span className={`tone-${nowFeelGrade.tone}`}><Thermometer size={18} aria-hidden="true" /><b>{Math.round(nowSlot.apparentTemperature)}°</b><small>체감 · {nowFeelGrade.label}</small></span>
                       <span className={`tone-${nowWindGrade.tone}`}><Wind size={18} aria-hidden="true" /><b>{nowSlot.windSpeed.toFixed(1)}</b><small>바람 ㎧ · {nowWindGrade.label}</small></span>
                     </div>
-
-                    <div className="family-next-best">
-                      <span><CalendarClock size={17} aria-hidden="true" /> 다음으로 편안한 시간</span>
-                      <b>{formatHour(heroSlot)} · {heroHeadline(heroSlot, activity)}</b>
-                    </div>
-
                     {sunrise && sunset ? (
                       <div className="family-hero-sun" aria-label="일출과 일몰">
                         <span><Sun size={16} aria-hidden="true" /> 일출 <b>{sunrise}</b></span>
                         <span>일몰 <b>{sunset}</b></span>
                       </div>
                     ) : null}
-
                     <div className="family-hero-actions">
                       <span>{formatHour(heroSlot)}에는 지금보다 더 편안할 가능성이 높아요.</span>
                       <button type="button" onClick={() => openAlarm({ label: "추천 시간", best: heroSlot })}><BellRing size={20} /> 추천 시간 알림</button>
                     </div>
                   </section>
-                </>
+                )
               ) : null}
 
               {activeTab === "time" ? (

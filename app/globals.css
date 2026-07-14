@@ -3094,3 +3094,74 @@ input:focus-visible {
   background: var(--brand-soft);
   border-radius: 10px;
 }
+
+/* ═══ 오늘 탭 히어로: 판정 배너 + 시간대별 점수 스크러버 + 시간 연동 지표 + 베스트 스트립 ═══ */
+.today-hero { display: flex; flex-direction: column; gap: 12px; }
+.today-hero.grade-good { --g-ink: #1f8f52; --g-soft: #e9f6ee; --g-line: #bfe3cd; }
+.today-hero.grade-ok   { --g-ink: #267fae; --g-soft: #e4f4fb; --g-line: #bfe2f2; }
+.today-hero.grade-bad  { --g-ink: #d64545; --g-soft: #fdecec; --g-line: #f2c6c6; }
+
+/* ① 판정 배너 */
+.today-banner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--g-line); border-radius: 22px; background: var(--g-soft); }
+.today-banner-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 11px; border-radius: 999px; background: var(--g-ink); color: #fff; font-size: 12px; font-weight: 800; }
+.today-banner-title { margin: 9px 0 4px; font-size: 20px; font-weight: 900; letter-spacing: -0.03em; color: var(--ink); }
+.today-banner-detail { color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.today-banner-when { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.today-banner-num { display: flex; align-items: baseline; justify-content: flex-end; gap: 2px; color: var(--g-ink); }
+.today-banner-num strong { font-size: 50px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.today-banner-num span { font-size: 15px; font-weight: 800; }
+
+/* ② 스크러버 */
+.today-scrubber { padding: 14px 14px 12px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: var(--shadow-sm); }
+.today-track { position: relative; width: 100%; cursor: ew-resize; -webkit-user-select: none; user-select: none; }
+.today-track:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; border-radius: 10px; }
+.today-graph { display: block; width: 100%; height: 150px; }
+.today-graph-area { fill: color-mix(in srgb, var(--brand) 12%, transparent); }
+.today-graph-line { stroke: var(--brand-deep); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.today-cursor-line { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 3 3; opacity: 0.45; }
+.today-cursor-dot { fill: #fff; stroke: var(--brand-deep); stroke-width: 2.4; }
+.hero-shade-good { fill: rgba(31, 143, 82, 0.13); }
+.hero-shade-ok { fill: rgba(38, 127, 174, 0.10); }
+.hero-shade-bad { fill: rgba(214, 69, 69, 0.10); }
+.hero-shade-label { font-size: 8px; font-weight: 800; }
+.hero-shade-label-good { fill: #1f8f52; } .hero-shade-label-ok { fill: #267fae; } .hero-shade-label-bad { fill: #d64545; }
+.today-bubble { position: absolute; top: -2px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); pointer-events: none; }
+.today-bubble b { font-weight: 800; } .today-bubble span { opacity: 0.85; }
+.today-axis { position: relative; height: 15px; margin-top: 3px; }
+.today-axis span { position: absolute; transform: translateX(-50%); color: var(--muted); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.today-legend { display: flex; justify-content: center; gap: 15px; margin-top: 7px; }
+.today-legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.today-legend span::before { content: ""; width: 9px; height: 9px; border-radius: 3px; }
+.today-legend .lg-good::before { background: rgba(31, 143, 82, 0.55); }
+.today-legend .lg-ok::before { background: rgba(38, 127, 174, 0.5); }
+.today-legend .lg-bad::before { background: rgba(214, 69, 69, 0.5); }
+
+/* ③ 시간 연동 지표 타일 */
+.today-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.today-tile { position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 70px; padding: 9px 10px; border: 1px solid var(--t-line); border-radius: 16px; background: var(--t-soft); }
+.today-tile-top { display: flex; align-items: center; gap: 5px; color: var(--t-ink); }
+.today-tile-top em { font-style: normal; font-size: 11px; font-weight: 800; }
+.today-tile b { font-size: 19px; font-weight: 900; color: var(--t-ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.today-tile small { color: var(--muted); font-size: 11px; }
+.tile-good { --t-ink: #1f8f52; --t-soft: #eef7f1; --t-line: #c9e6d3; }
+.tile-ok { --t-ink: #267fae; --t-soft: #eaf5fb; --t-line: #c6e2f1; }
+.tile-bad { --t-ink: #d64545; --t-soft: #fdeeee; --t-line: #f3cccc; }
+.today-tile-tag { position: absolute; top: -8px; right: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px; font-weight: 800; color: #fff; }
+.today-tile-tag.tag-good { background: #1f8f52; } .today-tile-tag.tag-ok { background: #267fae; } .today-tile-tag.tag-bad { background: #d64545; }
+
+/* ④ 베스트 시간 스트립 */
+.today-best { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--brand-soft); }
+.today-best-kicker { display: inline-flex; align-items: center; gap: 5px; color: var(--brand-deep); font-size: 12px; font-weight: 800; }
+.today-best b { display: block; margin: 5px 0 2px; font-size: 16px; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; }
+.today-best small { color: var(--ink-2); font-size: 12.5px; }
+.today-best button { flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 14px; background: var(--brand-deep); color: #fff; cursor: pointer; }
+
+/* 일출·일몰 */
+.today-sun { display: flex; gap: 16px; justify-content: center; color: var(--muted); font-size: 12.5px; }
+.today-sun span { display: inline-flex; align-items: center; gap: 5px; }
+.today-sun b { color: var(--ink); font-weight: 800; }
+
+@media (max-width: 340px) {
+  .today-banner-num strong { font-size: 42px; }
+  .today-tile b { font-size: 17px; }
+}
