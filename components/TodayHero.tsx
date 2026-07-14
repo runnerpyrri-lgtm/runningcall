@@ -2,7 +2,7 @@
 // warm-paper 테마·Pretendard·브랜드 블루 토큰을 그대로 쓰고, 등급 3단계(좋음 초록/보통 파랑/주의 빨강)로 통일한다.
 "use client";
 
-import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { BellRing, CloudRain, Haze, Sun, Thermometer, Wind } from "lucide-react";
 import { gradePm25, gradePrecipitation, gradeTemperature, gradeWind, type MetricGrade, type RunningSlot } from "@/lib/scoring";
 
@@ -79,6 +79,7 @@ function threeHourWindows(slots: RunningSlot[]) {
 type Props = {
   daySlots: RunningSlot[];
   initialHour: number;
+  nowHour: number; // 현재 시(오늘 탭에서만 유효, 내일이면 -1)
   activityLabel: string;
   dayLabel: string; // "오늘" | "내일"
   sunrise: string | null;
@@ -91,17 +92,31 @@ const VB_H = 150;
 const PLOT_TOP = 14;
 const PLOT_BOT = 116;
 
-export function TodayHero({ daySlots, initialHour, activityLabel, dayLabel, sunrise, sunset, onAlarm }: Props) {
+// 특정 시(hour)에 가장 가까운 슬롯 인덱스
+function nearestIndex(slots: RunningSlot[], hour: number): number {
+  if (!slots.length) return 0;
+  let idx = slots.findIndex((s) => s.hour === hour);
+  if (idx < 0) idx = slots.reduce((best, s, i) => (Math.abs(s.hour - hour) < Math.abs(slots[best].hour - hour) ? i : best), 0);
+  return Math.max(0, idx);
+}
+
+export function TodayHero({ daySlots, initialHour, nowHour, activityLabel, dayLabel, sunrise, sunset, onAlarm }: Props) {
   const slots = daySlots;
   const n = slots.length;
-  const initialIndex = useMemo(() => {
-    let idx = slots.findIndex((s) => s.hour === initialHour);
-    if (idx < 0) idx = slots.reduce((best, s, i) => (Math.abs(s.hour - initialHour) < Math.abs(slots[best].hour - initialHour) ? i : best), 0);
-    return Math.max(0, idx);
-  }, [slots, initialHour]);
+  const initialIndex = useMemo(() => nearestIndex(slots, initialHour), [slots, initialHour]);
+  // 현재 시각이 그래프 범위 안이면 "지금" 마커를 표시(오늘 탭 전용)
+  const nowIndex = useMemo(() => (nowHour >= 0 ? nearestIndex(slots, nowHour) : -1), [slots, nowHour]);
+  const showNow = nowIndex >= 0 && slots.length > 0 && Math.abs(slots[nowIndex].hour - nowHour) <= 1;
+
   const [index, setIndex] = useState(initialIndex);
+  // 사용자가 아직 바를 만지지 않았으면 커서를 현재 시각에 붙여둔다(시간이 흐르면 따라감).
+  const [touched, setTouched] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!touched && showNow && nowIndex >= 0) setIndex(nowIndex);
+  }, [touched, showNow, nowIndex]);
 
   const active = slots[Math.min(index, n - 1)] ?? slots[0];
   const grade = scoreGrade(active.totalScore);
@@ -120,6 +135,7 @@ export function TodayHero({ daySlots, initialHour, activityLabel, dayLabel, sunr
     if (!el || n < 2) return;
     const rect = el.getBoundingClientRect();
     const f = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    setTouched(true);
     setIndex(Math.round(f * (n - 1)));
   };
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -136,15 +152,19 @@ export function TodayHero({ daySlots, initialHour, activityLabel, dayLabel, sunr
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
   };
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); setIndex((i) => Math.max(0, i - 1)); }
-    else if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); setIndex((i) => Math.min(n - 1, i + 1)); }
-    else if (e.key === "Home") { e.preventDefault(); setIndex(0); }
-    else if (e.key === "End") { e.preventDefault(); setIndex(n - 1); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); setTouched(true); setIndex((i) => Math.max(0, i - 1)); }
+    else if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); setTouched(true); setIndex((i) => Math.min(n - 1, i + 1)); }
+    else if (e.key === "Home") { e.preventDefault(); setTouched(true); setIndex(0); }
+    else if (e.key === "End") { e.preventDefault(); setTouched(true); setIndex(n - 1); }
   };
 
   // 커서 말풍선 좌우 클램프
   const cursorFrac = frac(index);
   const bubbleClamp = Math.max(11, Math.min(89, cursorFrac * 100));
+  // "지금" 마커 위치(현재 시각) — 바를 옮겨도 항상 표시
+  const nowFrac = showNow ? frac(nowIndex) : 0;
+  const nowLabelClamp = Math.max(6, Math.min(94, nowFrac * 100));
+  const nowIsCursor = showNow && nowIndex === index;
 
   // 가로축 눈금(3시간 간격 정도)
   const ticks = slots.filter((s) => s.hour % 3 === 0);
@@ -213,9 +233,15 @@ export function TodayHero({ daySlots, initialHour, activityLabel, dayLabel, sunr
             {shadeLabel(windows.best, "good", "베스트")}
             <path className="today-graph-area" d={areaPath} />
             <polyline className="today-graph-line" points={points} vectorEffect="non-scaling-stroke" fill="none" />
+            {showNow && !nowIsCursor ? (
+              <line className="today-now-line" x1={nowFrac * VB_W} x2={nowFrac * VB_W} y1={PLOT_TOP - 2} y2={PLOT_BOT} vectorEffect="non-scaling-stroke" strokeDasharray="3 4" />
+            ) : null}
             <line className="today-cursor-line" x1={cursorFrac * VB_W} x2={cursorFrac * VB_W} y1={PLOT_TOP - 2} y2={PLOT_BOT} vectorEffect="non-scaling-stroke" />
             <circle className="today-cursor-dot" cx={cursorFrac * VB_W} cy={scoreY(active.totalScore)} r="4.5" />
           </svg>
+          {showNow ? (
+            <span className={`today-now-badge${nowIsCursor ? " is-cursor" : ""}`} style={{ left: `${nowLabelClamp}%` }} aria-hidden="true">지금</span>
+          ) : null}
           <div className="today-bubble" style={{ left: `${bubbleClamp}%` }}>
             <b>{hourLabel(active.hour)}</b><span>{Math.round(active.totalScore)}점</span>
           </div>

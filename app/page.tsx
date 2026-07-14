@@ -2003,6 +2003,7 @@ export default function Home() {
                   <TodayHero
                     daySlots={heroDaySlots}
                     initialHour={(isTomorrow ? heroSlot.hour : nowSlot.hour)}
+                    nowHour={isTomorrow ? -1 : nowSlot.hour}
                     activityLabel={profile.label}
                     dayLabel={isTomorrow ? "내일" : "오늘"}
                     sunrise={sunrise}
