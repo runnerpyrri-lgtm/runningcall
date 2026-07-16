@@ -1,16 +1,34 @@
-const CACHE_NAME = "outbom-v0.24.0";
+const CACHE_NAME = "outbom-v0.25.0";
 const CACHE_PREFIX = "outbom-v";
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
-const APP_SHELL = [SCOPE_PATH, `${SCOPE_PATH}manifest.webmanifest`];
+const APP_SHELL = [
+  SCOPE_PATH,
+  `${SCOPE_PATH}manifest.webmanifest`,
+  `${SCOPE_PATH}icons/icon-192.png`,
+  `${SCOPE_PATH}icons/icon-512.png`,
+  `${SCOPE_PATH}icons/maskable-512.png`,
+  `${SCOPE_PATH}bom-outbom.svg`
+];
+
+async function cacheAppShell(urls) {
+  const cache = await caches.open(CACHE_NAME);
+  const uniqueUrls = [...new Set(Array.isArray(urls) ? urls : [])];
+  await Promise.allSettled(uniqueUrls.map(async (candidate) => {
+    const url = new URL(candidate, self.location.origin);
+    if (url.origin !== self.location.origin) return;
+    if (!url.pathname.startsWith(SCOPE_PATH) || url.pathname.startsWith(`${SCOPE_PATH}api/`)) return;
+    const response = await fetch(url.href, { cache: "reload" });
+    if (response.ok && response.status === 200) await cache.put(url.href, response);
+  }));
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil(cacheAppShell(APP_SHELL));
 });
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") event.waitUntil(self.skipWaiting());
+  if (event.data?.type === "CACHE_APP_SHELL") event.waitUntil(cacheAppShell(event.data.urls));
 });
 
 self.addEventListener("activate", (event) => {
