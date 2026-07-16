@@ -239,7 +239,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fbf7ef" },
-  page: { gap: 16, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 40 },
+  page: { width: "100%", maxWidth: 900, alignSelf: "center", gap: 16, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 40 },
   header: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12 },
   logo: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: "#eaf6f7", borderWidth: 1, borderColor: "#cae4e7" },
   logoGlyph: { color: "#2f95a0", fontSize: 28 },

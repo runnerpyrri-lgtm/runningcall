@@ -11,6 +11,8 @@ describe("native app contract", () => {
     expect(packageInfo.dependencies["react-native"]).toBe("0.86.0");
     expect(appConfig.expo.scheme).toBe("outbom");
     expect(appConfig.expo.platforms).toEqual(["ios", "android"]);
+    expect(appConfig.expo.orientation).toBe("default");
+    expect(appConfig.expo.ios.supportsTablet).toBe(true);
     expect(appConfig.expo.ios.bundleIdentifier).toBe("kr.robom.outbom");
     expect(appConfig.expo.android.package).toBe("kr.robom.outbom");
     expect(appConfig.expo.ios.associatedDomains).toContain("applinks:robom.kr");
