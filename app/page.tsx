@@ -1658,6 +1658,12 @@ export default function Home() {
 
   async function saveAlarm(leadMin: number, popup: boolean) {
     if (!alarmTarget) return;
+    // 이미 지난 시각은 조용히 사라지는 대신 저장을 막고 이유를 알려준다.
+    if (alarmTarget.targetMs - leadMin * 60000 <= Date.now()) {
+      setToast("이미 지난 시간이라 알림을 켤 수 없어요. 다른 시간을 골라주세요.");
+      setAlarmTarget(null);
+      return;
+    }
     if (popup && canNotify && Notification.permission !== "granted") {
       const result = await Notification.requestPermission().catch(() => "denied");
       if (result !== "granted") {
@@ -1731,8 +1737,9 @@ export default function Home() {
             key: "precip" as DetailKey,
             icon: <CloudRain size={19} />,
             label: "비올확률",
-            value: `${Math.round((metricRef.precipitationProbability ?? 0))}`,
-            unit: "%",
+            // 결측을 0%로 보여 "비 안 옴"으로 오해시키지 않는다.
+            value: metricRef.precipitationProbability == null ? "정보 없음" : `${Math.round(metricRef.precipitationProbability)}`,
+            unit: metricRef.precipitationProbability == null ? "" : "%",
             grade: gradePrecipitation(metricRef.precipitation, (metricRef.precipitationProbability ?? 0)),
             iconClass: "ci-teal"
           },

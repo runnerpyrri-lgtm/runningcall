@@ -241,7 +241,7 @@ export function PrecipitationSheet({
           <div className={`precip-selected tone-${selectedDecision.tone}`}>
             <b>{fmtAmPm(selected.hour)}</b>
             <span>
-              {Math.round(selected.precipitationProbability ?? 0)}% · {rainAmountText(selected.precipitation)} · {selectedDecision.action}
+              {selected.precipitationProbability == null ? "확률 정보 없음" : `${Math.round(selected.precipitationProbability)}%`} · {rainAmountText(selected.precipitation)} · {selectedDecision.action}
             </span>
           </div>
         ) : null}
@@ -286,7 +286,7 @@ export function PrecipitationSheet({
                         <li key={slot.time} className={slot.time === selectedTime ? "is-selected" : ""}>
                           <button type="button" onClick={() => setSelectedTime(slot.time)}>
                             <b>{slot.hour}시</b>
-                            <span>{Math.round(slot.precipitationProbability ?? 0)}%</span>
+                            <span>{slot.precipitationProbability == null ? "확률 없음" : `${Math.round(slot.precipitationProbability)}%`}</span>
                             <span>{rainAmountText(slot.precipitation)}</span>
                             <small>{rainDecision(slot).short}</small>
                           </button>

@@ -10,7 +10,7 @@ API·기존 PWA 호환 주소: https://outbom.robom.kr
 
 기존 Vercel 호환 주소: https://runningcall.vercel.app
 
-현재 버전: **v0.25.1** (`public/sw.js`의 `outbom-v0.25.1`과 일치)
+현재 버전: **v0.25.2** (`public/sw.js`의 `outbom-v0.25.2`과 일치)
 
 ## 패밀리 셸과 설치
 

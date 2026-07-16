@@ -270,7 +270,7 @@ export function getPackingPlan(current: RunningSlot, activity: ActivityKey, dura
       id: "rain-gear",
       emoji: "🌧️",
       label: activity === "run" ? "방수 재킷·챙 모자" : activity === "bike" ? "방수 재킷·라이트" : activity === "hike" ? "방수 재킷·배낭 커버" : activity === "dog" ? "우산·강아지 우비" : "우산·방수 신발",
-      detail: `비 가능성 ${Math.round(current.precipitationProbability ?? 0)}%`,
+      detail: current.precipitationProbability == null ? "강수 예보 있음" : `비 가능성 ${Math.round(current.precipitationProbability)}%`,
       reason: "젖은 옷과 노면은 체온·시야·접지에 모두 불리해요.",
       category: "safety"
     });
