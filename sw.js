@@ -1,4 +1,4 @@
-const CACHE_NAME = "outbom-v0.25.0";
+const CACHE_NAME = "outbom-v0.25.1";
 const CACHE_PREFIX = "outbom-v";
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const APP_SHELL = [
