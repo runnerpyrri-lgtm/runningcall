@@ -1,0 +1,41 @@
+{
+  "name": "outbom-mobile",
+  "version": "0.25.0",
+  "private": true,
+  "main": "index.ts",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "expo start --dev-client",
+    "start:go": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "config": "expo config --type public",
+    "doctor": "expo-doctor",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "test": "vitest run",
+    "export:android": "expo export --platform android --output-dir dist/android",
+    "export:ios": "expo export --platform ios --output-dir dist/ios",
+    "check": "pnpm run config && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run export:android && pnpm run export:ios"
+  },
+  "dependencies": {
+    "expo": "~57.0.6",
+    "expo-dev-client": "~57.0.6",
+    "expo-location": "~57.0.2",
+    "expo-sqlite": "~57.0.0",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "eslint": "^9.39.2",
+    "eslint-config-expo": "~57.0.0",
+    "expo-doctor": "^1.20.1",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "_generated": "DO NOT EDIT · robom family 1.0.0",
+  "guestFirst": true,
+  "issuer": "",
+  "redirectBase": "https://robom.kr/auth/callback",
+  "providers": {
+    "kakao": "unconfigured",
+    "google": "unconfigured",
+    "apple": "unconfigured"
+  },
+  "namespace": "outbom",
+  "calendarSensitiveSync": "not-applicable"
+}

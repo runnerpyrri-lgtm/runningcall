@@ -1,0 +1,20 @@
+# immutable 로봄 패밀리 workflow를 정확한 SHA로 호출해 앱 생성물과 PWA 계약을 검사한다.
+name: Family contract
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-family:
+    uses: robom-labs/robom/.github/workflows/family-contract.yml@5a63eab4f6930837f9877efd187562b85530a81a
+    with:
+      generated-dir: src/generated/robom-family
+      lock-file: family.lock.json
+      manifest-file: src/family-manifest.json

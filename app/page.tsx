@@ -2,9 +2,12 @@
 
 // 야외봄 메인 화면 — 점수 히어로, 시간대 추천, 야외활동 정보 드로어
 import {
+  Accessibility,
   AlertCircle,
   Backpack,
+  BadgeCheck,
   BellRing,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   CloudRain,
@@ -15,6 +18,7 @@ import {
   FileText,
   Haze,
   House,
+  LifeBuoy,
   LocateFixed,
   Mail,
   RefreshCw,
@@ -59,11 +63,15 @@ import { LocationBar } from "@/components/LocationControls";
 import { PrecipitationSheet } from "@/components/PrecipitationSheet";
 import { RecommendationList } from "@/components/RecommendationList";
 import { TodayHero } from "@/components/TodayHero";
+import { AnalyticsConsent } from "@/components/AnalyticsConsent";
+import { PwaInstallCard } from "@/components/PwaInstallCard";
 import { ACTIVITIES, ACTIVITY_ORDER, type ActivityKey } from "@/lib/activity";
 import { getDynamicGuideBlock } from "@/lib/activity-guide";
 import { forecastCacheAgeLabel, readForecastCache, saveForecastCache } from "@/lib/forecast-cache";
+import { familyAnalytics } from "@/lib/family-analytics";
 import { FamilyWordmark } from "./family-wordmark";
 import { APP_BASE_PATH, apiPath, publicPath } from "@/lib/public-path";
+import familyMeta from "@/src/generated/robom-family/app-meta.json";
 import packageInfo from "../package.json";
 
 // 활동 내부 탭 (판단 / 준비 / 가이드)
@@ -612,8 +620,8 @@ function AlarmSheet({
   );
 }
 
-function contactHref(kind: "일반 문의" | "광고·제휴 문의") {
-  const subject = `[야외봄] ${kind} · v${packageInfo.version}`;
+function contactHref() {
+  const subject = `[야외봄] 일반 문의 · v${packageInfo.version}`;
   return `mailto:hello.robom@gmail.com?subject=${encodeURIComponent(subject)}`;
 }
 
@@ -677,14 +685,27 @@ function SettingsDeepLinks() {
   );
 }
 
+const FAMILY_APP_DESCRIPTIONS: Record<string, string> = {
+  outbom: "야외활동 컨디션과 추천 시간",
+  homebom: "청약 공고와 접수 알림",
+  runningbom: "러닝 대회 탐색과 접수 알림",
+  calendarbom: "큰 달력과 가족 일정 알림",
+  certbom: "자격증 시험 탐색과 일정 준비"
+};
+
+function FamilyAppIcon({ id }: { id: string }) {
+  if (id === "outbom") return <Sun size={20} />;
+  if (id === "homebom") return <House size={20} />;
+  if (id === "runningbom") return <Sparkles size={20} />;
+  if (id === "calendarbom") return <CalendarDays size={20} />;
+  return <BadgeCheck size={20} />;
+}
+
 function SettingsView() {
-  const familyApps = [
-    { name: "청약봄", description: "청약 공고와 마감 알림", href: "https://robom.kr/apps/homebom", status: "웹으로 이용" },
-    { name: "러닝봄", description: "러닝 대회 접수 알림", href: "https://robom.kr/apps/runningbom", status: "웹으로 이용" }
-  ];
+  const lastVerified = familyMeta.lastVerifiedAt.slice(0, 10).replaceAll("-", ".");
 
   return (
-    <div className="family-settings" aria-label="설정과 앱 정보">
+    <div className="family-settings" aria-label="설정과 앱 정보" data-family-spec={familyMeta.familySpecVersion}>
       <section className="settings-card" aria-labelledby="about-outbom-title">
         <SettingsCardHead icon={<Sun size={16} strokeWidth={1.9} />} title="야외봄은" id="about-outbom-title" />
         <p className="settings-note">
@@ -706,13 +727,37 @@ function SettingsView() {
         <SettingsDeepLinks />
       </section>
 
+      <section className="settings-card" aria-labelledby="accessibility-outbom-title">
+        <SettingsCardHead icon={<Accessibility size={16} strokeWidth={1.9} />} title="화면과 접근성" id="accessibility-outbom-title" />
+        <p className="settings-note">
+          320px 폭과 브라우저 200% 확대에서도 핵심 판단과 하단 메뉴를 사용할 수 있도록 구성했습니다. 움직임 줄이기 설정도 따릅니다.
+        </p>
+      </section>
+
+      <PwaInstallCard />
+
+      <section className="settings-card" aria-labelledby="source-title">
+        <SettingsCardHead icon={<Database size={16} strokeWidth={1.9} />} title="데이터 출처와 확인" id="source-title" />
+        <p className="settings-note">
+          날씨·대기질은 Open-Meteo, 위치 검색은 Kakao Local, 지도 데이터는 OpenStreetMap
+          기여자들의 자료를 사용합니다. 중앙 앱 정보는 {lastVerified}에 마지막 확인됐으며 예보는 참고용입니다.
+        </p>
+      </section>
+
       <section className="settings-card" aria-labelledby="family-apps-title">
-        <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="다른 로봄 앱" id="family-apps-title" />
-        {familyApps.map((app) => (
-          <a className="settings-row family-app-row" href={app.href} target="_blank" rel="noopener noreferrer" key={app.name}>
-            <span className="settings-row-icon" aria-hidden="true"><House size={20} /></span>
-            <span><strong>{app.name}</strong><small>{app.description}</small></span>
-            <em>{app.status}</em>
+        <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="로봄 앱 5개" id="family-apps-title" />
+        {familyMeta.familyApps.map((app) => (
+          <a
+            className="settings-row family-app-row"
+            href={app.installUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-current={app.id === familyMeta.id ? "page" : undefined}
+            key={app.id}
+          >
+            <span className="settings-row-icon" aria-hidden="true"><FamilyAppIcon id={app.id} /></span>
+            <span><strong>{app.name}</strong><small>{FAMILY_APP_DESCRIPTIONS[app.id]}</small></span>
+            <em>{app.id === familyMeta.id ? "현재 앱" : "설치·열기"}</em>
             <ExternalLink size={18} aria-hidden="true" />
           </a>
         ))}
@@ -723,38 +768,36 @@ function SettingsView() {
         </a>
       </section>
 
-      <section className="settings-card" aria-labelledby="contact-title">
-        <SettingsCardHead icon={<Mail size={16} strokeWidth={1.9} />} title="문의" id="contact-title" />
-        <a className="settings-row" href={contactHref("일반 문의")}>
+      <section className="settings-card" aria-labelledby="support-title">
+        <SettingsCardHead icon={<LifeBuoy size={16} strokeWidth={1.9} />} title="지원과 피드백" id="support-title" />
+        <a className="settings-row" href={familyMeta.supportUrl} target="_blank" rel="noopener noreferrer">
+          <span className="settings-row-icon" aria-hidden="true"><LifeBuoy size={20} /></span>
+          <span><strong>지원 센터</strong><small>사용법과 자주 묻는 질문을 확인해요.</small></span>
+          <ExternalLink size={18} aria-hidden="true" />
+        </a>
+        <a className="settings-row" href={contactHref()}>
           <span className="settings-row-icon" aria-hidden="true"><Mail size={20} /></span>
-          <span><strong>일반 문의</strong><small>hello.robom@gmail.com</small></span>
+          <span><strong>의견 보내기</strong><small>앱 버전이 제목에 자동으로 포함돼요.</small></span>
           <ChevronRight size={19} aria-hidden="true" />
         </a>
-        <a className="settings-row" href={contactHref("광고·제휴 문의")}>
-          <span className="settings-row-icon" aria-hidden="true"><Sparkles size={20} /></span>
-          <span><strong>광고·제휴 문의</strong><small>앱명·용도·버전이 제목에 포함돼요.</small></span>
-          <ChevronRight size={19} aria-hidden="true" />
-        </a>
-      </section>
-
-      <section className="settings-card" aria-labelledby="source-title">
-        <SettingsCardHead icon={<Database size={16} strokeWidth={1.9} />} title="데이터 출처" id="source-title" />
-        <p className="settings-note">
-          날씨·대기질은 Open-Meteo, 위치 검색은 Kakao Local, 지도 데이터는 OpenStreetMap
-          기여자들의 자료를 사용합니다. 예보는 참고용이며 실제 날씨와 다를 수 있어요.
-        </p>
       </section>
 
       <section className="settings-card" aria-labelledby="policy-title">
-        <SettingsCardHead icon={<ShieldCheck size={16} strokeWidth={1.9} />} title="정책과 정보" id="policy-title" />
-        <a className="settings-row" href="https://robom.kr/privacy/outbom"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
+        <SettingsCardHead icon={<ShieldCheck size={16} strokeWidth={1.9} />} title="개인정보와 정책" id="policy-title" />
+        <AnalyticsConsent />
+        <a className="settings-row" href={familyMeta.privacyUrl} target="_blank" rel="noopener noreferrer"><span className="settings-row-icon" aria-hidden="true"><ShieldCheck size={20} /></span><span><strong>개인정보처리방침</strong></span><ExternalLink size={18} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/terms"><span className="settings-row-icon" aria-hidden="true"><FileText size={20} /></span><span><strong>이용약관</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
         <a className="settings-row" href="https://robom.kr/open-source"><span className="settings-row-icon" aria-hidden="true"><Code2 size={20} /></span><span><strong>오픈소스 라이선스</strong></span><ChevronRight size={19} aria-hidden="true" /></a>
       </section>
 
       <section className="app-meta-card" aria-label="앱 정보">
         <span className="app-meta-icon" aria-hidden="true"><Sun size={26} /></span>
-        <div><strong>야외봄</strong><small>개발자 · 로봄</small><small className="app-build">빌드 {BUILD_SHA.slice(0, 7)} · PWA {PWA_CACHE}</small></div>
+        <div>
+          <strong>{familyMeta.name}</strong>
+          <small>개발자 · 로봄 · 패밀리 {familyMeta.familySpecVersion}</small>
+          <small className="app-build">빌드 {BUILD_SHA.slice(0, 7)} · PWA {PWA_CACHE}</small>
+          <small className="app-build">배포 {familyMeta.deployProvider} · 중앙 확인 {lastVerified}</small>
+        </div>
         <span className="app-version">v{packageInfo.version}</span>
       </section>
     </div>
@@ -1012,6 +1055,7 @@ export default function Home() {
   const activityTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchDialogRef = useRef<HTMLDivElement | null>(null);
   const searchTriggerRef = useRef<HTMLElement | null>(null);
+  const recommendationEventRef = useRef("");
 
   const openLocationSearch = useCallback((trigger: HTMLElement) => {
     searchTriggerRef.current = trigger;
@@ -1290,6 +1334,10 @@ export default function Home() {
       setActivity(next);
       const remembered = activityLocations[next];
       if (remembered) setLocation(remembered);
+      familyAnalytics.track("activity_selected", {
+        surface: "activity-selector",
+        properties: { activity: next }
+      });
     },
     [activityLocations]
   );
@@ -1409,6 +1457,18 @@ export default function Home() {
     return { entries };
   }, [view, isTomorrow, nowHour, activity]);
 
+  useEffect(() => {
+    const first = recommendation.entries[0];
+    if (activeTab !== "time" || !first) return;
+    const eventKey = `${activity}:${isTomorrow ? "tomorrow" : "today"}:${first.win.startHour}`;
+    if (recommendationEventRef.current === eventKey) return;
+    recommendationEventRef.current = eventKey;
+    familyAnalytics.track("recommendation_viewed", {
+      surface: "time-tab",
+      properties: { activity, day: isTomorrow ? "tomorrow" : "today" }
+    });
+  }, [activeTab, activity, isTomorrow, recommendation.entries]);
+
 
   function rememberLocation(loc: LocationPoint, detail?: string) {
     setSaved((prev) => {
@@ -1485,6 +1545,10 @@ export default function Home() {
     }
     // 연속 검색 시 늦게 도착한 이전 쿼리 응답이 최신 결과를 덮지 않게 한다.
     const reqId = ++searchReqId.current;
+    familyAnalytics.track("location_method_selected", {
+      surface: "location-sheet",
+      properties: { method: "search" }
+    });
     setIsSearching(true);
     setSearchNote("");
     try {
@@ -1515,6 +1579,11 @@ export default function Home() {
       setError("휴대폰 현재위치는 HTTPS 주소에서만 작동해요. HTTPS 터널/배포 주소로 접속해 주세요.");
       return;
     }
+
+    familyAnalytics.track("location_method_selected", {
+      surface: "location-sheet",
+      properties: { method: "gps" }
+    });
 
     setIsLocating(true);
     setLocationStep("checking");
@@ -1605,6 +1674,10 @@ export default function Home() {
       popup
     };
     setAlarms((prev) => [...prev.filter((a) => a.id !== next.id), next]);
+    familyAnalytics.track("alarm_enabled", {
+      surface: "alarm-sheet",
+      properties: { popup, lead_minutes: leadMin }
+    });
     setAlarmTarget(null);
     setToast(
       leadMin === 0
@@ -1627,7 +1700,19 @@ export default function Home() {
   useEffect(() => setPackedIds([]), [activity, heroSlot?.time]);
 
   const togglePacked = useCallback((id: string) => {
+    const checked = !packedIds.includes(id);
     setPackedIds((previous) => (previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]));
+    familyAnalytics.track("prep_item_checked", {
+      surface: "prep-tab",
+      properties: { activity, checked }
+    });
+  }, [activity, packedIds]);
+  const openMetric = useCallback((key: DetailKey) => {
+    setSheetKey(key);
+    familyAnalytics.track("metric_opened", {
+      surface: "time-tab",
+      properties: { metric: key }
+    });
   }, []);
   const metricRef = heroSlot;
   const reasonRows =
@@ -2073,7 +2158,7 @@ export default function Home() {
                   <section className="detail-weather" aria-labelledby="detail-weather-title">
                     <h3 id="detail-weather-title">상세 날씨</h3>
                     <div className="family-metric-grid" aria-label="추천 시간 날씨 상세">
-                      {reasonRows.map((row) => <button key={row.label} type="button" className={`tone-${row.grade.tone}`} onClick={() => setSheetKey(row.key)}><span className={row.iconClass}>{row.icon}</span><b>{row.value}{row.unit}</b><small>{row.label} · {row.grade.label}</small></button>)}
+                      {reasonRows.map((row) => <button key={row.label} type="button" className={`tone-${row.grade.tone}`} onClick={() => openMetric(row.key)}><span className={row.iconClass}>{row.icon}</span><b>{row.value}{row.unit}</b><small>{row.label} · {row.grade.label}</small></button>)}
                     </div>
                   </section>
                 </section>

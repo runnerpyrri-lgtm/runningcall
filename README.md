@@ -10,6 +10,16 @@ API·기존 PWA 호환 주소: https://outbom.robom.kr
 
 기존 Vercel 호환 주소: https://runningcall.vercel.app
 
+현재 버전: **v0.25.0** (`public/sw.js`의 `outbom-v0.25.0`과 일치)
+
+## 패밀리 셸과 설치
+
+- 로봄 패밀리 1.0.0 생성물은 `src/generated/robom-family/`에, 생성 SHA와 파일 해시는 `family.lock.json`에 보관합니다.
+- 설정에서 로봄 앱 5개, 야외봄 설치·업데이트, 지원·개인정보, 앱·빌드·PWA 메타를 확인할 수 있습니다.
+- Android·데스크톱의 브라우저 설치 프롬프트와 iPhone Safari의 `공유 → 홈 화면에 추가` 안내를 지원합니다.
+- 익명 사용 통계는 기본 꺼짐이며 현재 외부 분석 SDK나 광고 SDK를 포함하지 않습니다.
+- 기존 `running-alarm:*` 저장 키는 이름을 바꾸거나 삭제하지 않습니다.
+
 ## 실행
 
 ```bash
@@ -49,4 +59,4 @@ pnpm typecheck
 
 ## 배포
 
-GitHub push → Vercel 자동 배포. 카카오 검색을 쓰려면 Vercel 환경변수에 `KAKAO_REST_API_KEY`를 추가한다. 설정 화면의 버전·빌드 SHA·PWA 캐시로 실제 반영 상태를 확인한다.
+`main` push 뒤 GitHub Pages 프런트가 자동 배포되고, 기존 Vercel 주소는 API·기존 PWA 호환용으로 유지됩니다. 카카오 검색을 쓰려면 Vercel 환경변수에 `KAKAO_REST_API_KEY`를 추가합니다. 설정 화면의 버전·빌드 SHA·PWA 캐시로 실제 반영 상태를 확인합니다.

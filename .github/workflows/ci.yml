@@ -20,9 +20,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: 네이티브 의존성 설치
+        run: pnpm --dir apps/mobile install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
       - name: 서비스워커 구문 검사
         run: node --check public/sw.js
       - run: pnpm build
-      - run: pnpm audit --prod --audit-level high
+      - name: Android·iOS 네이티브 검증
+        run: pnpm --dir apps/mobile run check
+      - run: pnpm audit:prod

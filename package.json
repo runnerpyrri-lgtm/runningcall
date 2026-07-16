@@ -1,14 +1,24 @@
 {
   "name": "outbom",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
+  "description": "야외봄 — 활동별 날씨·대기질 판단과 추천 시간·준비물을 제공하는 PWA",
+  "homepage": "https://robom-labs.github.io/outbom/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/robom-labs/outbom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/robom-labs/outbom/issues"
+  },
   "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit:prod": "node scripts/audit-production.mjs && node scripts/audit-production.mjs --dir apps/mobile"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

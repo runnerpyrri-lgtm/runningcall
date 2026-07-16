@@ -31,8 +31,17 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Install native project
+        run: pnpm --dir apps/mobile install --frozen-lockfile
+
       - name: Test
         run: pnpm typecheck && pnpm test
+
+      - name: Verify Android and iOS native exports
+        run: pnpm --dir apps/mobile run check
+
+      - name: Audit production dependencies
+        run: pnpm audit:prod
 
       - name: Build GitHub Pages frontend
         env:

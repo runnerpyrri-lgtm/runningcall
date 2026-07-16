@@ -1,0 +1,47 @@
+{
+  "_generated": "DO NOT EDIT · robom family 1.0.0",
+  "id": "outbom",
+  "name": "야외봄",
+  "englishName": "OutBom",
+  "repo": "robom-labs/outbom",
+  "version": "0.25.0",
+  "webUrl": "https://robom-labs.github.io/outbom/",
+  "stableInstallUrl": "https://robom.kr/get/outbom",
+  "privacyUrl": "https://robom.kr/privacy/outbom",
+  "supportUrl": "https://robom.kr/support",
+  "deployProvider": "github-pages",
+  "familySpecVersion": "1.0.0",
+  "lastVerifiedAt": "2026-07-16T10:43:35+09:00",
+  "familyApps": [
+    {
+      "id": "outbom",
+      "name": "야외봄",
+      "webUrl": "https://robom-labs.github.io/outbom/",
+      "installUrl": "https://robom.kr/get/outbom"
+    },
+    {
+      "id": "homebom",
+      "name": "청약봄",
+      "webUrl": "https://robom-labs.github.io/homebom/",
+      "installUrl": "https://robom.kr/get/homebom"
+    },
+    {
+      "id": "runningbom",
+      "name": "러닝봄",
+      "webUrl": "https://robom-labs.github.io/runningbom/",
+      "installUrl": "https://robom.kr/get/runningbom"
+    },
+    {
+      "id": "calendarbom",
+      "name": "캘린더봄",
+      "webUrl": "https://robom-labs.github.io/calendarbom/",
+      "installUrl": "https://robom.kr/get/calendarbom"
+    },
+    {
+      "id": "certbom",
+      "name": "자격증봄",
+      "webUrl": "https://certbom.vercel.app/",
+      "installUrl": "https://robom.kr/get/certbom"
+    }
+  ]
+}

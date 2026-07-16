@@ -1,0 +1,19 @@
+{
+  "_generated": "DO NOT EDIT · robom family 1.0.0",
+  "ads": {
+    "enabled": false,
+    "provider": "none",
+    "placement": "bottom-safe",
+    "minSessionDepth": 2,
+    "maxPerSession": 0,
+    "personalization": false
+  },
+  "analytics": {
+    "enabled": false,
+    "consentRequired": true
+  },
+  "experiments": {
+    "enabled": false,
+    "maxConcurrent": 1
+  }
+}

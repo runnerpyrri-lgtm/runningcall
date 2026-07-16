@@ -1,0 +1,25 @@
+{
+  "_generated": "DO NOT EDIT · robom family 1.0.0",
+  "sections": [
+    "app-about",
+    "account-and-sync-if-supported",
+    "notifications-and-permissions",
+    "accessibility-and-font-size",
+    "install-and-update",
+    "data-source-and-last-verified",
+    "family-apps",
+    "support-and-feedback",
+    "privacy-terms-and-official-notice",
+    "app-meta"
+  ],
+  "appMeta": [
+    "app-name",
+    "version",
+    "build-sha",
+    "family-spec-version",
+    "service-worker-cache",
+    "data-version",
+    "last-verified",
+    "deployment-provider"
+  ]
+}

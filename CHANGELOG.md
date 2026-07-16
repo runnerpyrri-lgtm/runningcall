@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.25.0] - 2026-07-16
+
+### Added
+
+- immutable 로봄 패밀리 1.0.0 정본에서 생성한 토큰·공통 봄 워드마크·다섯 앱 메타·설정·분석 계약과 hash lock을 앱 저장소에 포함했다.
+- 설정에 다섯 앱 전체 목록, 앱·빌드·PWA 메타, 설치와 업데이트, 지원, 개인정보 큰 흐름을 연결했다.
+- Chromium `beforeinstallprompt` 설치 CTA와 iPhone Safari의 홈 화면 추가 안내를 제공한다.
+- 동의 기본값이 꺼져 있고 공급자가 없는 개인정보 최소 분석 adapter를 추가했다. 위치 좌표·주소·검색어는 이벤트에서 제거한다.
+- immutable 중앙 workflow를 SHA로 pin한 패밀리 계약 CI를 추가했다.
+
+### Changed
+
+- 패키지·화면·서비스워커 캐시를 0.25.0으로 맞추고 공식 Pages 주소를 package homepage로 명시했다.
+- `apps/mobile`에 Expo SDK 57 기반 독립 Android/iOS 앱과 EAS 3개 프로필, foreground 위치·오프라인 마지막 판단 흐름을 추가했다.
+- 서비스워커가 manifest·아이콘과 현재 로드된 Next.js JS/CSS 앱 셸을 캐시하도록 보완했다.
+- 외부 폰트 CDN 의존을 제거하고 패밀리 시스템 글꼴 토큰을 사용한다.
+- 기존 `running-alarm:*` 위치·활동·알림 저장 키와 점수·시간·준비 기능은 그대로 유지한다.
+
 ## [0.24.0] - 2026-07-14
 
 ### Changed

@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "야외봄",
+    "slug": "outbom-mobile",
+    "version": "0.25.0",
+    "description": "현재 위치의 야외활동 출발 판단과 예보를 저장해 오프라인에서도 확인하는 야외봄 네이티브 앱",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "scheme": "outbom",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#fbf7ef",
+    "primaryColor": "#2f95a0",
+    "ios": {
+      "bundleIdentifier": "kr.robom.outbom",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:robom.kr"
+      ],
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "현재 위치의 야외활동 예보를 확인할 때만 위치를 사용합니다."
+      }
+    },
+    "android": {
+      "package": "kr.robom.outbom",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#eaf6f7"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "robom.kr",
+              "pathPrefix": "/get/outbom"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "현재 위치의 야외활동 예보를 확인할 때만 위치를 사용합니다.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ]
+    ]
+  }
+}

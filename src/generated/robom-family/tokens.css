@@ -1,0 +1,24 @@
+/* DO NOT EDIT. 로봄 패밀리 1.0.0 생성 토큰이다. */
+:root {
+  --family-font: -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Noto Sans KR, Malgun Gothic, system-ui, sans-serif;
+  --family-space-1: 4px;
+  --family-space-2: 8px;
+  --family-space-3: 12px;
+  --family-space-4: 16px;
+  --family-space-5: 24px;
+  --family-radius-sm: 12px;
+  --family-radius-md: 18px;
+  --family-radius-lg: 28px;
+  --family-shadow-card: 0 12px 30px rgba(29, 48, 71, 0.08);
+  --family-border: #dfe6e2;
+  --family-touch-min: 48px;
+  --family-nav-height: 72px;
+  --family-focus: 0 0 0 3px rgba(36, 87, 214, 0.32);
+  --family-motion-fast: 160ms;
+  --app-brand: #2f95a0;
+  --app-brand-deep: #186d76;
+  --app-brand-soft: #e3f5f5;
+  --app-page: #fff9f1;
+  --app-ink: #1d3047;
+  --app-muted: #65756f;
+}

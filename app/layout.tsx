@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { PwaInstallProvider } from "@/app/pwa-install";
 import { PwaRegister } from "@/app/pwa-register";
 import { PUBLIC_ORIGIN, publicPath } from "@/lib/public-path";
+import "@/src/generated/robom-family/tokens.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,16 +42,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <head>
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
-      </head>
       <body>
-        <PwaRegister />
-        {children}
+        <PwaInstallProvider>
+          <PwaRegister />
+          {children}
+        </PwaInstallProvider>
       </body>
     </html>
   );
