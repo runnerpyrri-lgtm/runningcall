@@ -42,7 +42,14 @@ describe("family analytics adapter", () => {
     expect(
       adapter.track("location_method_selected", {
         surface: "location-sheet",
-        properties: { method: "gps", latitude: 37.5, address: "비공개", raw_query: "비공개" }
+        properties: {
+          method: "gps",
+          latitude: 37.5,
+          address: "비공개",
+          raw_query: "비공개",
+          user_address: "비공개",
+          preciseLatitude: 37.5
+        }
       })
     ).toBe(true);
 
@@ -50,7 +57,7 @@ describe("family analytics adapter", () => {
     expect(events[0]).toMatchObject({
       event_name: "location_method_selected",
       app_id: "outbom",
-      app_version: "0.25.0",
+      app_version: "0.25.1",
       platform: "ios",
       session_kind: "standalone",
       anonymous_id: "anonymous-session",
@@ -60,6 +67,8 @@ describe("family analytics adapter", () => {
     expect(events[0].properties).not.toHaveProperty("latitude");
     expect(events[0].properties).not.toHaveProperty("address");
     expect(events[0].properties).not.toHaveProperty("raw_query");
+    expect(events[0].properties).not.toHaveProperty("user_address");
+    expect(events[0].properties).not.toHaveProperty("preciseLatitude");
   });
 
   it("동의 철회와 공급자 오류가 앱 흐름을 깨지 않는다", () => {

@@ -5,10 +5,10 @@
   --card: #ffffff;
   --ink: #27342b;
   --ink-2: #53665b;
-  --muted: #758278;
+  --muted: #5f6d63;
   --line: #eadfce;
-  --brand: #48a7d4;
-  --brand-deep: #267fae;
+  --brand: #1c6d96;
+  --brand-deep: #1c6d96;
   --brand-soft: #e4f4fb;
   --good: #2bd576;
   --good-deep: #35d07a;
@@ -2717,7 +2717,7 @@ input:focus-visible {
 
 /* 운영체제 설정과 무관하게 유지되는 밝고 따뜻한 야외봄 테마다. */
 @media (prefers-color-scheme: dark) {
-  :root { color-scheme: light; --page: #fff8ef; --card: #ffffff; --ink: #27342b; --ink-2: #53665b; --muted: #758278; --line: #eadfce; --brand: #48a7d4; --brand-deep: #267fae; --brand-soft: #e4f4fb; --surface: #f6f0e7; --surface-2: #fffaf4; --shadow-sm: 0 1px 2px rgba(91, 67, 44, .06), 0 8px 24px -18px rgba(91, 67, 44, .22); --shadow: 0 14px 36px -24px rgba(91, 67, 44, .34); --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, .38); }
+  :root { color-scheme: light; --page: #fff8ef; --card: #ffffff; --ink: #27342b; --ink-2: #53665b; --muted: #5f6d63; --line: #eadfce; --brand: #1c6d96; --brand-deep: #1c6d96; --brand-soft: #e4f4fb; --surface: #f6f0e7; --surface-2: #fffaf4; --shadow-sm: 0 1px 2px rgba(91, 67, 44, .06), 0 8px 24px -18px rgba(91, 67, 44, .22); --shadow: 0 14px 36px -24px rgba(91, 67, 44, .34); --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, .38); }
   .family-hero { background: color-mix(in srgb, var(--brand-soft) 68%, var(--card)); }
   .family-hero-actions button { color: #ffffff; }
   .location-dialog,
@@ -3197,9 +3197,9 @@ input:focus-visible {
 
 /* ═══ 오늘 탭 히어로: 판정 배너 + 시간대별 점수 스크러버 + 시간 연동 지표 + 베스트 스트립 ═══ */
 .today-hero { display: flex; flex-direction: column; gap: 12px; }
-.today-hero.grade-good { --g-ink: #1f8f52; --g-soft: #e9f6ee; --g-line: #bfe3cd; }
-.today-hero.grade-ok   { --g-ink: #267fae; --g-soft: #e4f4fb; --g-line: #bfe2f2; }
-.today-hero.grade-bad  { --g-ink: #d64545; --g-soft: #fdecec; --g-line: #f2c6c6; }
+.today-hero.grade-good { --g-ink: #146f3e; --g-soft: #e9f6ee; --g-line: #bfe3cd; }
+.today-hero.grade-ok   { --g-ink: #1c6d96; --g-soft: #e4f4fb; --g-line: #bfe2f2; }
+.today-hero.grade-bad  { --g-ink: #b42e35; --g-soft: #fdecec; --g-line: #f2c6c6; }
 
 /* ① 판정 배너 */
 .today-banner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--g-line); border-radius: 22px; background: var(--g-soft); }
@@ -3230,7 +3230,7 @@ input:focus-visible {
 .hero-shade-ok { fill: rgba(38, 127, 174, 0.10); }
 .hero-shade-bad { fill: rgba(214, 69, 69, 0.10); }
 .hero-shade-label { font-size: 8px; font-weight: 800; }
-.hero-shade-label-good { fill: #1f8f52; } .hero-shade-label-ok { fill: #267fae; } .hero-shade-label-bad { fill: #d64545; }
+.hero-shade-label-good { fill: #146f3e; } .hero-shade-label-ok { fill: #1c6d96; } .hero-shade-label-bad { fill: #b42e35; }
 .today-bubble { position: absolute; top: -2px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); pointer-events: none; }
 .today-bubble b { font-weight: 800; } .today-bubble span { opacity: 0.85; }
 .today-axis { position: relative; height: 15px; margin-top: 3px; }
@@ -3249,11 +3249,11 @@ input:focus-visible {
 .today-tile-top em { font-style: normal; font-size: 11px; font-weight: 800; }
 .today-tile b { font-size: 19px; font-weight: 900; color: var(--t-ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .today-tile small { color: var(--muted); font-size: 11px; }
-.tile-good { --t-ink: #1f8f52; --t-soft: #eef7f1; --t-line: #c9e6d3; }
-.tile-ok { --t-ink: #267fae; --t-soft: #eaf5fb; --t-line: #c6e2f1; }
-.tile-bad { --t-ink: #d64545; --t-soft: #fdeeee; --t-line: #f3cccc; }
+.tile-good { --t-ink: #146f3e; --t-soft: #eef7f1; --t-line: #c9e6d3; }
+.tile-ok { --t-ink: #1c6d96; --t-soft: #eaf5fb; --t-line: #c6e2f1; }
+.tile-bad { --t-ink: #b42e35; --t-soft: #fdeeee; --t-line: #f3cccc; }
 .today-tile-tag { position: absolute; top: -8px; right: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px; font-weight: 800; color: #fff; }
-.today-tile-tag.tag-good { background: #1f8f52; } .today-tile-tag.tag-ok { background: #267fae; } .today-tile-tag.tag-bad { background: #d64545; }
+.today-tile-tag.tag-good { background: #146f3e; } .today-tile-tag.tag-ok { background: #1c6d96; } .today-tile-tag.tag-bad { background: #b42e35; }
 
 /* ④ 베스트 시간 스트립 */
 .today-best { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--brand-soft); }

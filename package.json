@@ -1,6 +1,6 @@
 {
   "name": "outbom",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "private": true,
   "description": "야외봄 — 활동별 날씨·대기질 판단과 추천 시간·준비물을 제공하는 PWA",
   "homepage": "https://robom-labs.github.io/outbom/",

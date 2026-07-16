@@ -44,6 +44,14 @@ type AdapterOptions = {
 const forbiddenFields = new Set<string>(forbiddenAnalyticsFields);
 const noopProvider: FamilyAnalyticsProvider = { send: () => undefined };
 
+function isForbiddenAnalyticsField(key: string) {
+  const normalized = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .toLowerCase();
+  return [...forbiddenFields].some((field) => normalized === field || normalized.includes(`_${field}`) || normalized.includes(`${field}_`));
+}
+
 function browserStorage(): StorageLike | null {
   if (typeof window === "undefined") return null;
   try {
@@ -75,7 +83,7 @@ function randomAnonymousId() {
 export function scrubAnalyticsProperties(properties: AnalyticsProperties) {
   return Object.fromEntries(
     Object.entries(properties).filter(
-      (entry): entry is [string, AnalyticsValue] => entry[1] !== undefined && !forbiddenFields.has(entry[0].toLowerCase())
+      (entry): entry is [string, AnalyticsValue] => entry[1] !== undefined && !isForbiddenAnalyticsField(entry[0])
     )
   );
 }

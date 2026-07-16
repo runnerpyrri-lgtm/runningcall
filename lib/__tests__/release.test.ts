@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import packageInfo from "../../package.json";
 
 describe("release metadata", () => {
-  it("0.25.0 패키지와 공식 저장소 홈페이지를 함께 공개한다", () => {
-    expect(packageInfo.version).toBe("0.25.0");
+  it("0.25.1 패키지와 공식 저장소 홈페이지를 함께 공개한다", () => {
+    expect(packageInfo.version).toBe("0.25.1");
     expect(packageInfo.homepage).toBe("https://robom-labs.github.io/outbom/");
     expect(packageInfo.repository.url).toBe("https://github.com/robom-labs/outbom.git");
   });
@@ -39,7 +39,7 @@ describe("release metadata", () => {
       familySpecVersion: string;
       files: Record<string, string>;
     };
-    expect(lock.sourceCommit).toBe("5a63eab4f6930837f9877efd187562b85530a81a");
+    expect(lock.sourceCommit).toBe("fe655b865edb5ad2c037e117143684c6dae9f5eb");
     expect(lock.familySpecVersion).toBe("1.0.0");
     expect(Object.keys(lock.files)).toHaveLength(8);
     for (const [name, expected] of Object.entries(lock.files)) {
