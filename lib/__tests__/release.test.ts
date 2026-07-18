@@ -30,7 +30,7 @@ describe("release metadata", () => {
     expect(page).not.toContain("TimeReel");
     expect(wordmark).toContain('<span className="sr-only">야외봄</span>');
     expect(wordmark).toContain('generated/robom-family/wordmark.svg');
-    expect(bomAsset).toContain("#2f95a0");
+    expect(bomAsset).toContain("#0e8fcf");
   });
 
   it("immutable family lock과 여덟 생성물 hash가 일치한다", () => {
@@ -39,7 +39,7 @@ describe("release metadata", () => {
       familySpecVersion: string;
       files: Record<string, string>;
     };
-    expect(lock.sourceCommit).toBe("ee0fd5dc5d98e0ced95c57897c20d2467289829b");
+    expect(lock.sourceCommit).toBe("009905aeb250a77c0bae2518c589f3d861e54450");
     expect(lock.familySpecVersion).toBe("1.0.0");
     expect(Object.keys(lock.files)).toHaveLength(8);
     for (const [name, expected] of Object.entries(lock.files)) {
@@ -52,7 +52,7 @@ describe("release metadata", () => {
       familyApps: unknown[];
     };
     expect(appMeta.id).toBe("outbom");
-    expect(appMeta.familyApps).toHaveLength(5);
+    expect(appMeta.familyApps).toHaveLength(6);
   });
 
   it("설치 프롬프트와 iOS fallback을 앱 시작부터 연결한다", () => {
