@@ -57,7 +57,7 @@ describe("family analytics adapter", () => {
     expect(events[0]).toMatchObject({
       event_name: "location_method_selected",
       app_id: "outbom",
-      app_version: "0.25.4",
+      app_version: "0.25.5",
       platform: "ios",
       session_kind: "standalone",
       anonymous_id: "anonymous-session",

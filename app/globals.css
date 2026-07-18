@@ -2609,12 +2609,10 @@ input:focus-visible {
   min-height: calc(var(--family-nav-height) + env(safe-area-inset-bottom));
   margin: 0 auto;
   padding: 7px 10px env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--card) 94%, transparent);
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: 24px 24px 0 0;
-  box-shadow: 0 -12px 36px -26px rgba(24, 64, 60, 0.45);
-  backdrop-filter: blur(18px);
+  background: rgba(255, 248, 239, 0.82);
+  border-top: 0.5px solid var(--line);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* 로봄 패밀리 공통 탭 규격: 64px·라운드 18px·라벨 12px 800 (청약봄 기준) */
@@ -2637,7 +2635,7 @@ input:focus-visible {
 
 .family-bottom-nav button.is-active {
   color: var(--brand-deep);
-  background: var(--brand-soft);
+  background: transparent;
 }
 
 @media (max-width: 420px) {
