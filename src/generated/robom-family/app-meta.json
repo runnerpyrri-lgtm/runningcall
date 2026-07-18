@@ -4,14 +4,14 @@
   "name": "야외봄",
   "englishName": "OutBom",
   "repo": "robom-labs/outbom",
-  "version": "0.25.2",
+  "version": "0.25.3",
   "webUrl": "https://robom-labs.github.io/outbom/",
   "stableInstallUrl": "https://robom.kr/get/outbom",
   "privacyUrl": "https://robom.kr/privacy/outbom",
   "supportUrl": "https://robom.kr/support",
   "deployProvider": "github-pages",
   "familySpecVersion": "1.0.0",
-  "lastVerifiedAt": "2026-07-17T07:00:00+09:00",
+  "lastVerifiedAt": "2026-07-18T14:19:47+09:00",
   "familyApps": [
     {
       "id": "outbom",

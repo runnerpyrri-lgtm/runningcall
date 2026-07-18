@@ -6,7 +6,7 @@ import packageInfo from "../../package.json";
 
 describe("native app contract", () => {
   it("Expo SDK 57과 Android/iOS 식별자를 고정한다", () => {
-    expect(packageInfo.version).toBe("0.25.2");
+    expect(packageInfo.version).toBe("0.25.3");
     expect(packageInfo.dependencies.expo).toMatch(/^~57\./);
     expect(packageInfo.dependencies["react-native"]).toBe("0.86.0");
     expect(appConfig.expo.scheme).toBe("outbom");

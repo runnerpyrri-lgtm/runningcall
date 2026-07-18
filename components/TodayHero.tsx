@@ -50,8 +50,8 @@ function tilesForSlot(slot: RunningSlot): TileDef[] {
   ];
 }
 
-// 배너 한 줄 설명 — 상황 연동
-function bannerDetail(slot: RunningSlot, tiles: TileDef[], grade: HeroGrade): string {
+// 배너 한 줄 설명 — 상황 연동. 내일 탭에서는 "지금"이 아니라 "내일" 기준임을 명확히 한다.
+function bannerDetail(slot: RunningSlot, tiles: TileDef[], grade: HeroGrade, dayLabel: string): string {
   const worst = tiles.reduce((a, b) => (SEVERITY[b.grade] > SEVERITY[a.grade] ? b : a));
   if (worst.grade === "bad") {
     if (worst.key === "feels") return `체감 ${Math.round(slot.apparentTemperature)}°가 발목을 잡고 있어요.`;
@@ -59,7 +59,7 @@ function bannerDetail(slot: RunningSlot, tiles: TileDef[], grade: HeroGrade): st
     if (worst.key === "pm") return `미세먼지가 발목을 잡고 있어요.`;
     return `바람이 발목을 잡고 있어요.`;
   }
-  if (grade === "good") return "네 지표 모두 양호해 지금 나가기 좋아요.";
+  if (grade === "good") return `네 지표 모두 양호해 ${dayLabel === "오늘" ? "지금" : dayLabel} 나가기 좋아요.`;
   return "치명적인 지표 없이 대체로 무난해요.";
 }
 
@@ -122,7 +122,7 @@ export function TodayHero({ daySlots, initialHour, nowHour, activityLabel, dayLa
   const grade = scoreGrade(active.totalScore);
   const tiles = useMemo(() => tilesForSlot(active), [active]);
   const worstTile = useMemo(() => tiles.reduce((a, b) => (SEVERITY[b.grade] > SEVERITY[a.grade] ? b : a)), [tiles]);
-  const detail = bannerDetail(active, tiles, grade.key);
+  const detail = bannerDetail(active, tiles, grade.key, dayLabel);
   const windows = useMemo(() => threeHourWindows(slots), [slots]);
 
   const frac = (i: number) => (n > 1 ? i / (n - 1) : 0.5);
@@ -199,7 +199,7 @@ export function TodayHero({ daySlots, initialHour, nowHour, activityLabel, dayLa
       <div className="today-banner">
         <div className="today-banner-left">
           <span className="today-banner-tag">{grade.label}</span>
-          <h1 className="today-banner-title">{activityLabel} {grade.key === "good" ? "지금 딱 좋아요" : grade.key === "ok" ? "무난하게 괜찮아요" : "조금 아쉬워요"}</h1>
+          <h1 className="today-banner-title">{activityLabel} {grade.key === "good" ? (dayLabel === "오늘" ? "지금 딱 좋아요" : `${dayLabel} 딱 좋아요`) : grade.key === "ok" ? "무난하게 괜찮아요" : "조금 아쉬워요"}</h1>
           <p className="today-banner-detail">{detail}</p>
         </div>
         <div className="today-banner-score" aria-hidden="true">
