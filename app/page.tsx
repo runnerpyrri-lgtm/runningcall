@@ -746,7 +746,7 @@ function SettingsView() {
 
       <section className="settings-card" aria-labelledby="family-apps-title">
         <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="로봄 앱 5개" id="family-apps-title" />
-        {familyMeta.familyApps.map((app) => (
+        {familyMeta.familyApps.filter((app) => app.id !== "outbom").map((app) => (
           <a
             className="settings-row family-app-row"
             href={app.installUrl}

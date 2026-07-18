@@ -7,9 +7,9 @@
   --ink-2: #53665b;
   --muted: #5f6d63;
   --line: #eadfce;
-  --brand: #1c6d96;
-  --brand-deep: #1c6d96;
-  --brand-soft: #e4f4fb;
+  --brand: var(--app-brand);
+  --brand-deep: var(--app-brand-deep);
+  --brand-soft: var(--app-brand-soft);
   --good: #2bd576;
   --good-deep: #35d07a;
   --warn: #ffb43d;
@@ -2717,7 +2717,7 @@ input:focus-visible {
 
 /* 운영체제 설정과 무관하게 유지되는 밝고 따뜻한 야외봄 테마다. */
 @media (prefers-color-scheme: dark) {
-  :root { color-scheme: light; --page: #fff8ef; --card: #ffffff; --ink: #27342b; --ink-2: #53665b; --muted: #5f6d63; --line: #eadfce; --brand: #1c6d96; --brand-deep: #1c6d96; --brand-soft: #e4f4fb; --surface: #f6f0e7; --surface-2: #fffaf4; --shadow-sm: 0 1px 2px rgba(91, 67, 44, .06), 0 8px 24px -18px rgba(91, 67, 44, .22); --shadow: 0 14px 36px -24px rgba(91, 67, 44, .34); --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, .38); }
+  :root { color-scheme: light; --page: #fff8ef; --card: #ffffff; --ink: #27342b; --ink-2: #53665b; --muted: #5f6d63; --line: #eadfce; --brand: var(--app-brand); --brand-deep: var(--app-brand-deep); --brand-soft: var(--app-brand-soft); --surface: #f6f0e7; --surface-2: #fffaf4; --shadow-sm: 0 1px 2px rgba(91, 67, 44, .06), 0 8px 24px -18px rgba(91, 67, 44, .22); --shadow: 0 14px 36px -24px rgba(91, 67, 44, .34); --shadow-lg: 0 24px 54px -30px rgba(91, 67, 44, .38); }
   .family-hero { background: color-mix(in srgb, var(--brand-soft) 68%, var(--card)); }
   .family-hero-actions button { color: #ffffff; }
   .location-dialog,

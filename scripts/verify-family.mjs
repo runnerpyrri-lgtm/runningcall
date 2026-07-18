@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 
-const EXPECTED_SOURCE_COMMIT = "ee0fd5dc5d98e0ced95c57897c20d2467289829b";
+const EXPECTED_SOURCE_COMMIT = "009905aeb250a77c0bae2518c589f3d861e54450";
 const EXPECTED_FILES = [
   "analytics-events.ts",
   "app-meta.json",
@@ -47,8 +47,8 @@ const appMeta = JSON.parse(await readFile(resolve(generatedDir, "app-meta.json")
 if (appMeta.id !== "outbom" || appMeta.familySpecVersion !== lock.familySpecVersion) {
   throw new Error("OutBom 앱 메타와 family lock이 일치하지 않습니다.");
 }
-if (!Array.isArray(appMeta.familyApps) || appMeta.familyApps.length !== 5) {
-  throw new Error("다섯 앱 메타가 모두 생성되지 않았습니다.");
+if (!Array.isArray(appMeta.familyApps) || appMeta.familyApps.length !== 6) {
+  throw new Error("여섯 앱 메타가 모두 생성되지 않았습니다.");
 }
 
 console.log(`family ${lock.familySpecVersion} verified at ${lock.sourceCommit}`);

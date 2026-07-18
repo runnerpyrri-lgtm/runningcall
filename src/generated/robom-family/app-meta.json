@@ -11,7 +11,7 @@
   "supportUrl": "https://robom.kr/support",
   "deployProvider": "github-pages",
   "familySpecVersion": "1.0.0",
-  "lastVerifiedAt": "2026-07-16T13:42:23+09:00",
+  "lastVerifiedAt": "2026-07-17T07:00:00+09:00",
   "familyApps": [
     {
       "id": "outbom",
@@ -42,6 +42,12 @@
       "name": "자격증봄",
       "webUrl": "https://certbom.vercel.app/",
       "installUrl": "https://robom.kr/get/certbom"
+    },
+    {
+      "id": "notebom",
+      "name": "노트봄",
+      "webUrl": "https://robom-labs.github.io/notebom/",
+      "installUrl": "https://robom.kr/get/notebom"
     }
   ]
 }
