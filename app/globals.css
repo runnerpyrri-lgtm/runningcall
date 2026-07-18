@@ -3038,7 +3038,7 @@ input:focus-visible {
 }
 .day-conclusion-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .day-conclusion-head h3 { margin: 0; color: var(--ink-2); font-size: 0.92rem; font-weight: 800; }
-.day-conclusion-bell { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-deep); }
+.day-conclusion-bell { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-deep); }
 .day-conclusion-window { margin: 6px 0 0; color: var(--ink); font-size: 1.85rem; font-weight: 900; letter-spacing: -0.02em; }
 .day-conclusion-window.is-empty { font-size: 1.2rem; color: var(--muted); }
 .day-conclusion-reason { margin: 6px 0 0; color: var(--ink-2); font-size: 0.9rem; line-height: 1.45; }
@@ -3062,7 +3062,7 @@ input:focus-visible {
 .alt-windows-list article > div { min-width: 0; flex: 1; display: grid; gap: 1px; }
 .alt-windows-list strong { color: var(--ink); font-size: 0.98rem; font-weight: 850; }
 .alt-windows-list span { color: var(--muted); font-size: 0.75rem; font-weight: 650; }
-.alt-windows-list button { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface); color: var(--brand-deep); }
+.alt-windows-list button { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--surface); color: var(--brand-deep); }
 
 .detail-weather h3 { margin: 0 2px 8px; color: var(--ink-2); font-size: 0.88rem; font-weight: 800; }
 
@@ -3260,7 +3260,7 @@ input:focus-visible {
 .today-best-kicker { display: inline-flex; align-items: center; gap: 5px; color: var(--brand-deep); font-size: 12px; font-weight: 800; }
 .today-best b { display: block; margin: 5px 0 2px; font-size: 16px; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; }
 .today-best small { color: var(--ink-2); font-size: 12.5px; }
-.today-best button { flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 14px; background: var(--brand-deep); color: #fff; cursor: pointer; }
+.today-best button { flex: 0 0 auto; width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 14px; background: var(--brand-deep); color: #fff; cursor: pointer; }
 
 /* 일출·일몰 */
 .today-sun { display: flex; gap: 16px; justify-content: center; color: var(--muted); font-size: 12.5px; }

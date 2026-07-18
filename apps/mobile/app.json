@@ -2,7 +2,7 @@
   "expo": {
     "name": "야외봄",
     "slug": "outbom-mobile",
-    "version": "0.25.3",
+    "version": "0.25.4",
     "description": "현재 위치의 야외활동 출발 판단과 예보를 저장해 오프라인에서도 확인하는 야외봄 네이티브 앱",
     "platforms": [
       "ios",
