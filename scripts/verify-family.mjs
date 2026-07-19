@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 
-const EXPECTED_SOURCE_COMMIT = "916477ce665a73d2f91c29d4bae510f111a57047";
+const EXPECTED_SOURCE_COMMIT = "cdc282a40d825dc57130c86a09a0564910a3db75";
 const EXPECTED_FILES = [
   "analytics-events.ts",
   "app-meta.json",
