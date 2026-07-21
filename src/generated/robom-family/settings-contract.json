@@ -1,5 +1,5 @@
 {
-  "_generated": "DO NOT EDIT · robom family 1.0.0",
+  "_generated": "DO NOT EDIT · robom family 1.1.0",
   "sections": [
     "app-about",
     "account-and-sync-if-supported",
@@ -7,9 +7,9 @@
     "accessibility-and-font-size",
     "install-and-update",
     "data-source-and-last-verified",
-    "family-apps",
     "support-and-feedback",
     "privacy-terms-and-official-notice",
+    "family-apps",
     "app-meta"
   ],
   "appMeta": [

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 
-const EXPECTED_SOURCE_COMMIT = "cdc282a40d825dc57130c86a09a0564910a3db75";
+const EXPECTED_SOURCE_COMMIT = "75d4f9d4c803e1dbaa6dda67e48b6ed23960520f";
 const EXPECTED_FILES = [
   "analytics-events.ts",
   "app-meta.json",
@@ -27,7 +27,7 @@ const lock = JSON.parse(await readFile(lockFile, "utf8"));
 if (lock.sourceCommit !== EXPECTED_SOURCE_COMMIT) {
   throw new Error(`family sourceCommit 불일치: ${lock.sourceCommit}`);
 }
-if (lock.familySpecVersion !== "1.0.0") {
+if (!["1.0.0","1.1.0"].includes(lock.familySpecVersion)) {
   throw new Error(`지원하지 않는 familySpecVersion: ${lock.familySpecVersion}`);
 }
 
