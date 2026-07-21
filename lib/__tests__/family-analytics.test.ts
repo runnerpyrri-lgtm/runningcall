@@ -61,7 +61,7 @@ describe("family analytics adapter", () => {
       platform: "ios",
       session_kind: "standalone",
       anonymous_id: "anonymous-session",
-      family_spec_version: "1.0.0",
+      family_spec_version: "1.1.0",
       properties: { method: "gps" }
     });
     expect(events[0].properties).not.toHaveProperty("latitude");

@@ -39,8 +39,8 @@ describe("release metadata", () => {
       familySpecVersion: string;
       files: Record<string, string>;
     };
-    expect(lock.sourceCommit).toBe("cdc282a40d825dc57130c86a09a0564910a3db75");
-    expect(lock.familySpecVersion).toBe("1.0.0");
+    expect(lock.sourceCommit).toBe("75d4f9d4c803e1dbaa6dda67e48b6ed23960520f");
+    expect(lock.familySpecVersion).toBe("1.1.0");
     expect(Object.keys(lock.files)).toHaveLength(8);
     for (const [name, expected] of Object.entries(lock.files)) {
       const content = readFileSync(new URL(`../../src/generated/robom-family/${name}`, import.meta.url));
