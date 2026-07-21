@@ -24,6 +24,8 @@ pnpm export:ios
 
 ## EAS 빌드와 스토어 제출 절차
 
+Android production 빌드는 `expo-build-properties`로 `compileSdkVersion`과 `targetSdkVersion`을 모두 36으로 고정해 Android 16 대상 API 요구를 충족한다.
+
 이 저장소에는 서명 인증서, 프로비저닝 프로파일, Play 서비스 계정 키, EAS project ID를 넣지 않는다. 아래 절차는 앱 소유자가 Apple Developer·Google Play Console·Expo 계정과 스토어 메타데이터를 준비한 뒤 직접 수행한다.
 
 1. `cd apps/mobile`에서 `npx eas-cli login`과 `npx eas-cli init`을 실행해 본인 Expo 프로젝트를 연결한다.

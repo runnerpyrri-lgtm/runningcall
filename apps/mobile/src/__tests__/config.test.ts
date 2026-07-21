@@ -29,6 +29,18 @@ describe("native app contract", () => {
     expect(easConfig.build.preview.distribution).toBe("internal");
   });
 
+  it("Android 16 대상 API와 컴파일 SDK를 36으로 고정한다", () => {
+    const buildProperties = appConfig.expo.plugins.find((plugin) => plugin[0] === "expo-build-properties");
+
+    expect(packageInfo.dependencies["expo-build-properties"]).toMatch(/^~57\./);
+    expect(buildProperties?.[1]).toMatchObject({
+      android: {
+        compileSdkVersion: 36,
+        targetSdkVersion: 36
+      }
+    });
+  });
+
   it("foreground 위치만 구성하고 WebView 의존성을 포함하지 않는다", () => {
     expect(packageInfo.dependencies).not.toHaveProperty("react-native-webview");
     expect(appConfig.expo.android.blockedPermissions).toContain("android.permission.ACCESS_BACKGROUND_LOCATION");

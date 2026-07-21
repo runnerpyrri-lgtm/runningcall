@@ -2,6 +2,7 @@
   "expo": {
     "name": "야외봄",
     "slug": "outbom-mobile",
+    "owner": "robom-labs",
     "version": "0.25.6",
     "description": "현재 위치의 야외활동 출발 판단과 예보를 저장해 오프라인에서도 확인하는 야외봄 네이티브 앱",
     "platforms": [
@@ -67,7 +68,21 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "df1b70f6-2f0f-48a9-a4cf-c1ea3c1a5f0e"
+      }
+    }
   }
 }
