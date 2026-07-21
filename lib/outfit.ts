@@ -30,7 +30,7 @@ function mainFor(feel: number, activity: ActivityKey): string {
     if (feel >= 13) return "긴팔 + 바람막이 + 등산바지";
     if (feel >= 5) return "긴팔 + 플리스 + 바람막이";
     if (feel >= -3) return "보온 레이어 + 방풍 재킷";
-    return "방한 등산복 풀레이어";
+    return "방한 등산복 여러 겹";
   }
 
   // 걷기·애견산책 — 몸 열이 적어 같은 온도에서 더 따뜻하게
@@ -116,8 +116,8 @@ function topFor(feel: number, activity: ActivityKey): { value: string; reason: s
 
   if (activity === "hike") {
     if (feel >= 22) return { value: "기능성 반팔 + 여벌 상의", reason: "오르막에서 땀이 많이 나요. 젖으면 갈아입을 여벌이 정상에서 효자예요." };
-    if (feel >= 13) return { value: "긴팔 + 바람막이", reason: "오를 땐 덥고 능선에선 추워요. 벗고 입기 쉬운 레이어링이 답이에요." };
-    if (feel >= 5) return { value: "긴팔 + 플리스 + 바람막이", reason: "정상부는 여기보다 6~10°C 낮아요. 세 겹 레이어링이 기본이에요." };
+    if (feel >= 13) return { value: "긴팔 + 바람막이", reason: "오를 땐 덥고 능선에선 추워요. 벗고 입기 쉽게 겹쳐 입는 게 답이에요." };
+    if (feel >= 5) return { value: "긴팔 + 플리스 + 바람막이", reason: "정상부는 여기보다 6~10°C 낮아요. 세 겹으로 겹쳐 입는 게 기본이에요." };
     return { value: "보온 이너 + 플리스 + 방풍 재킷", reason: "산 위 추위는 평지와 차원이 달라요. 겹겹이 입으세요." };
   }
 
@@ -184,7 +184,7 @@ function headlineFor(feel: number, activity: ActivityKey): string {
   if (activity === "hike") {
     if (feel >= 24) return "더운 산행이에요. 물은 평소 1.5배, 이른 시간 출발에 그늘 코스를 노리세요.";
     if (feel >= 13) return "산행하기 좋은 온도예요. 정상 방한용 바람막이 한 겹만 더 챙기세요.";
-    if (feel >= 5) return "능선은 서늘해요. 플리스와 바람막이로 레이어링하세요.";
+    if (feel >= 5) return "능선은 서늘해요. 플리스와 바람막이로 겹쳐 입으세요.";
     if (feel >= -3) return "추운 산행이에요. 방풍·방한 단단히 하고 하산 시간을 여유 있게 잡으세요.";
     return "한파 산행이에요. 풀레이어에 아이젠까지, 무리는 절대 금물이에요.";
   }
@@ -265,7 +265,7 @@ export function getPackingPlan(current: RunningSlot, activity: ActivityKey, dura
   }
   // ── 간식·행동식은 물과 분리해 중복을 막고, 에너지가 필요한 상황에만 안내한다. ──
   if (activity === "hike") {
-    items.push({ id: "hike-food", emoji: "🍫", label: "행동식·간식", detail: "초콜릿·에너지바 등", reason: "산에서는 에너지가 곧 안전이에요.", category: "required" });
+    items.push({ id: "hike-food", emoji: "🍫", label: "간식·초콜릿", detail: "초콜릿·에너지바 등", reason: "산에서는 에너지가 곧 안전이에요.", category: "required" });
   } else if (long) {
     items.push({ id: `${activity}-snack`, emoji: "🍫", label: "간식", detail: "중간에 힘 빠질 때", reason: "오래 움직이면 중간 에너지 보충이 필요해요.", category: "optional" });
   }
