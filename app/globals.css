@@ -2369,6 +2369,7 @@ input:focus-visible {
 .prep-duration legend { grid-column: 1 / -1; margin-bottom: 2px; color: var(--muted); font-size: 0.75rem; font-weight: 800; }
 .prep-duration button { min-height: 44px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: 13px; font-weight: 800; }
 .prep-duration button.on { color: var(--brand-deep); background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 48%, var(--line)); }
+.prep-pack-guide { margin: 4px 2px 10px; color: var(--ink-2); font-size: 13px; font-weight: 650; line-height: 1.45; word-break: keep-all; }
 .prep-all-groups { display: grid; gap: 10px; }
 .prep-pack-required { background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface)); }
 .prep-pack-weather { background: color-mix(in srgb, #fff5df 62%, var(--surface)); }

@@ -508,6 +508,19 @@ function PrepView({
         </div>
       ) : null}
 
+      {(() => {
+        const total = packing.items.length;
+        const done = packing.items.filter((item) => packedIds.includes(item.id)).length;
+        const allDone = total > 0 && done === total;
+        return (
+          <p className="prep-pack-guide" role="status">
+            {allDone
+              ? `다 챙겼어요! 이제 편하게 나가세요 · ${done}/${total}`
+              : `챙긴 건 눌러서 표시해 보세요 — 하나씩 체크하면 빠뜨릴 일이 없어요 · ${done}/${total}`}
+          </p>
+        );
+      })()}
+
       <div className="prep-all-groups" aria-label="출발 전 전체 체크리스트">
         {categories.map((category) => {
           const items = packing.items.filter((item) => item.category === category);

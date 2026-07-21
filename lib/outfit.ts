@@ -222,7 +222,6 @@ export function getPackingPlan(current: RunningSlot, activity: ActivityKey, dura
     );
   } else if (activity === "hike") {
     items.push(
-      { id: "hike-water", emoji: "💧", label: "물·행동식", detail: "물 + 간식", reason: "산에서는 수분과 에너지가 곧 안전이에요.", category: "required" },
       { id: "hike-foot", emoji: "🥾", label: "등산화·스틱", detail: "접지·무릎 보호", reason: "미끄럼과 무릎 부담을 줄여줘요.", category: "required" },
       { id: "hike-route", emoji: "🗺️", label: "경로·비상 준비", detail: "오프라인 지도·보조배터리", reason: "통신이 불안해도 길과 연락 수단을 지켜요.", category: "safety" },
       { id: "hike-first-aid", emoji: "🩹", label: "간단 구급품", detail: "밴드·압박붕대", reason: "긴 산행의 작은 부상에 대비해요.", category: "optional" }
@@ -231,27 +230,44 @@ export function getPackingPlan(current: RunningSlot, activity: ActivityKey, dura
     items.push(
       { id: "dog-leash", emoji: "🦮", label: "리드줄·하네스", detail: "연결부까지 확인", reason: "사람과 차량에서 안전한 거리를 유지해요.", category: "required" },
       { id: "dog-waste", emoji: "🧻", label: "배변봉투", detail: "여분까지", reason: "산책 기본 매너를 지켜요.", category: "required" },
-      { id: "dog-water", emoji: "🥣", label: "물·접이식 그릇", detail: "강아지 수분", reason: "중간 수분 보충에 필요해요.", category: "weather" },
       { id: "dog-towel", emoji: "🧺", label: "발 닦는 수건", detail: "흙·물기 정리", reason: "귀가 후 발과 바닥을 깔끔하게 정리해요.", category: "optional" }
     );
   } else {
     items.push(
       { id: "walk-shoes", emoji: "👟", label: "편한 운동화", detail: "접지 좋은 신발", reason: "발 피로와 미끄럼을 줄여줘요.", category: "required" },
       { id: "walk-carry", emoji: "📱", label: "휴대폰·신분", detail: "비상 연락", reason: "가까운 산책도 연락 수단은 챙겨요.", category: "safety" },
-      { id: "walk-water", emoji: "💧", label: "작은 물병", detail: "필요한 만큼", reason: "오래 걷거나 더운 날 수분을 보충해요.", category: "weather" },
       { id: "walk-tote", emoji: "👜", label: "가벼운 가방", detail: "소지품 정리", reason: "손을 비우고 편하게 걸어요.", category: "optional" }
     );
   }
 
-  if (hot) {
+  // ── 물은 한 항목으로 통합해 중복을 없앤다. 더위·장시간이면 문구만 달라진다(전엔 필수·날씨에 물이 두세 번 겹쳐 떴다). ──
+  const long = duration === "long";
+  const alwaysWater = activity === "hike" || activity === "dog" || activity === "walk";
+  if (alwaysWater || hot || long) {
+    const amount =
+      activity === "hike" ? "평소보다 1.5배" :
+      activity === "run" ? "500ml 이상" :
+      activity === "bike" ? "물통 가득" :
+      activity === "dog" ? "사람·강아지 몫 각각" :
+      "한 병";
     items.push({
-      id: "hot-hydration",
+      id: `${activity}-water`,
       emoji: "💧",
-      label: activity === "dog" ? "보호자·강아지 물" : "물·전해질",
-      detail: activity === "hike" ? "평소보다 1.5배" : activity === "run" ? "물 500ml 이상" : "물 넉넉히",
-      reason: "체감이 높아 수분과 염분을 미리 보충해야 해요.",
-      category: "weather"
+      label: activity === "dog" ? "물·접이식 그릇" : hot ? "물·이온음료" : "물",
+      detail: long ? `${amount} · 중간중간 나눠 마실 만큼` : amount,
+      reason: hot
+        ? "더운 날엔 땀으로 수분·염분이 빠져요. 이온음료(포카리·게토레이 등)를 곁들이면 좋아요."
+        : long
+          ? "오래 움직일수록 중간중간 보충이 중요해요."
+          : "활동 중 목마를 때 바로 마실 물이에요.",
+      category: activity === "hike" ? "required" : hot ? "weather" : "required",
     });
+  }
+  // ── 간식·행동식은 물과 분리해 중복을 막고, 에너지가 필요한 상황에만 안내한다. ──
+  if (activity === "hike") {
+    items.push({ id: "hike-food", emoji: "🍫", label: "행동식·간식", detail: "초콜릿·에너지바 등", reason: "산에서는 에너지가 곧 안전이에요.", category: "required" });
+  } else if (long) {
+    items.push({ id: `${activity}-snack`, emoji: "🍫", label: "간식", detail: "중간에 힘 빠질 때", reason: "오래 움직이면 중간 에너지 보충이 필요해요.", category: "optional" });
   }
 
   if (bright) {
@@ -309,9 +325,6 @@ export function getPackingPlan(current: RunningSlot, activity: ActivityKey, dura
     });
   }
 
-  if (duration === "long") {
-    items.push({ id: `${activity}-long-water`, emoji: "🧴", label: "추가 물·간식", detail: "장시간 활동용", reason: "오래 움직일수록 중간 보충이 중요해요.", category: "required" });
-  }
   if (duration !== "short") {
     items.push({ id: `${activity}-battery`, emoji: "🔋", label: "보조배터리", detail: "위치·연락 유지", reason: "중·장시간 활동에서 휴대폰 배터리를 지켜요.", category: "optional" });
   }
