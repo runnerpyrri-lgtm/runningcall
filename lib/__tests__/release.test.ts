@@ -52,7 +52,7 @@ describe("release metadata", () => {
       familyApps: unknown[];
     };
     expect(appMeta.id).toBe("outbom");
-    expect(appMeta.familyApps).toHaveLength(6);
+    expect(appMeta.familyApps).toHaveLength(4);
   });
 
   it("설치 프롬프트와 iOS fallback을 앱 시작부터 연결한다", () => {

@@ -47,8 +47,8 @@ const appMeta = JSON.parse(await readFile(resolve(generatedDir, "app-meta.json")
 if (appMeta.id !== "outbom" || appMeta.familySpecVersion !== lock.familySpecVersion) {
   throw new Error("OutBom 앱 메타와 family lock이 일치하지 않습니다.");
 }
-if (!Array.isArray(appMeta.familyApps) || appMeta.familyApps.length !== 6) {
-  throw new Error("여섯 앱 메타가 모두 생성되지 않았습니다.");
+if (!Array.isArray(appMeta.familyApps) || appMeta.familyApps.length !== 4) {
+  throw new Error("네 앱 메타가 모두 생성되지 않았습니다.");
 }
 
 console.log(`family ${lock.familySpecVersion} verified at ${lock.sourceCommit}`);

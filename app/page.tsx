@@ -7,7 +7,6 @@ import {
   Backpack,
   BadgeCheck,
   BellRing,
-  CalendarDays,
   ChevronDown,
   ChevronRight,
   CloudRain,
@@ -702,7 +701,6 @@ const FAMILY_APP_DESCRIPTIONS: Record<string, string> = {
   outbom: "야외활동 컨디션과 추천 시간",
   homebom: "청약 공고와 접수 알림",
   runningbom: "러닝 대회 탐색과 접수 알림",
-  calendarbom: "큰 달력과 가족 일정 알림",
   certbom: "자격증 시험 탐색과 일정 준비"
 };
 
@@ -710,7 +708,6 @@ function FamilyAppIcon({ id }: { id: string }) {
   if (id === "outbom") return <Sun size={20} />;
   if (id === "homebom") return <House size={20} />;
   if (id === "runningbom") return <Sparkles size={20} />;
-  if (id === "calendarbom") return <CalendarDays size={20} />;
   return <BadgeCheck size={20} />;
 }
 
@@ -758,7 +755,7 @@ function SettingsView() {
       </section>
 
       <section className="settings-card" aria-labelledby="family-apps-title">
-        <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="로봄 앱 5개" id="family-apps-title" />
+        <SettingsCardHead icon={<House size={16} strokeWidth={1.9} />} title="로봄 앱 3개" id="family-apps-title" />
         {familyMeta.familyApps.filter((app) => app.id !== "outbom").map((app) => (
           <a
             className="settings-row family-app-row"
