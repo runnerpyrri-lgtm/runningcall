@@ -55,13 +55,16 @@ describe("release metadata", () => {
     expect(appMeta.familyApps).toHaveLength(4);
   });
 
-  it("설치 프롬프트와 iOS fallback을 앱 시작부터 연결한다", () => {
+  it("PWA 플러밍은 유지하되 설치 유도 UI는 노출하지 않는다", () => {
     const provider = readFileSync(new URL("../../app/pwa-install.tsx", import.meta.url), "utf8");
     const installCard = readFileSync(new URL("../../components/PwaInstallCard.tsx", import.meta.url), "utf8");
+    // beforeinstallprompt/appinstalled 리스너 등 TWA·PWA 플러밍은 그대로 유지한다.
     expect(provider).toContain('window.addEventListener("beforeinstallprompt"');
     expect(provider).toContain('window.addEventListener("appinstalled"');
-    expect(installCard).toContain("홈 화면에 추가");
+    // 스토어 출시 전이라 설치 유도 CTA는 노출하지 않고 업데이트 확인만 남긴다.
     expect(installCard).toContain("업데이트 확인");
+    expect(installCard).not.toContain("홈 화면에 추가");
+    expect(installCard).not.toContain("설치하기");
   });
 
   it("광고 SDK와 빈 광고 슬롯을 앱 셸에 포함하지 않는다", () => {

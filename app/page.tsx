@@ -762,12 +762,11 @@ function SettingsView() {
             href={app.installUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-current={app.id === familyMeta.id ? "page" : undefined}
             key={app.id}
           >
             <span className="settings-row-icon" aria-hidden="true"><FamilyAppIcon id={app.id} /></span>
-            <span><strong>{app.name}</strong><small>{FAMILY_APP_DESCRIPTIONS[app.id]}</small></span>
-            <em>{app.id === familyMeta.id ? "현재 앱" : "설치·열기"}</em>
+            <span><strong>{app.name}</strong><small>{FAMILY_APP_DESCRIPTIONS[app.id]} · 2026년 8월 초 출시 예정</small></span>
+            <em>준비 중</em>
             <ExternalLink size={18} aria-hidden="true" />
           </a>
         ))}
