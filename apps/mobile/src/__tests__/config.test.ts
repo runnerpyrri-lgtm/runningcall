@@ -27,6 +27,8 @@ describe("native app contract", () => {
     expect(Object.keys(easConfig.build).sort()).toEqual(["development", "preview", "production"]);
     expect(easConfig.build.development.developmentClient).toBe(true);
     expect(easConfig.build.preview.distribution).toBe("internal");
+    expect(easConfig.build.production.android?.buildType).toBe("app-bundle");
+    expect(easConfig.build.production.env?.EXPO_PUBLIC_PRIVACY_URL).toBe("https://robom.kr/privacy/outbom");
   });
 
   it("Android 16 대상 API와 컴파일 SDK를 36으로 고정한다", () => {

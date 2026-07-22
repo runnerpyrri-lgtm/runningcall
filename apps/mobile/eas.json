@@ -14,7 +14,14 @@
       }
     },
     "production": {
-      "autoIncrement": false
+      "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_SUPPORT_URL": "https://robom.kr/support",
+        "EXPO_PUBLIC_PRIVACY_URL": "https://robom.kr/privacy/outbom"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   }
 }

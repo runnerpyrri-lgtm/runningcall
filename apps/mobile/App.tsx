@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -17,6 +18,8 @@ import { loadForecastSnapshot, saveForecastSnapshot } from "./src/lib/storage";
 type LocationState = "idle" | "requesting" | "granted" | "denied" | "unavailable";
 
 const SEOUL = { latitude: 37.5665, longitude: 126.978, locationName: "서울 기본값" };
+const SUPPORT_URL = process.env.EXPO_PUBLIC_SUPPORT_URL ?? "https://robom.kr/support";
+const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? "https://robom.kr/privacy/outbom";
 const locationLabels: Record<LocationState, string> = {
   idle: "요청 전",
   requesting: "권한 확인 중",
@@ -232,6 +235,14 @@ export default function App() {
         </View>
 
         <Text style={styles.footer}>권한 거부·오프라인에서도 앱은 저장된 판단으로 계속 열립니다. 위치는 background에서 사용하지 않습니다.</Text>
+        <View style={styles.footerLinks}>
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(SUPPORT_URL).catch(() => undefined)} style={styles.footerLinkButton}>
+            <Text style={styles.footerLink}>지원</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(PRIVACY_URL).catch(() => undefined)} style={styles.footerLinkButton}>
+            <Text style={styles.footerLink}>개인정보 처리방침</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -281,5 +292,8 @@ const styles = StyleSheet.create({
   actionSecondaryText: { color: "#1e6670", fontSize: 15, fontWeight: "900" },
   feedback: { minHeight: 52, justifyContent: "center", paddingHorizontal: 15, backgroundColor: "#eaf6f7", borderRadius: 17 },
   feedbackText: { color: "#315d61", fontSize: 13, lineHeight: 19, fontWeight: "700" },
-  footer: { paddingHorizontal: 5, color: "#879293", fontSize: 11, lineHeight: 18, textAlign: "center" }
+  footer: { paddingHorizontal: 5, color: "#879293", fontSize: 11, lineHeight: 18, textAlign: "center" },
+  footerLinks: { flexDirection: "row", justifyContent: "center", gap: 8 },
+  footerLinkButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 14 },
+  footerLink: { color: "#1e6670", fontSize: 13, fontWeight: "800", textDecorationLine: "underline" }
 });
